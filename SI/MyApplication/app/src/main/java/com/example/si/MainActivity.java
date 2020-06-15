@@ -108,9 +108,6 @@ public class MainActivity extends AppCompatActivity {
 //////////////////////////////notice/////////////////////////////////////////////
     }
 
-    private void displayForDlg(ImageView imgView, String imgPath2, Button btnBig) {
-        ///////////////////////////////////////////
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -125,11 +122,11 @@ public class MainActivity extends AppCompatActivity {
                            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(photoURI));
                            int degree = getBitmapDegree(currentPhotoPath);
                            System.out.println(degree);
+                           bitmap = rotateBitmapByDegree(bitmap, degree);
                            Bitmap newBitmap = ImageTools.zoomBitmap(bitmap, bitmap.getWidth() / 5, bitmap.getHeight() / 5);
-                           bitmap.recycle();
-                           newBitmap = rotateBitmapByDegree(newBitmap, degree);
                            imageView.setImageBitmap(newBitmap);
-                           ImageTools.savePhotoToSDCard(newBitmap, Environment.getExternalStorageDirectory().getAbsolutePath(), String.valueOf(System.currentTimeMillis()));
+                           ImageTools.savePhotoToSDCard(bitmap, Environment.getExternalStorageDirectory().getAbsolutePath() + "/SI_Photo", String.valueOf(System.currentTimeMillis()));
+                           bitmap.recycle();
                        }catch (FileNotFoundException e){
                            e.printStackTrace();
                        }
@@ -162,9 +159,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void TakePhoto() {
-        //  Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        //  Uri imageUri = Uri.fromFile(new File(Environment.getExternalStorageDirectory(),"image.jpg"));
-        //  intent.putExtra(MediaStore.EXTRA_OUTPUT,imageUri);
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         // Ensure that there's a camera activity to handle the intent
         if (intent.resolveActivity(getPackageManager()) != null) {
@@ -198,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, CHOOSE_PHOTO);
     }
 
-
+/*
     private String getImageFilePath() {
         String mCaptureDir = "/storage/emulated/0/C3/cameraPhoto";
         File dir = new File(mCaptureDir);
@@ -208,6 +202,8 @@ public class MainActivity extends AppCompatActivity {
         String mCapturePath = mCaptureDir + "/" + "Photo_" + System.currentTimeMillis() + ".jpg";
         return mCapturePath;
     }
+
+ */
 
     private File createImageFile() throws IOException {
         // Create an image file name
@@ -296,18 +292,7 @@ public class MainActivity extends AppCompatActivity {
         } else if("content".equalsIgnoreCase(uri.getScheme())) {
             return getRealPathFromUri_Api11To18(context,uri);
         }
-//        int sdkVersion = Build.VERSION.SDK_INT;
-//        if (sdkVersion < 11) {
-//            // SDK < Api11
-//            return getRealPathFromUri_BelowApi11(context, uri);
-//        }
-////        if (sdkVersion < 19) {
-////             SDK > 11 && SDK < 19
-////            return getRealPathFromUri_Api11To18(context, uri);
-//            return getRealPathFromUri_ByXiaomi(context, uri);
-////        }
-//        // SDK > 19
-        return getRealPathFromUri_AboveApi19(context, uri);//没用到
+        return getRealPathFromUri_AboveApi19(context, uri);
     }
 
     //针对图片URI格式为Uri:: file:///storage/emulated/0/DCIM/Camera/IMG_20170613_132837.jpg

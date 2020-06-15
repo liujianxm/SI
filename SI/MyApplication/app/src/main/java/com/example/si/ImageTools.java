@@ -133,22 +133,6 @@ public final class ImageTools {
     }
 
     /**
-     * Base64 to byte[]
-     //	 */
-//	public static byte[] base64ToBytes(String base64) throws IOException {
-//		byte[] bytes = Base64.decode(base64);
-//		return bytes;
-//	}
-//
-//	/**
-//	 * Byte[] to base64
-//	 */
-//	public static String bytesTobase64(byte[] bytes) {
-//		String base64 = Base64.encode(bytes);
-//		return base64;
-//	}
-
-    /**
      * Create reflection images
      *
      * @param bitmap
@@ -261,7 +245,7 @@ public final class ImageTools {
      * @return
      */
     public static Bitmap getPhotoFromSDCard(String path,String photoName){
-        Bitmap photoBitmap = BitmapFactory.decodeFile(path + "/" +photoName +".png");
+        Bitmap photoBitmap = BitmapFactory.decodeFile(path + "/" +photoName +".jpg");
         if (photoBitmap == null) {
             return null;
         }else {
@@ -299,12 +283,6 @@ public final class ImageTools {
             }else {
                 flag = false;
             }
-//			File file = new File(path + "/" + photoName  + ".jpg" );
-//			if (file.exists()) {
-//				flag = true;
-//			}else {
-//				flag = false;
-//			}
 
         }else {
             flag = false;
@@ -325,12 +303,12 @@ public final class ImageTools {
                 dir.mkdirs();
             }
 
-            File photoFile = new File(path , photoName + ".png");
+            File photoFile = new File(path , photoName + ".jpg");
             FileOutputStream fileOutputStream = null;
             try {
                 fileOutputStream = new FileOutputStream(photoFile);
                 if (photoBitmap != null) {
-                    if (photoBitmap.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)) {
+                    if (photoBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream)) {
                         fileOutputStream.flush();
 //						fileOutputStream.close();
                     }
