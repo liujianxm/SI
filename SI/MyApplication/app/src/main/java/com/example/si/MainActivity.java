@@ -1,6 +1,7 @@
 package com.example.si;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -18,8 +19,10 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
@@ -367,5 +370,91 @@ public class MainActivity extends AppCompatActivity {
         return filePath;
     }
 
+
+    private int[][][] colorToGray2D(Bitmap myBitmap) {
+        //myimage[0][][]为透明度
+        //myimage[1][][]为灰度
+        int width = myBitmap.getWidth();
+        int height = myBitmap.getHeight();
+        int[][][] myimage = new int[2][width][height];  //存储透明度和灰度图像
+        int color;
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                color = myBitmap.getPixel(i,j);
+                myimage[0][i][j] = Color.alpha(color);
+                myimage[1][i][j] = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114 + 500) / 1000;
+            }
+        }
+        return myimage;
+    }
+
+    //OTSU二值化
+    private int[][] myOTSU(int[][] image, int width, int height, int grayscale) {
+        int[] pixelCount = new int[grayscale];
+        float[] pixelPro = new float[grayscale];
+        int i, j, pixelSum = width * height, threshold = 0;
+        float w0, w1, u0tmp, u1tmp, u0, u1, deltaTmp, deltaMax = 0;
+
+        //统计每个灰度级中像素的个数
+        for(i = 0; i < height; i++) {
+            for(j = 0;j < width;j++) {
+                pixelCount[image[i][j]]++;
+            }
+        }
+
+        //计算每个灰度级的像素数目占整幅图像的比例
+        for(i = 0; i < grayscale; i++) {
+            pixelPro[i] = (float)pixelCount[i] / pixelSum;
+        }
+
+        //遍历所有从0到255灰度级的阈值分割条件，测试哪一个的类间方差最大
+        for(i = 0; i < grayscale; i++) {
+            w0 = w1 = u0tmp = u1tmp = u0 = u1 = deltaTmp = 0;
+            for(j = 0; j < grayscale; j++) {
+                if(j <= i) {  //背景部分
+                    w0 += pixelPro[j];
+                    u0tmp += j * pixelPro[j];
+                } else {  //前景部分
+                    w1 += pixelPro[j];
+                    u1tmp += j * pixelPro[j];
+                }
+            }
+            u0 = u0tmp / w0;
+            u1 = u1tmp / w1;
+            deltaTmp = (float)(w0 *w1* Math.pow((u0 - u1), 2)) ;
+            if(deltaTmp > deltaMax) {
+                deltaMax = deltaTmp;
+                threshold = i;
+            }
+        }
+
+        //根据threshold对图像进行二值化
+        for(i = 0; i < height; i++) {
+            for(j = 0;j < width;j++) {
+                if (image[width][height] < threshold) {
+                    image[width][height] = 0;  //忘记哪个是零哪个是一
+                } else {
+                    image[width][height] = 1;
+                }
+            }
+        }
+
+        return image;
+
+    }
+
+    //灰度图转Bitmap
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private Bitmap gray2DToBitmap(int[][][] myimage, int width, int height) {
+        Bitmap myBitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
+        int color;
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                color = Color.argb(myimage[0][i][j], myimage[1][i][j], myimage[1][i][j], myimage[1][i][j]);
+                myBitmap.setPixel(i, j, color);
+            }
+        }
+        return myBitmap;
+    }
 
 }

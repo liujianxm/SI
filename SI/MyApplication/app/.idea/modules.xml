@@ -3,9 +3,13 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/2068987434/MyApplication-SI.iml" filepath="$PROJECT_DIR$/.idea/modules/2068987434/MyApplication-SI.iml" group="SI" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MyApplication-app.iml" filepath="$PROJECT_DIR$/.idea/modules/MyApplication-app.iml" group="SI/app" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/-327247368/SI.iml" filepath="$PROJECT_DIR$/.idea/modules/-327247368/SI.iml" group="SI" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/469079628/SI-MyApplication-SI.iml" filepath="$PROJECT_DIR$/.idea/modules/469079628/SI-MyApplication-SI.iml" group="SI" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/SI-MyApplication-app.iml" filepath="$PROJECT_DIR$/.idea/modules/SI-MyApplication-app.iml" group="SI/app" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/SI-app.iml" filepath="$PROJECT_DIR$/.idea/modules/SI-app.iml" group="SI/app" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app.iml" filepath="$PROJECT_DIR$/.idea/modules/app.iml" group="SI/app" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/469079628/mySI-SI-MyApplication-SI.iml" filepath="$PROJECT_DIR$/.idea/modules/469079628/mySI-SI-MyApplication-SI.iml" group="SI" />
     </modules>
   </component>
 </project>
