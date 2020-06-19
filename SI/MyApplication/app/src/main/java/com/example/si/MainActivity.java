@@ -21,8 +21,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.media.ExifInterface;
+//import android.media.ExifInterface;
 import android.os.Build;
+import androidx.exifinterface.media.ExifInterface;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
@@ -40,6 +41,9 @@ import android.widget.ListAdapter;
 import android.graphics.drawable.Drawable;
 import android.widget.Toast;
 
+import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -48,10 +52,13 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
     private Button button;
+    private Button Ed;
+    private Button testbutton;
     private ImageView imageView;
     private Dialog dialog_pic;
     private static final int TAKE_PHOTO = 0;
     private static final int CHOOSE_PHOTO = 1;
+    private static final int EdgeDetect = 2;
     private Uri photoURI;
     private String currentPhotoPath;
     private String currentPicturePath;
@@ -78,6 +85,26 @@ public class MainActivity extends AppCompatActivity {
                 openPictureSelectDialog();
             }
         });
+
+        Ed = (Button) findViewById(R.id.edgedetect);
+        Ed.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onClick(View v) {
+                Log.d("TAG","Click EdgeDetect Button");
+                EdgeDetect_Test();
+            }
+        });
+        testbutton = (Button) findViewById(R.id.testbutton);////用于测试
+        testbutton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onClick(View v) {
+                Log.d("TAG","Click test Button");
+                Fun_Test();
+            }
+        });
+
 
     }
 
@@ -111,6 +138,43 @@ public class MainActivity extends AppCompatActivity {
 //////////////////////////////notice/////////////////////////////////////////////
     }
 
+    private void Fun_Test(){
+        Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+        /////////////用于函数测试/////////////
+
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void EdgeDetect_Test(){
+        RoberEdgeDetect ro = new RoberEdgeDetect(5);
+        try {
+            //byte buff[] = mIntent.getByteArrayExtra("image");
+            //Bitmap bitmap = BitmapFactory.decodeByteArray(buff, 0, buff.length);
+            Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);
+/*
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            int sumpixel = width*height;
+            int[][][] gray_img = colorToGray2D(bitmap);
+            int[][] otsu_img = myOTSU(gray_img[1],width,height,sumpixel);
+            int[][][] newgray_img = new int[2][width][height];
+            newgray_img[0] = gray_img[0];
+            newgray_img[1] = otsu_img;
+            Bitmap newimg = gray2DToBitmap(newgray_img,width,height);
+            System.out.println("Enter the Fun....");
+            imageView.setImageBitmap(newimg);
+
+ */
+            EdgeDetect_fun.EdgeDetect(ro, bitmap);
+            System.out.println("Enter the EdgeDetectFun....");
+            imageView.setImageBitmap(ro.EdgeImage);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -118,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case TAKE_PHOTO:
-                    String status = Environment.getExternalStorageState();
+                    String status = Environment.getExternalStorageState();//读取SD卡状态
                     if (status.equals(Environment.MEDIA_MOUNTED)) {
                         //Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStorageDirectory() + "/image.jpg");
                        try {

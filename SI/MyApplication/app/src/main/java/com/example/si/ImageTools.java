@@ -23,6 +23,7 @@ import android.graphics.RectF;
 import android.graphics.Shader.TileMode;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.widget.ImageView;
 
 /**
  * Tools for handler picture
@@ -31,6 +32,35 @@ import android.graphics.drawable.Drawable;
  *
  */
 public final class ImageTools {
+
+    public static boolean saveBitmap(Bitmap bitmap, String path, String fileName) {
+        File file = new File(path);
+        if (!file.exists()) {
+            file.mkdir();
+        }
+        File imageFile = new File(file, fileName);
+        try {
+            imageFile.createNewFile();
+            FileOutputStream fos = new FileOutputStream(imageFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 50, fos);
+            fos.flush();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+
+    public static Bitmap getBitmapfromimageView(ImageView imView){
+        imView.setDrawingCacheEnabled(true);
+        Bitmap bitmap = Bitmap.createBitmap(imView.getDrawingCache());
+        imView.setDrawingCacheEnabled(false);
+        return bitmap;
+    }
+
 
     /**
      * Transfer drawable to bitmap
