@@ -15,6 +15,10 @@ public class EdgeDetect_fun {
     }
 
     //////////Canny算子//////////////
+    public static boolean Canny_edge(RoberEdgeDetect ro, Bitmap img)throws Exception{
+        ro.readImage(img);
 
+        return true;
+    }
 
 }

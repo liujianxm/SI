@@ -42,6 +42,7 @@ import android.graphics.drawable.Drawable;
 import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.ImageFilter;
 import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
 
 import java.io.File;
@@ -147,11 +148,10 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void EdgeDetect_Test(){
-        RoberEdgeDetect ro = new RoberEdgeDetect(5);
         try {
-            //byte buff[] = mIntent.getByteArrayExtra("image");
-            //Bitmap bitmap = BitmapFactory.decodeByteArray(buff, 0, buff.length);
             Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);
+            Bitmap new_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
+            RoberEdgeDetect ro = new RoberEdgeDetect(5);
 /*
             int width = bitmap.getWidth();
             int height = bitmap.getHeight();
@@ -164,9 +164,9 @@ public class MainActivity extends AppCompatActivity {
             Bitmap newimg = gray2DToBitmap(newgray_img,width,height);
             System.out.println("Enter the Fun....");
             imageView.setImageBitmap(newimg);
-
  */
-            EdgeDetect_fun.EdgeDetect(ro, bitmap);
+            EdgeDetect_fun.EdgeDetect(ro, new_bitmap);
+            imageView.setImageBitmap(new_bitmap);
             System.out.println("Enter the EdgeDetectFun....");
             imageView.setImageBitmap(ro.EdgeImage);
         } catch (Exception e) {
