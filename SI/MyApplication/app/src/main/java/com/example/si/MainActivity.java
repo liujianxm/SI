@@ -43,6 +43,7 @@ import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
 import com.example.si.IMG_PROCESSING.ImageFilter;
+import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
 
 import java.io.File;
@@ -102,7 +103,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d("TAG","Click test Button");
-                Fun_Test();
+                try {
+                    Fun_Test();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
 
@@ -139,9 +144,20 @@ public class MainActivity extends AppCompatActivity {
 //////////////////////////////notice/////////////////////////////////////////////
     }
 
-    private void Fun_Test(){
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    private void Fun_Test() throws Exception {
         Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
         /////////////用于函数测试/////////////
+        Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
+        System.out.println("Enter here(the function)");
+        ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
+        double dRationHigh=0.83,dRationLow=0.5;///可调
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
+        }
+        System.out.println("Enter here1");
+        imageView.setImageBitmap(iobj.EdgeImage);
+        System.out.println("Enter here2");
 
     }
 
@@ -155,20 +171,23 @@ public class MainActivity extends AppCompatActivity {
 /*
             int width = bitmap.getWidth();
             int height = bitmap.getHeight();
-            int sumpixel = width*height;
+            //int sumpixel = width*height;
             int[][][] gray_img = colorToGray2D(bitmap);
-            int[][] otsu_img = myOTSU(gray_img[1],width,height,sumpixel);
+            gray_img[1][2][3] = 255;
+           // int[][] otsu_img = myOTSU(gray_img[1],width,height,256);
             int[][][] newgray_img = new int[2][width][height];
             newgray_img[0] = gray_img[0];
-            newgray_img[1] = otsu_img;
+            newgray_img[1] = gray_img[1];
             Bitmap newimg = gray2DToBitmap(newgray_img,width,height);
             System.out.println("Enter the Fun....");
             imageView.setImageBitmap(newimg);
  */
+
             EdgeDetect_fun.EdgeDetect(ro, new_bitmap);
             imageView.setImageBitmap(new_bitmap);
             System.out.println("Enter the EdgeDetectFun....");
             imageView.setImageBitmap(ro.EdgeImage);
+
         } catch (Exception e) {
             e.printStackTrace();
         }

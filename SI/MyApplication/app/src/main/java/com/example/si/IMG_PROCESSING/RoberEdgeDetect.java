@@ -31,6 +31,12 @@ public class RoberEdgeDetect {
         graydata = new int[size];
         for(int i=0;i<imageData.length;i++){
             graydata[i] = (imageData[i] & 0xff0000) >> 16;
+            //0xff，即二进制的1序列比如11111111，是滤码。
+            //(0xABCDEF &0xFF0000 )>>16
+            //(0xABCDEF &0xFF00)>>8
+            //0xABCDEF &0xFF
+            //分别获得原数据的AB、CD、EF不同位置的数据
+            //分别对应RGB三色中的红色R为AB，绿色G为CD，蓝色B为EF
         }
     }
 
