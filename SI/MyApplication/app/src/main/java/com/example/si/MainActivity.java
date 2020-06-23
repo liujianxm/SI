@@ -42,6 +42,7 @@ import android.graphics.drawable.Drawable;
 import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.FourAreaLabel;
 import com.example.si.IMG_PROCESSING.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
@@ -150,13 +151,20 @@ public class MainActivity extends AppCompatActivity {
         /////////////用于函数测试/////////////
         Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
         System.out.println("Enter here(the function)");
-        ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
+        //ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            bitmap = FourAreaLabel.AreaLabel(blur_bitmap);
+        }
+        /*
         double dRationHigh=0.83,dRationLow=0.5;///可调
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
         }
+
+        */
+
         System.out.println("Enter here1");
-        imageView.setImageBitmap(iobj.EdgeImage);
+        imageView.setImageBitmap(bitmap);
         System.out.println("Enter here2");
 
     }
@@ -472,16 +480,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //OTSU二值化
-    private int[][] myOTSU(int[][] image, int width, int height, int grayscale) {
+    public int[][] myOTSU(int[][] grayimage, int width, int height, int grayscale) {
         int[] pixelCount = new int[grayscale];
         float[] pixelPro = new float[grayscale];
         int i, j, pixelSum = width * height, threshold = 0;
         float w0, w1, u0tmp, u1tmp, u0, u1, deltaTmp, deltaMax = 0;
 
         //统计每个灰度级中像素的个数
-        for(i = 0; i < height; i++) {
-            for(j = 0;j < width;j++) {
-                pixelCount[image[i][j]]++;
+        for(i = 0; i < width; i++) {
+            for(j = 0;j < height;j++) {
+                pixelCount[grayimage[i][j]]++;
             }
         }
 
@@ -512,19 +520,221 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //根据threshold对图像进行二值化
-        for(i = 0; i < height; i++) {
-            for(j = 0;j < width;j++) {
-                if (image[width][height] < threshold) {
-                    image[width][height] = 0;  //忘记哪个是零哪个是一
+        for(i = 0; i < width; i++) {
+            for(j = 0; j < height; j++) {
+                if (grayimage[i][j] < threshold) {
+                    grayimage[i][j] = 0;  //忘记哪个是零哪个是一
                 } else {
-                    image[width][height] = 1;
+                    grayimage[i][j] = grayscale - 1;
                 }
             }
         }
 
-        return image;
+        return grayimage;
 
     }
+
+    //二值图腐蚀运算
+    //structelement形如
+    // {{0,1,0},
+    //  {1,1,1},
+    //  {0,1,0}}
+    private int[][] myerode(int[][] binaryimage, int[][] structelement, int grayscale) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        int sewidth = structelement.length;
+        int seheight = structelement[0].length;
+        int[][] newbinaryimage = binaryimage;
+
+
+
+        for (int i = sewidth / 2; i < width - sewidth / 2; i++) {
+            for (int j = seheight / 2; j < height - seheight / 2; j++) {
+                //结构单元运算
+                if (binaryimage[i][j] == 0) {  //当前像素为黑色
+                    int temp = 0;
+                    for (int a = 0; a < sewidth; a++) {
+                        for (int b = 0; b < seheight; b++) {
+                            if (structelement[a][b] ==0) {
+                                continue;
+                            }
+                            temp += binaryimage[i - sewidth / 2 + a][i -seheight / 2 + b];
+                        }
+                        if (temp / (grayscale - 1) > 0) {
+                            newbinaryimage[i][j] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        return newbinaryimage;
+
+    }
+
+    //二值图膨胀运算
+    private int[][] mydilate(int[][] binaryimage, int[][] structelement, int grayscale) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        int sewidth = structelement.length;
+        int seheight = structelement[0].length;
+        int[][] newbinaryimage = binaryimage;
+
+        //结构元非零元素个数
+        int senum = 0;
+        for (int i = 0; i < sewidth; i++) {
+            for (int j = 0; j < seheight; j++) {
+                if (structelement[i][j] != 0) {
+                    senum++;
+                }
+            }
+        }
+
+        for (int i = sewidth / 2; i < width - sewidth / 2; i++) {
+            for (int j = seheight / 2; j < height - seheight / 2; j++) {
+                //结构单元运算
+                int temp = 0;
+                for (int a = 0; a < sewidth; a++) {
+                    for (int b = 0; b < seheight; b++) {
+                        if (structelement[a][b] ==0) {
+                            continue;
+                        }
+                        temp += binaryimage[i - sewidth / 2 + a][i -seheight / 2 + b];
+                    }
+                    if (temp / (grayscale - 1) < senum) {
+                        newbinaryimage[i][j] = 0;
+                    }
+                }
+            }
+        }
+
+        return newbinaryimage;
+
+    }
+/*
+    private void binaryAreaLabel(int[][] binaryimage) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        int count = 0;
+        int[][] label = new int[width][height]; //连通域识别
+        //int[][] label0 = new int[width][height]; //像素被判断方向次数
+        boolean flag = true;
+        int[][] tempstore = new int[6][width*height];//0:i,1:j,2:左,3:右,4:上,5:下
+        int tempnum = 0;
+
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (label[i][j] == 0 && binaryimage[i][j] == 0) {
+                    count++;
+                    label[i][j] = count;
+                    int ii=i;
+                    int jj=j;
+                    //binaryimage[i][j] = 255;  //grayscale-1
+                    while (flag) {
+                        //向左
+                        if (ii - 1 >= 0 && label[ii - 1][jj] == 0 && binaryimage[ii - 1][jj] == 0) {
+                            label[ii - 1][jj] = count;
+                            tempstore[0][tempnum] = ii;
+                            tempstore[1][tempnum] = jj;
+                            //tempstore[2][tempnum] = 1;
+                            tempnum++;
+                            //label0[ii][jj]++;
+                            ii--;
+                            continue;
+                        }
+                        //向上
+                        if (jj - 1 >= 0 && label[ii][jj-1] == 0 && binaryimage[ii][jj-1] == 0) {
+                            label[ii][jj-1] = count;
+                            tempstore[0][tempnum] = ii;
+                            tempstore[1][tempnum] = jj;
+                            //tempstore[2][tempnum] = 1;
+                            tempnum++;
+                            //label0[ii][jj]++;
+                            jj--;
+                            continue;
+                        }
+                        //向右
+                        if (ii + 1 < width && label[ii+1][jj] == 0 && binaryimage[ii+1][jj] == 0) {
+                            label[ii+1][jj] = count;
+                            tempstore[0][tempnum] = ii;
+                            tempstore[1][tempnum] = jj;
+                            //tempstore[2][tempnum] = 1;
+                            tempnum++;
+                            //label0[ii][jj]++;
+                            ii++;
+                            continue;
+                        }
+                        //向下
+                        if (jj + 1 < height && label[ii][jj+1] == 0 && binaryimage[ii][jj+1] == 0) {
+                            //当向下遍历时，当前点其他三方向已遍历完成，向下遍历时当前像素四方向遍历完成，无需加入未处理完成数组
+                            label[ii][jj+1] = count;
+                            //tempstore[0][tempnum] = ii;
+                            //tempstore[1][tempnum] = jj;
+                            //tempstore[2][tempnum] = 1;
+                            //tempnum++;
+                            //label0[ii][jj]++;
+                            jj++;
+                            continue;
+                        }
+                        //返回未完全处理像素点
+                        if (tempnum < 0) {
+                            flag = false;
+                        } else {
+                            ii = tempstore[0][tempnum];
+                            jj = tempstore[1][tempnum];
+                            tempnum--;
+                        }
+                    }
+
+                }
+            }
+        }
+    }*/
+
+    /*//四邻域区域
+    private int[][] fourDirection (int[][] binaryimage, int[][] label, boolean flag,int count) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        if (flag) {
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (label[i][j] == count) {
+                        //count++;
+                        //label[i][j] = count;
+                        //binaryimage[i][j] = 255;  //grayscale-1
+                        //向左
+                        if (i - 1 >= 0 && binaryimage[i-1][j] == 0) {
+                            if (label[i-1][j] == 0) {
+                                label[i-1][j] = count;
+                            }
+                        }
+                        //向右
+                        if (i + 1 < width && binaryimage[i+1][j] == 0) {
+                            if (label[i+1][j] == 0) {
+                                label[i+1][j] = count;
+                            }
+                        }
+                        //向上
+                        if (j - 1 >= 0 && binaryimage[i][j-1] == 0) {
+                            if (label[i][j-1] == 0) {
+                                label[i][j-1] = count;
+                            }
+                        }
+                        //向下
+                        if (j + 1 < height && binaryimage[i][j+1] == 0) {
+                            if (label[i][j+1] == 0) {
+                                label[i][j+1] = count;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return label;
+
+    }*/
 
     //灰度图转Bitmap
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -539,5 +749,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return myBitmap;
     }
+
+
 
 }

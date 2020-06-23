@@ -20,15 +20,15 @@
         android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.149"
+        app:layout_constraintHorizontal_bias="0.198"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.567" />
+        app:layout_constraintVertical_bias="0.24" />
 
     <ImageView
         android:id="@+id/imageview3"
-        android:layout_width="363dp"
-        android:layout_height="506dp"
+        android:layout_width="371dp"
+        android:layout_height="444dp"
         android:background="@android:drawable/screen_background_light"
         android:contentDescription="@string/image"
         android:scaleType="fitCenter"
@@ -36,6 +36,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.466"
         app:srcCompat="@android:color/background_light"
         tools:ignore="VectorDrawableCompat" />
 
@@ -46,10 +47,10 @@
         android:text="@string/edge"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.085"
+        app:layout_constraintHorizontal_bias="0.099"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageview3"
-        app:layout_constraintVertical_bias="0.426" />
+        app:layout_constraintVertical_bias="0.192" />
 
     <Button
         android:id="@+id/testbutton"
@@ -58,9 +59,10 @@
         android:text="@string/button"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.471"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageview3"
-        app:layout_constraintVertical_bias="0.43" />
+        app:layout_constraintVertical_bias="0.194" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

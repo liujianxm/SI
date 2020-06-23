@@ -53,6 +53,22 @@ public class ImgObj_Para {
         gray_img = myimage[1];
     }
 
+    //二值图反转
+    public int[][] binaryReverse(int[][] binaryimage) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (binaryimage[i][j] == 0) {
+                    binaryimage[i][j] = 255;
+                } else {
+                    binaryimage[i][j] = 0;
+                }
+            }
+        }
+        return binaryimage;
+    }
+
     //灰度图转Bitmap
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public Bitmap gray2DToBitmap(int[][][] myimage, int width, int height) {
