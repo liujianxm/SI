@@ -39,6 +39,7 @@ public class FourAreaLabel {
 
     //向左
     private int left(int ii, int jj, int count) {
+        label0[ii][jj]++;
         if (ii - 1 >= 0 && label[ii - 1][jj] == 0 && binaryimage[ii - 1][jj] == 0) {
             label[ii - 1][jj] = count;
             tempstore[0][tempnum] = ii;
@@ -48,7 +49,7 @@ public class FourAreaLabel {
             ii--;
         }
         //System.out.println("label0 = "+label0[ii][jj]);
-        label0[ii][jj]++;
+
         //System.out.println("label0 = "+label0[ii][jj]);
         //System.out.println("ii = "+ii);
         return ii;
@@ -56,6 +57,7 @@ public class FourAreaLabel {
 
     //向上
     private int up(int ii, int jj, int count) {
+        label0[ii][jj]++;
         if (jj - 1 >= 0 && label[ii][jj-1] == 0 && binaryimage[ii][jj-1] == 0) {
             label[ii][jj-1] = count;
             tempstore[0][tempnum] = ii;
@@ -65,12 +67,13 @@ public class FourAreaLabel {
 
             jj--;
         }
-        label0[ii][jj]++;
+
         return jj;
     }
 
     //向右
     private int right(int ii, int jj, int count) {
+        label0[ii][jj]++;
         if (ii + 1 < width && label[ii+1][jj] == 0 && binaryimage[ii+1][jj] == 0) {
             label[ii+1][jj] = count;
             tempstore[0][tempnum] = ii;
@@ -80,12 +83,13 @@ public class FourAreaLabel {
 
             ii++;
         }
-        label0[ii][jj]++;
+
         return ii;
     }
 
     //向下
     private int down(int ii, int jj, int count) {
+        label0[ii][jj]++;
         if (jj + 1 < height && label[ii][jj+1] == 0 && binaryimage[ii][jj+1] == 0) {
             //当向下遍历时，当前点其他三方向已遍历完成，向下遍历时当前像素四方向遍历完成，无需加入未处理完成数组
             label[ii][jj+1] = count;
@@ -96,7 +100,7 @@ public class FourAreaLabel {
 
             jj++;
         }
-        label0[ii][jj]++;
+
         return jj;
     }
 
@@ -233,15 +237,12 @@ public class FourAreaLabel {
         System.out.println("----"+mybw.getCounter());
         //int count = lable.getCount();
         System.out.println("****"+label.getCount());
-
         for (int i = 0; i < imgobj.width; i++) {
             for (int j = 0; j < imgobj.height; j++) {
                 if (label.getCount() > 0) {
                     //mydemo
                     if (label.getLabelPoint(j,i) != 0) {
-                        //System.out.println(grayimage[j][i]);
                         grayimage[j][i] = label.getLabelPoint(j,i)*100;
-                        //System.out.println(grayimage[j][i]);
                     }
                     /*//网络递归法有问题
                     if (mybw.getimagepoint(j,i) > 0 && mybw.getimagepoint(j,i) < 500) {
