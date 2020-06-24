@@ -3,4 +3,8 @@
     <string name="image">Image</string>
     <string name="edge">Edge</string>
     <string name="button">Button</string>
+    <string name="function">function_menu</string>
+    <string name="canny">canny</string>
+    <string name="edgedetect">edgedetect</string>
+    <string name="FourAreaLabel">FourAreaLabel</string>
 </resources>

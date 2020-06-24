@@ -6,29 +6,11 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <Button
-        android:id="@+id/image"
-        android:layout_width="126dp"
-        android:layout_height="57dp"
-        android:layout_marginStart="44dp"
-        android:layout_marginLeft="44dp"
-        android:layout_marginTop="54dp"
-        android:layout_marginEnd="362dp"
-        android:layout_marginRight="362dp"
-        android:layout_marginBottom="674dp"
-        android:text="@string/image"
-        android:visibility="visible"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.198"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.24" />
 
     <ImageView
         android:id="@+id/imageview3"
-        android:layout_width="371dp"
-        android:layout_height="444dp"
+        android:layout_width="348dp"
+        android:layout_height="482dp"
         android:background="@android:drawable/screen_background_light"
         android:contentDescription="@string/image"
         android:scaleType="fitCenter"
@@ -37,32 +19,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.466"
-        app:srcCompat="@android:color/background_light"
+        app:srcCompat="?android:attr/colorBackground"
         tools:ignore="VectorDrawableCompat" />
 
-    <Button
-        android:id="@+id/edgedetect"
-        android:layout_width="100dp"
-        android:layout_height="40dp"
-        android:text="@string/edge"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.099"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageview3"
-        app:layout_constraintVertical_bias="0.192" />
 
-    <Button
-        android:id="@+id/testbutton"
-        android:layout_width="97dp"
-        android:layout_height="41dp"
-        android:text="@string/button"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.471"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageview3"
-        app:layout_constraintVertical_bias="0.194" />
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

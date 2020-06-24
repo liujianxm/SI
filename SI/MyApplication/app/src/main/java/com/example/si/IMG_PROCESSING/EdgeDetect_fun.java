@@ -160,7 +160,7 @@ public class EdgeDetect_fun {
         ThHighLow[1] = nThLow;
         if(ThHighLow[1] < 13) {
             ThHighLow[1] = 15;
-            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 2;
+            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 5;
         }
         System.out.println("nThHigh:" + ThHighLow[0]);
         System.out.println("nThLow:" + ThHighLow[1]);

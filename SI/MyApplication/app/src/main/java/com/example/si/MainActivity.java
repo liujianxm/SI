@@ -29,7 +29,8 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
-import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.content.Intent;
 import android.widget.ArrayAdapter;
@@ -38,7 +39,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
-import android.graphics.drawable.Drawable;
 import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
@@ -54,8 +54,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
-    private Button button;
-    private Button Ed;
     private Button testbutton;
     private ImageView imageView;
     private Dialog dialog_pic;
@@ -65,39 +63,14 @@ public class MainActivity extends AppCompatActivity {
     private Uri photoURI;
     private String currentPhotoPath;
     private String currentPicturePath;
-    private File showPic;
-    private String imgPath = "";
-    private String imgName = "";
+    private Boolean ImageOpened = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         imageView = (ImageView) findViewById(R.id.imageview3);
-        imageView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openPictureDialog();
-            }
-        });
-
-        button = (Button) findViewById(R.id.image);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openPictureSelectDialog();
-            }
-        });
-
-        Ed = (Button) findViewById(R.id.edgedetect);
-        Ed.setOnClickListener(new View.OnClickListener() {
-            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-            @Override
-            public void onClick(View v) {
-                Log.d("TAG","Click EdgeDetect Button");
-                EdgeDetect_Test();
-            }
-        });
+        /*
         testbutton = (Button) findViewById(R.id.testbutton);////用于测试
         testbutton.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -111,10 +84,53 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-
+         */
     }
 
+//================新添menu部分======================//
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.main,menu);
+        return true;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch (item.getItemId()){
+            case R.id.openimage:
+                Toast.makeText(this, "open an image..", Toast.LENGTH_LONG).show();
+                openPictureSelectDialog();
+                break;
+            case R.id.edge:
+                if(!ImageOpened){
+                    Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
+                }
+                else {
+                    Toast.makeText(this, "edge function..", Toast.LENGTH_LONG).show();
+                    Log.d("TAG", "Click EdgeDetect Button");
+                    EdgeDetect_Test();
+                }
+                break;
+            case R.id.FourAreaLable:
+                if(!ImageOpened){
+                    Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
+                }
+                else {
+                    Toast.makeText(this, "canny function..", Toast.LENGTH_LONG).show();
+                    Log.d("TAG", "Click canny Button");
+                    try {
+                        Fun_Test();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            case R.id.testbutton:
+                Toast.makeText(this, "test function..", Toast.LENGTH_LONG).show();
+                break;
+        }
+        return true;
+    }
+//======================================================//
     void openPictureSelectDialog() {
         Context dialogContext = new ContextThemeWrapper(MainActivity.this, android.R.style.Theme_Light);
         String[] choiceItems = new String[2];
@@ -130,9 +146,11 @@ public class MainActivity extends AppCompatActivity {
                     case 0:
                         checkPermission();
                         //TakePhoto();
+                        ImageOpened = true;
                         break;
                     case 1:
                         PickPhotoFromGallery();
+                        ImageOpened = true;
                         break;
                 }
                 dialog.dismiss();
@@ -141,9 +159,6 @@ public class MainActivity extends AppCompatActivity {
         builder.create().show();
     }
 
-    void openPictureDialog() {
-//////////////////////////////notice/////////////////////////////////////////////
-    }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     private void Fun_Test() throws Exception {
@@ -173,28 +188,17 @@ public class MainActivity extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void EdgeDetect_Test(){
         try {
-            Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);
-            Bitmap new_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
-            RoberEdgeDetect ro = new RoberEdgeDetect(5);
-/*
-            int width = bitmap.getWidth();
-            int height = bitmap.getHeight();
-            //int sumpixel = width*height;
-            int[][][] gray_img = colorToGray2D(bitmap);
-            gray_img[1][2][3] = 255;
-           // int[][] otsu_img = myOTSU(gray_img[1],width,height,256);
-            int[][][] newgray_img = new int[2][width][height];
-            newgray_img[0] = gray_img[0];
-            newgray_img[1] = gray_img[1];
-            Bitmap newimg = gray2DToBitmap(newgray_img,width,height);
-            System.out.println("Enter the Fun....");
-            imageView.setImageBitmap(newimg);
- */
-
-            EdgeDetect_fun.EdgeDetect(ro, new_bitmap);
-            imageView.setImageBitmap(new_bitmap);
-            System.out.println("Enter the EdgeDetectFun....");
-            imageView.setImageBitmap(ro.EdgeImage);
+            Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+            Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
+            System.out.println("Enter here(the function)");
+            ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
+            double dRationHigh=0.83,dRationLow=0.5;///可调
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                 EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
+            }
+            System.out.println("Enter here1");
+            imageView.setImageBitmap(iobj.EdgeImage);
+            System.out.println("Enter here2");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -262,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
             //            String photoFilePath = null;
             try {
                 photoFile = createImageFile();
-                showPic = photoFile;
+                File showPic = photoFile;
             } catch (IOException ex) {
                 // Error occurred while creating the File
             }

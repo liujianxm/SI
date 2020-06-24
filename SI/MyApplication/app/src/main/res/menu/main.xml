@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/openimage"
+        android:orderInCategory="1"
+        android:title="@string/image"
+        app:showAsAction="always"
+        android:icon="@android:drawable/ic_menu_gallery"/>
+    <item android:id="@+id/function"
+        android:orderInCategory="2"
+        android:title="@string/function"
+        app:showAsAction="ifRoom"
+        android:icon="@android:drawable/ic_menu_edit">
+        <menu>
+            <item android:id="@+id/edge" android:title="@string/edgedetect"/>
+            <item android:id="@+id/FourAreaLable" android:title="@string/FourAreaLabel"/>
+            <item android:id="@+id/testbutton" android:title="@string/button"/>
+        </menu>
+    </item>
+</menu>
