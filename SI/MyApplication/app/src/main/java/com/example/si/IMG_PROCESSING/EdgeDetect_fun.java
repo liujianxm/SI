@@ -5,6 +5,7 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
+import static com.example.si.IMG_PROCESSING.HoughCircle.ImgGrad;
 import static java.lang.Math.abs;
 
 public class EdgeDetect_fun {
@@ -25,7 +26,6 @@ public class EdgeDetect_fun {
         //Bitmap img传入时已经经过高斯模糊
         int nThdHigh=0, nThdLow = 0;		//通过dRationHigh和dRationLow，计算得到的高阈值nThdHigh和低阈值nThdLow
         System.out.println("Have got the Gray_img!");
-        System.out.println("//////////////////"+imgobj.gray_img[10][100]);
         GradSobel(imgobj.gray_img,imgobj.pnGradX,imgobj.pnGradY,imgobj.pnGradXY,imgobj.pnGradTheta,imgobj.width,imgobj.height);//sobel梯度，幅值以及角度
         System.out.println("Have got the GradSobel!");
         imgobj.ThHighLow= EstimateThreshold_new(imgobj.pnGradXY,imgobj.width,imgobj.height,dRationHigh,dRationLow);//估计高低阈值
@@ -34,6 +34,9 @@ public class EdgeDetect_fun {
         System.out.println("Have finished the NonMaxSuppress!");
         Hysteresis(imgobj.pnGradXY,imgobj.temp_img,imgobj.width,imgobj.height,nThdHigh,nThdLow);//连接边缘
         System.out.println("Here!!!!!!");
+        //=============
+        //ImgGrad(imgobj.temp_img,imgobj.edgeGradX,imgobj.edgeGradY,imgobj.height,imgobj.width);
+        //imgobj.tar_img[1] = imgobj.edgeGradY;
         imgobj.tar_img[1] = imgobj.temp_img;
         imgobj.EdgeImage = imgobj.gray2DToBitmap(imgobj.tar_img,imgobj.width,imgobj.height);
         return true;
@@ -160,7 +163,7 @@ public class EdgeDetect_fun {
         ThHighLow[1] = nThLow;
         if(ThHighLow[1] < 13) {
             ThHighLow[1] = 15;
-            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 5;
+            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 10;
         }
         System.out.println("nThHigh:" + ThHighLow[0]);
         System.out.println("nThLow:" + ThHighLow[1]);

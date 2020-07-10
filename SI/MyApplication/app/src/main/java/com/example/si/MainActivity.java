@@ -19,9 +19,11 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 //import android.media.ExifInterface;
+import android.graphics.Paint;
 import android.os.Build;
 import androidx.exifinterface.media.ExifInterface;
 import android.os.Environment;
@@ -31,7 +33,6 @@ import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.content.Intent;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -43,14 +44,17 @@ import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
 import com.example.si.IMG_PROCESSING.FourAreaLabel;
+import com.example.si.IMG_PROCESSING.HoughCircle;
 import com.example.si.IMG_PROCESSING.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
+import com.example.si.IMG_PROCESSING.Point;
 import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
@@ -100,36 +104,64 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "open an image..", Toast.LENGTH_LONG).show();
                 openPictureSelectDialog();
                 break;
-            case R.id.edge:
+            case R.id.function:
                 if(!ImageOpened){
                     Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
                 }
                 else {
-                    Toast.makeText(this, "edge function..", Toast.LENGTH_LONG).show();
-                    Log.d("TAG", "Click EdgeDetect Button");
-                    EdgeDetect_Test();
+                     chooseFunctionDialog();
                 }
-                break;
-            case R.id.FourAreaLable:
-                if(!ImageOpened){
-                    Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
-                }
-                else {
-                    Toast.makeText(this, "canny function..", Toast.LENGTH_LONG).show();
-                    Log.d("TAG", "Click canny Button");
-                    try {
-                        Fun_Test();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;
-            case R.id.testbutton:
-                Toast.makeText(this, "test function..", Toast.LENGTH_LONG).show();
                 break;
         }
         return true;
     }
+
+    void chooseFunctionDialog(){
+        Context dialogContext = new ContextThemeWrapper(MainActivity.this,android.R.style.Theme_Light);
+        String[] Items = new String[4];
+        Items[0] = "Edge Detection";
+        Items[1] = "FourAreaLable";
+        Items[2] = "HoughCircle";
+        Items[3] = "On building..";
+        ListAdapter adapter = new ArrayAdapter<String>(dialogContext,android.R.layout.simple_list_item_1,Items);
+        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext);
+        builder.setTitle("Functions");
+        builder.setSingleChoiceItems(adapter,-1,new DialogInterface.OnClickListener(){
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onClick(DialogInterface dialog, int which){
+                switch (which){
+                    case 0:
+                        Toast.makeText(MainActivity.this, "edge function..", Toast.LENGTH_LONG).show();
+                        Log.d("TAG", "Click EdgeDetect Button");
+                        EdgeDetect_Test();
+                        break;
+                    case 1:
+                        Toast.makeText(MainActivity.this, "FourAreaLable function..", Toast.LENGTH_LONG).show();
+                        Log.d("TAG", "Click FourAreaLable Button");
+                        try {
+                            Fun_Test();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case 2:
+                        Toast.makeText(MainActivity.this, "HoughCircle function..", Toast.LENGTH_LONG).show();
+                        try {
+                            Circle_Fun();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case 3:
+                        Toast.makeText(MainActivity.this,"Test Function..",Toast.LENGTH_LONG).show();
+                }
+                dialog.dismiss();
+            }
+        });
+        builder.create().show();
+    }
+
 //======================================================//
     void openPictureSelectDialog() {
         Context dialogContext = new ContextThemeWrapper(MainActivity.this, android.R.style.Theme_Light);
@@ -145,7 +177,6 @@ public class MainActivity extends AppCompatActivity {
                 switch (which) {
                     case 0:
                         checkPermission();
-                        //TakePhoto();
                         ImageOpened = true;
                         break;
                     case 1:
@@ -161,6 +192,26 @@ public class MainActivity extends AppCompatActivity {
 
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    private void Circle_Fun() throws Exception {
+        Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+        Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
+        System.out.println("Enter here(the gauss finished!!)");
+        ArrayList<Point> circles = new ArrayList<>();//存放找到的圆
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            circles =  HoughCircle.HoughCircle_Fun(blurbitmap);
+            System.out.println("The number of circles:"+circles.size());
+            Toast.makeText(this, "Circles number:"+circles.size(), Toast.LENGTH_LONG).show();
+            System.out.println("Enter here(the circles have been found!!)");
+        }
+        Bitmap new_bitmap = Point.DrawCircle(circles,bitmap);
+        System.out.println("Enter here(the circles have been drawn!!)");
+        imageView.setImageBitmap(new_bitmap);
+        System.out.println("Enter here(the bitmap have been updated!!)");
+        bitmap.recycle();//回收bitmap
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     private void Fun_Test() throws Exception {
         Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
         /////////////用于函数测试/////////////
@@ -170,14 +221,6 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             bitmap = FourAreaLabel.AreaLabel(blur_bitmap);
         }
-        /*
-        double dRationHigh=0.83,dRationLow=0.5;///可调
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
-        }
-
-        */
-
         System.out.println("Enter here1");
         imageView.setImageBitmap(bitmap);
         System.out.println("Enter here2");
@@ -192,7 +235,8 @@ public class MainActivity extends AppCompatActivity {
             Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
             System.out.println("Enter here(the function)");
             ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
-            double dRationHigh=0.83,dRationLow=0.5;///可调
+            double dRationHigh=0.9,dRationLow=0.78;///可调
+            //double dRationHigh=0.85,dRationLow=0.5;///可调
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                  EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
             }

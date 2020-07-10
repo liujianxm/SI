@@ -6,6 +6,8 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
+import java.util.ArrayList;
+
 public class ImgObj_Para {
     int[][] gray_img;
     int[][] temp_img;
@@ -20,6 +22,12 @@ public class ImgObj_Para {
     int[][] pnGradY;					//存放各点垂直方向梯度值
     int[][] pnGradXY;					//存放各点XY方向的综合梯度值
     double[][] pnGradTheta;                //存放各点的角度值
+    ArrayList<Point> circles;           //存放找到的圆
+    ArrayList<Point> line = new ArrayList<>();           //存放找到的圆
+    int circle_max;                    //输出最多圆的个数
+    int[][] edgeGradX;					//存放各点水平方向梯度值
+    int[][] edgeGradY;					//存放各点垂直方向梯度值
+    int[][] edgeGradXY;					//存放各点XY方向的综合梯度值
 
     public ImgObj_Para(Bitmap bitmap){
         width = bitmap.getWidth();
@@ -30,8 +38,13 @@ public class ImgObj_Para {
         pnGradY = new int[height][width];					//存放各点垂直方向梯度值
         pnGradXY = new int[height][width];					//存放各点XY方向的综合梯度值
         pnGradTheta = new double[height][width];                //存放各点的角度值
+        edgeGradX = new int[height][width];					//存放各点水平方向梯度值(edge)
+        edgeGradY = new int[height][width];					//存放各点垂直方向梯度值(edge)
+        edgeGradXY = new int[height][width];					//存放各点XY方向的综合梯度值(edge)
         tar_img = new int[2][height][width];
         EdgeImage = null;
+        circles = new ArrayList<>();
+        circle_max = 5;
     }
     public void colorToGray2D(Bitmap myBitmap) {
         //myimage[0][][]为透明度

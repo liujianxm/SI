@@ -11,11 +11,5 @@
         android:orderInCategory="2"
         android:title="@string/function"
         app:showAsAction="ifRoom"
-        android:icon="@android:drawable/ic_menu_edit">
-        <menu>
-            <item android:id="@+id/edge" android:title="@string/edgedetect"/>
-            <item android:id="@+id/FourAreaLable" android:title="@string/FourAreaLabel"/>
-            <item android:id="@+id/testbutton" android:title="@string/button"/>
-        </menu>
-    </item>
+        android:icon="@android:drawable/ic_menu_edit"/>
 </menu>
