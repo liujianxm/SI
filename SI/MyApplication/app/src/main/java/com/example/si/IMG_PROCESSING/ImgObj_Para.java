@@ -9,38 +9,21 @@ import androidx.annotation.RequiresApi;
 import java.util.ArrayList;
 
 public class ImgObj_Para {
-    int[][] gray_img;
-    int[][] temp_img;
-    int[][][] tar_img;
-    int width;//图像宽
-    int height;
+    public int[][] gray_img;
+    public int[][][] tar_img;
+    public int width;//图像宽
+    public int height;
     int size;
     public Bitmap EdgeImage;
-
     int[] ThHighLow = new int[2];  //存放高低阈值，0-高阈值，1-低阈值；
-    int[][] pnGradX;					//存放各点水平方向梯度值
-    int[][] pnGradY;					//存放各点垂直方向梯度值
-    int[][] pnGradXY;					//存放各点XY方向的综合梯度值
-    double[][] pnGradTheta;                //存放各点的角度值
     ArrayList<Point> circles;           //存放找到的圆
-    ArrayList<Point> line = new ArrayList<>();           //存放找到的圆
+    //ArrayList<Point> line = new ArrayList<>();           //存放找到的圆
     int circle_max;                    //输出最多圆的个数
-    int[][] edgeGradX;					//存放各点水平方向梯度值
-    int[][] edgeGradY;					//存放各点垂直方向梯度值
-    int[][] edgeGradXY;					//存放各点XY方向的综合梯度值
 
     public ImgObj_Para(Bitmap bitmap){
         width = bitmap.getWidth();
         height = bitmap.getHeight();
         size = width*height;
-        temp_img = new int[height][width];
-        pnGradX = new int[height][width];					//存放各点水平方向梯度值
-        pnGradY = new int[height][width];					//存放各点垂直方向梯度值
-        pnGradXY = new int[height][width];					//存放各点XY方向的综合梯度值
-        pnGradTheta = new double[height][width];                //存放各点的角度值
-        edgeGradX = new int[height][width];					//存放各点水平方向梯度值(edge)
-        edgeGradY = new int[height][width];					//存放各点垂直方向梯度值(edge)
-        edgeGradXY = new int[height][width];					//存放各点XY方向的综合梯度值(edge)
         tar_img = new int[2][height][width];
         EdgeImage = null;
         circles = new ArrayList<>();
@@ -53,17 +36,16 @@ public class ImgObj_Para {
         height = myBitmap.getHeight();
         size = width*height;
         //int[][][] myimage = new int[2][width][height];  //存储透明度和灰度图像
-        int[][][] myimage = new int[2][height][width];
+        //int[][][] myimage = new int[2][height][width];
         int color;
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 color = myBitmap.getPixel(i,j);
-                myimage[0][j][i] = Color.alpha(color);
-                myimage[1][j][i] = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114 + 500) / 1000;
+                tar_img[0][j][i] = Color.alpha(color);
+                tar_img[1][j][i] = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114 + 500) / 1000;
             }
         }
-        tar_img[0] = myimage[0];
-        gray_img = myimage[1];
+        gray_img = tar_img[1];
     }
 
     //二值图反转

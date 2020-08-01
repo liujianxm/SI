@@ -5,6 +5,8 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
+import com.example.si.ImageTools;
+
 import static com.example.si.IMG_PROCESSING.HoughCircle.ImgGrad;
 import static java.lang.Math.abs;
 
@@ -21,24 +23,45 @@ public class EdgeDetect_fun {
     //////////Canny算子边缘检测//////////////
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public static boolean Canny_edge(ImgObj_Para imgobj, Bitmap img, double dRationHigh, double dRationLow)throws Exception{
+        int Width = imgobj.width;
+        int Height = imgobj.height;
+        int[][] pnGradX = new int[Height][Width];					//存放各点水平方向梯度值
+        int[][] pnGradY = new int[Height][Width];					//存放各点垂直方向梯度值
+        int[][] pnGradXY = new int[Height][Width];					//存放各点XY方向的综合梯度值
+        double[][] pnGradTheta = new double[Height][Width];                //存放各点的角度值
         imgobj.colorToGray2D(img);//获得灰度图
-        System.out.println("///////////////"+imgobj.height+"   "+imgobj.width);
+        ///直方图均衡化///
+        //imgobj.gray_img = ImageFilter.EqualizeHist(imgobj.gray_img);
+        ////////////
+        //System.out.println("///////////////"+imgobj.height+"   "+imgobj.width);
         //Bitmap img传入时已经经过高斯模糊
         int nThdHigh=0, nThdLow = 0;		//通过dRationHigh和dRationLow，计算得到的高阈值nThdHigh和低阈值nThdLow
-        System.out.println("Have got the Gray_img!");
-        GradSobel(imgobj.gray_img,imgobj.pnGradX,imgobj.pnGradY,imgobj.pnGradXY,imgobj.pnGradTheta,imgobj.width,imgobj.height);//sobel梯度，幅值以及角度
-        System.out.println("Have got the GradSobel!");
-        imgobj.ThHighLow= EstimateThreshold_new(imgobj.pnGradXY,imgobj.width,imgobj.height,dRationHigh,dRationLow);//估计高低阈值
-        System.out.println("Have estimated the Threshold!");
-        NonMaxSuppress_new(imgobj.pnGradXY,imgobj.pnGradTheta,imgobj.temp_img,imgobj.width,imgobj.height,imgobj.ThHighLow[1]);//非极大值抑制，细化边缘
-        System.out.println("Have finished the NonMaxSuppress!");
-        Hysteresis(imgobj.pnGradXY,imgobj.temp_img,imgobj.width,imgobj.height,nThdHigh,nThdLow);//连接边缘
-        System.out.println("Here!!!!!!");
+        //System.out.println("Have got the Gray_img!");
+        GradSobel(imgobj.gray_img,pnGradX,pnGradY,pnGradXY,pnGradTheta,Width,Height);//sobel梯度，幅值以及角度
+        //System.out.println("Have got the GradSobel!");
+        imgobj.ThHighLow= EstimateThreshold_new(pnGradXY,Width,Height,dRationHigh,dRationLow);//估计高低阈值
+        // System.out.println("Have estimated the Threshold!");
+        NonMaxSuppress_new(pnGradXY,pnGradTheta,imgobj.tar_img[1],Width,Height,imgobj.ThHighLow[1]);//非极大值抑制，细化边缘
+        //System.out.println("Have finished the NonMaxSuppress!");
+        Hysteresis(pnGradXY,imgobj.tar_img[1],Width,Height,nThdHigh,nThdLow);//连接边缘
+        //System.out.println("Here!!!!!!");
         //=============
         //ImgGrad(imgobj.temp_img,imgobj.edgeGradX,imgobj.edgeGradY,imgobj.height,imgobj.width);
         //imgobj.tar_img[1] = imgobj.edgeGradY;
-        imgobj.tar_img[1] = imgobj.temp_img;
-        imgobj.EdgeImage = imgobj.gray2DToBitmap(imgobj.tar_img,imgobj.width,imgobj.height);
+/*
+        ///膨胀腐蚀//
+        int[][] str_elem = {{0,1,0}, {1,1,1},{0,1,0}};
+        imgobj.temp_img = ImageTools.myerode(imgobj.temp_img,str_elem,256);
+        imgobj.temp_img = ImageTools.mydilate(imgobj.temp_img,str_elem,256);
+
+        pnGradX = null;
+        pnGradY = null;
+        pnGradXY = null;
+        pnGradTheta = null;
+ */
+        ////////
+        //imgobj.tar_img[1] = imgobj.temp_img;
+        imgobj.EdgeImage = imgobj.gray2DToBitmap(imgobj.tar_img,Width,Height);
         return true;
     }
 
@@ -108,7 +131,7 @@ public class EdgeDetect_fun {
         }
     }
 
-//===================================================================================================================================================//
+    //===================================================================================================================================================//
         /*统计gradImageXY的直方图，确定两个阈值nThdHign和nThdLow，gradImageXY——梯度图
       UnchEdgeImage——经过非极大值抑制的图，nWidth——图像宽度，nHeight——图像高度
       dRationHigh——高于高阈值点的像素数量占总像素数量的比例，dRationLow——低于低阈值点的像素数量占总像素数量的比例
@@ -126,49 +149,49 @@ public class EdgeDetect_fun {
         int sum = 0;
         int nHighCount = 0;
         int[] ThHighLow = new int[2];
-    //初始化
+        //初始化
         for(i=0;i<1024;i++){
-           nHist[i] = 0;
+            nHist[i] = 0;
         }
-    //统计梯度图的直方图
+        //统计梯度图的直方图
         for(i=1;i<iheight-1;i++){
-           for(j=1;j<iwidth-1;j++){
-              if(gradimageXY[i][j]<1024){
-                 nHist[gradimageXY[i][j]] += 1;
-              }
-           }
+            for(j=1;j<iwidth-1;j++){
+                if(gradimageXY[i][j]<1024){
+                    nHist[gradimageXY[i][j]] += 1;
+                }
+            }
         }
-    //统计经像素总数nEdgeNb(不包括)和最大梯度值nMaxMag
-    // nEdgeNb = 0;
-    // nMaxMag = 0;
+        //统计经像素总数nEdgeNb(不包括)和最大梯度值nMaxMag
+        // nEdgeNb = 0;
+        // nMaxMag = 0;
         for(k=1;k<1024;k++){//梯度为0的点一定不是边缘点，所以k从1开始
             nEdgeNb += nHist[k];
             if(nHist[k]!=0) nMaxMag = k;
         }
-        System.out.println("nEdgeNb:" + nEdgeNb);
-    //计算梯度比高阈值小的像素数目
+        //System.out.println("nEdgeNb:" + nEdgeNb);
+        //计算梯度比高阈值小的像素数目
         nHighCount = (int)(dRationHigh*nEdgeNb + 0.5);
-        System.out.println("nHighCount:"+nHighCount);
-    //计算高阈值nThHigh
+        //System.out.println("nHighCount:"+nHighCount);
+        //计算高阈值nThHigh
         k = 1;
         sum = nHist[1];
         while((k<(nMaxMag-1))&&(sum<nHighCount)){
-             k++;
-             sum += nHist[k];
+            k++;
+            sum += nHist[k];
         }
         int nThHigh = k;
-    //计算低阈值
+        //计算低阈值
         int nThLow = (int) (nThHigh * dRationLow + 0.5);
         ThHighLow[0] = nThHigh;
         ThHighLow[1] = nThLow;
-        if(ThHighLow[1] < 13) {
+        if(ThHighLow[1] < 15) {
             ThHighLow[1] = 15;
-            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 10;
+            if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 15;
         }
         System.out.println("nThHigh:" + ThHighLow[0]);
         System.out.println("nThLow:" + ThHighLow[1]);
         return ThHighLow;
-  }
+    }
 
 
     //==========================非极大值抑制==================================//

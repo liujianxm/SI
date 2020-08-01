@@ -76,9 +76,13 @@ public class HoughCircle {
         acols = accum[0].length - 2;//高
         astep = accum.length;  //用于跨行移动，例如第一行p元素，p+astep则移动到第二行p正下方元素
         //GradSobel(edges,imobj.edgeGradX,imobj.edgeGradY,imobj.edgeGradXY,img_width,img_height);//Sobel求边缘图像梯度值
-        ImgGrad(edges,imobj.edgeGradX,imobj.edgeGradY,img_height,img_width);
-        int[][] dx = imobj.edgeGradX;//水平梯度矩阵
-        int[][] dy = imobj.edgeGradY;//垂直梯度矩阵
+        int[][] dx = new int[img_height][img_width];
+        int[][] dy = new int[img_height][img_width];
+        int[][] edgeGradXY = new int[img_height][img_width];
+        //ImgGrad(edges,imobj.edgeGradX,imobj.edgeGradY,img_height,img_width);
+        ImgGrad(edges,dx,dy,img_height,img_width);
+//        int[][] dx = imobj.edgeGradX;//水平梯度矩阵
+//        int[][] dy = imobj.edgeGradY;//垂直梯度矩阵
         //int[][] dxy = imobj.edgeGradXY;
         //对边缘图像计算累加和
         //int flag = 0;

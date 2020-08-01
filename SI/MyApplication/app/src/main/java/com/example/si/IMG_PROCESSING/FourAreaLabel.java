@@ -2,13 +2,14 @@ package com.example.si.IMG_PROCESSING;
 
 import android.graphics.Bitmap;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
 import java.util.BitSet;
 
 public class FourAreaLabel {
-    int[][] binaryimage; //二值边界图，边界为grayscale-1，背景为0
+    int[][] binaryimage; //二值图，边界为grayscale-1，背景为0
     int width;
     int height;
     int count;
@@ -30,6 +31,30 @@ public class FourAreaLabel {
         binaryAreaLabel();
         System.out.println("111");
     }
+
+//    public void resetFourAreaLabel(int[][] inbinaryimage) {
+//        Log.v("FourAreaLabel", "Redo the FourAreaLabel!");
+//        binaryimage = inbinaryimage;
+//        width = inbinaryimage.length;
+//        height = inbinaryimage[0].length;
+//        count = 0;
+//        label = new int[width][height]; //连通域识别
+//        label0 = new int[width][height]; //像素被判断方向次数
+//        tempstore = new int[2][width*height];//0:i,1:j
+//        tempnum = 0;
+//        System.out.println("111");
+//        binaryAreaLabel();
+//        System.out.println("111");
+//    }
+//
+//    private int[][] setArrayToZero2D(int[][] inarray) {
+//        for (int i = 0; i < inarray.length; i++) {
+//            for (int j = 0; j < inarray[0].length; j++) {
+//                inarray[i][j] = 0;
+//            }
+//        }
+//        return inarray;
+//    }
 
     public int getCount() { return count; }
 
@@ -110,6 +135,7 @@ public class FourAreaLabel {
     //识别黑色点连通域
     //非递归法
     private void binaryAreaLabel() {
+        Log.v("FourAreaLabel", "Do image fourAreaLabel test!");
         //int count = 0;
         boolean flag;
 
@@ -169,6 +195,96 @@ public class FourAreaLabel {
                 }
             }
         }
+    }
+
+    //统计每个连通域的面积（像素点数）
+    private int[] labelCount() {
+        int[] labelnum = new int[count];
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (label[i][j] != 0) {
+                    labelnum[label[i][j]-1]++;
+                }
+            }
+        }
+
+//        for (int i = 0; i < count; i++) {
+//            System.out.println((i+1)+" : "+labelnum[i]);
+//        }
+
+        return labelnum;
+
+    }
+
+    //数组均值
+    private float getMean1D(int[] inarray) {
+        float mean = 0;
+        for (int i = 0; i < inarray.length; i++) {
+            mean += inarray[i];
+        }
+        return (mean / inarray.length);
+    }
+
+    //判断inarray中是否有innum
+//    private boolean numInArray(int innum, int[] inarray) {
+//        for (int i = 0; i < inarray.length; i++) {
+//            if (inarray[i] == innum) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
+
+    //将面积小于minarea的连通域去除（这里统计的是黑色连通域数量，即置为白色）
+    //使用该函数后可能对binaryimage进行改变，连通域信息将不再正确
+    public void deleteSmall() { //int minarea
+        Log.v("FourAreaLabel", "Delete the small area!");
+        int[] labelnum = labelCount();
+        int[] labeldelete = new int[labelnum.length];
+        int deletecount = 0;
+        float minarea = 0.5f * getMean1D(labelnum);
+        System.out.println("minarea = "+minarea);
+        for (int i = 0; i < count; i++) {
+            if(labelnum[i] < minarea) {
+                deletecount++;
+                labeldelete[deletecount-1] = i+1;
+            }
+        }
+//        System.out.println("***");
+//        for (int i = 0; i < deletecount; i++) {
+//            System.out.println(labeldelete[i]+" : "+labelnum[labeldelete[i]-1]);
+//        }
+
+        //方法一，这个方法可能不行，或更慢
+//        for (int i = 0; i < width; i++) {
+//            for (int j = 0; j < height; j++) {
+//                if (numInArray(label[i][j],labeldelete)) {
+//                    label0[i][j] = 1;
+//                } else {
+//                    label0[i][j] = 0;
+//                }
+//            }
+//        }
+//
+//        for (int i = 0; i < width; i++) {
+//            for (int j = 0; j < height; j++) {
+//                if (label0[i][j] == 1) {
+//                    binaryimage[i][j] = 255; // 由grayscale确定（grayscale - 1）
+//                }
+//            }
+//        }
+
+        //方法二
+        for (int k = 0; k < deletecount; k++) {
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (label[i][j] == labeldelete[k]) {
+                        binaryimage[i][j] = 255; // 由grayscale确定（grayscale - 1）
+                    }
+                }
+            }
+        }
+
     }
 
     public static int[][] myOTSU(int[][] grayimage, int width, int height, int grayscale) {
@@ -231,11 +347,10 @@ public class FourAreaLabel {
         int[][] grayimage = imgobj.gray_img;
         grayimage = myOTSU(grayimage,grayimage.length,grayimage[0].length,256);
 
-        FourAreaLabel label = new FourAreaLabel(imgobj.gray_img);
+        FourAreaLabel label = new FourAreaLabel(grayimage);
         //grayimage = imgobj.binaryReverse(grayimage);
-        bwlable mybw = new bwlable(grayimage, 256);
-        System.out.println("----"+mybw.getCounter());
-        //int count = lable.getCount();
+        //bwlable mybw = new bwlable(grayimage, 256);
+        //System.out.println("----"+mybw.getCounter());
         System.out.println("****"+label.getCount());
         for (int i = 0; i < imgobj.width; i++) {
             for (int j = 0; j < imgobj.height; j++) {

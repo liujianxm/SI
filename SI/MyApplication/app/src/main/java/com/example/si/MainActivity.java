@@ -1,5 +1,6 @@
 package com.example.si;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,11 +11,13 @@ import androidx.loader.content.CursorLoader;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.pm.ConfigurationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -24,9 +27,13 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 //import android.media.ExifInterface;
 import android.graphics.Paint;
+import android.opengl.GLSurfaceView;
 import android.os.Build;
 import androidx.exifinterface.media.ExifInterface;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -34,10 +41,15 @@ import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.content.Intent;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.net.Uri;
 import android.os.Bundle;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.Toast;
@@ -45,10 +57,14 @@ import android.widget.Toast;
 import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
 import com.example.si.IMG_PROCESSING.FourAreaLabel;
 import com.example.si.IMG_PROCESSING.HoughCircle;
+import com.example.si.IMG_PROCESSING.HessianMatrixLine;
 import com.example.si.IMG_PROCESSING.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.Point;
 import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
+import com.lxj.xpopup.XPopup;
+import com.lxj.xpopup.core.BasePopupView;
+import com.nineoldandroids.view.ViewHelper;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -56,6 +72,15 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.Math.pow;
+import static java.lang.Math.sqrt;
 
 public class MainActivity extends AppCompatActivity {
     private Button testbutton;
@@ -68,12 +93,49 @@ public class MainActivity extends AppCompatActivity {
     private String currentPhotoPath;
     private String currentPicturePath;
     private Boolean ImageOpened = false;
+    private ScaleGestureDetector mScaleGestureDetector = null;
+    private static MyGLSurfaceView myGLSurfaceView;
+    private static MyRenderer myrenderer;
+    private static Context context;
+    private BasePopupView popupView;
+
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA};
+    private static final int REQUEST_PERMISSION_CODE = 1;
+
+    //子线程中实现UI更新
+    @SuppressLint("HandlerLeak")
+    private Handler uiHandler = new Handler(){
+        // 覆写这个方法，接收并处理消息。
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case 1:
+                    Log.v("filesocket_send: ", "Connect with Server successfully");
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+                    System.out.println("------ Upload file successfully!!! -------");
+                    popupView.dismiss();
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        imageView = (ImageView) findViewById(R.id.imageview3);
+//        setContentView(R.layout.activity_main);
+//        imageView = (ImageView) findViewById(R.id.imageview3);
+
+        myrenderer = new MyRenderer();
+        myGLSurfaceView = new MyGLSurfaceView(this);
+        setContentView(myGLSurfaceView);
+        popupView = new XPopup.Builder(this)
+                .asLoading("Processing......");
+        context = getApplicationContext();
+
+
         /*
         testbutton = (Button) findViewById(R.id.testbutton);////用于测试
         testbutton.setOnClickListener(new View.OnClickListener() {
@@ -89,9 +151,76 @@ public class MainActivity extends AppCompatActivity {
             }
         });
          */
+
+
+//        mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.OnScaleGestureListener() {
+//            private  float scale;
+//            private float preScale = 1;//默认前一次缩放比例为1
+//
+//            @Override
+//            public boolean onScale(ScaleGestureDetector detector) {
+//                float previousSpan = detector.getPreviousSpan();
+//                float currentSpan = detector.getCurrentSpan();
+//                if(currentSpan<previousSpan){
+//                    //缩小
+//                    scale = preScale - (previousSpan-currentSpan)/1000;
+//                }else{
+//                    //放大
+//                    scale = preScale + (currentSpan-previousSpan)/1000;
+//                }
+//                //缩放view
+//                ViewHelper.setScaleX(imageView,scale);// x方向上缩小
+//                ViewHelper.setScaleY(imageView,scale);// y方向上缩小
+//                return false;
+//            }
+//
+//            @Override
+//            public boolean onScaleBegin(ScaleGestureDetector detector) {
+//                return true;//返回true才会进入onScale()这个函数
+//            }
+//
+//            @Override
+//            public void onScaleEnd(ScaleGestureDetector detector) {
+//                preScale = scale;//记录本次缩放比例
+//            }
+//        });
+
+
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_PERMISSION_CODE);
+            }
+        }
+
     }
 
-//================新添menu部分======================//
+
+    /**
+     * called when request permission
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode){
+            case REQUEST_PERMISSION_CODE: {
+                for (int i = 0; i < permissions.length; i++) {
+                    Log.i("MainActivity", "申请的权限为：" + permissions[i] + ",申请结果：" + grantResults[i]);
+                }
+                break;
+            }
+        }
+
+    }
+
+    public boolean onTouchEvent(MotionEvent event){
+        return mScaleGestureDetector.onTouchEvent(event);
+    }
+
+    //================新添menu部分======================//
     public boolean onCreateOptionsMenu(Menu menu){
         getMenuInflater().inflate(R.menu.main,menu);
         return true;
@@ -109,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
                 }
                 else {
-                     chooseFunctionDialog();
+                    chooseFunctionDialog();
                 }
                 break;
         }
@@ -140,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, "FourAreaLable function..", Toast.LENGTH_LONG).show();
                         Log.d("TAG", "Click FourAreaLable Button");
                         try {
-                            Fun_Test();
+                            FourAreaLable_Fun();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -155,6 +284,15 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 3:
                         Toast.makeText(MainActivity.this,"Test Function..",Toast.LENGTH_LONG).show();
+
+                        Log.d("TAG", "Click Test Button");
+                        try {
+                            Test_Fun();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                        break;
                 }
                 dialog.dismiss();
             }
@@ -162,7 +300,17 @@ public class MainActivity extends AppCompatActivity {
         builder.create().show();
     }
 
-//======================================================//
+    //用于子线程内toast
+    public void Toast_in_Thread(final String message){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(context, message,Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    //======================================================//
     void openPictureSelectDialog() {
         Context dialogContext = new ContextThemeWrapper(MainActivity.this, android.R.style.Theme_Light);
         String[] choiceItems = new String[2];
@@ -193,7 +341,16 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     private void Circle_Fun() throws Exception {
-        Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+        Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+        if(bitmap == null){
+            Log.v("Test_Fun", "Please load img first!");
+            if (Looper.myLooper() == null) {
+                Looper.prepare();
+            }
+            Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
+            Looper.loop();
+            return;
+        }
         Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
         System.out.println("Enter here(the gauss finished!!)");
         ArrayList<Point> circles = new ArrayList<>();//存放找到的圆
@@ -212,8 +369,17 @@ public class MainActivity extends AppCompatActivity {
 
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
-    private void Fun_Test() throws Exception {
-        Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+    private void FourAreaLable_Fun() throws Exception {
+        Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+        if(bitmap == null){
+            Log.v("Test_Fun", "Please load img first!");
+            if (Looper.myLooper() == null) {
+                Looper.prepare();
+            }
+            Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
+            Looper.loop();
+            return;
+        }
         /////////////用于函数测试/////////////
         Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
         System.out.println("Enter here(the function)");
@@ -222,8 +388,63 @@ public class MainActivity extends AppCompatActivity {
             bitmap = FourAreaLabel.AreaLabel(blur_bitmap);
         }
         System.out.println("Enter here1");
-        imageView.setImageBitmap(bitmap);
+        myrenderer.ResetImage(bitmap);
+        myGLSurfaceView.requestRender();
+        Toast.makeText(getContext(), "Have been shown on the screen.", Toast.LENGTH_SHORT).show();
+        //imageView.setImageBitmap(bitmap);
         System.out.println("Enter here2");
+        bitmap.recycle(); //回收bitmap
+
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    private void Test_Fun() throws Exception {
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        popupView.show();
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+                if(bitmap == null){
+                    Log.v("Test_Fun", "Please load img first!");
+                    if (Looper.myLooper() == null) {
+                        Looper.prepare();
+                    }
+                    Toast_in_Thread("Please load image first!");
+                    Looper.loop();
+                    return;
+                }
+
+                /////////////用于函数测试/////////////
+                //Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);blur_
+                System.out.println("Enter here(the function)");
+                //ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    try {
+                        bitmap = HessianMatrixLine.HessianLine(bitmap);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                System.out.println("Enter here1");
+                myrenderer.ResetImage(bitmap);
+                myGLSurfaceView.requestRender();
+                Toast_in_Thread("Have been shown on the screen.");
+                //imageView.setImageBitmap(bitmap);
+                //ImageTools.savePhotoToSDCard(bitmap, Environment.getExternalStorageDirectory().getAbsolutePath() + "/SI_Photo", String.valueOf(System.currentTimeMillis()));
+                System.out.println("Enter here2");
+                //bitmap.recycle(); //回收bitmap
+
+                uiHandler.sendEmptyMessage(1);
+
+            }
+        });
+
+        thread.start();
 
     }
 
@@ -231,14 +452,23 @@ public class MainActivity extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void EdgeDetect_Test(){
         try {
-            Bitmap bitmap = ImageTools.getBitmapfromimageView(imageView);//从imageView获取bitmap
+            Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+            if(bitmap == null){
+                Log.v("Test_Fun", "Please load img first!");
+                if (Looper.myLooper() == null) {
+                    Looper.prepare();
+                }
+                Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
+                Looper.loop();
+                return;
+            }
             Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
             System.out.println("Enter here(the function)");
             ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
             double dRationHigh=0.9,dRationLow=0.78;///可调
             //double dRationHigh=0.85,dRationLow=0.5;///可调
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                 EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
+                EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
             }
             System.out.println("Enter here1");
             imageView.setImageBitmap(iobj.EdgeImage);
@@ -251,6 +481,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -259,26 +490,37 @@ public class MainActivity extends AppCompatActivity {
                 case TAKE_PHOTO:
                     String status = Environment.getExternalStorageState();//读取SD卡状态
                     if (status.equals(Environment.MEDIA_MOUNTED)) {
+
+                        myrenderer.SetPath(currentPhotoPath);
+                        //System.out.println(showPic.getAbsolutePath());
+                        myGLSurfaceView.requestRender();
+
+
                         //Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStorageDirectory() + "/image.jpg");
-                       try {
-                           Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(photoURI));
-                           int degree = getBitmapDegree(currentPhotoPath);
-                           System.out.println(degree);
-                           bitmap = rotateBitmapByDegree(bitmap, degree);
-                           Bitmap newBitmap = ImageTools.zoomBitmap(bitmap, bitmap.getWidth() / 5, bitmap.getHeight() / 5);
-                           imageView.setImageBitmap(newBitmap);
-                           ImageTools.savePhotoToSDCard(bitmap, Environment.getExternalStorageDirectory().getAbsolutePath() + "/SI_Photo", String.valueOf(System.currentTimeMillis()));
-                           bitmap.recycle();
-                       }catch (FileNotFoundException e){
-                           e.printStackTrace();
-                       }
+//                        try {
+//                            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(photoURI));
+//                            int degree = getBitmapDegree(currentPhotoPath);
+//                            System.out.println(degree);
+//                            bitmap = rotateBitmapByDegree(bitmap, degree);
+//                            Bitmap newBitmap = ImageTools.zoomBitmap(bitmap, bitmap.getWidth() / 5, bitmap.getHeight() / 5);
+//                            imageView.setImageBitmap(newBitmap);
+//                            ImageTools.savePhotoToSDCard(bitmap, Environment.getExternalStorageDirectory().getAbsolutePath() + "/SI_Photo", String.valueOf(System.currentTimeMillis()));
+//                            bitmap.recycle();
+//                        }catch (FileNotFoundException e){
+//                            e.printStackTrace();
+//                        }
                     }
                     break;
                 case CHOOSE_PHOTO:
                     ContentResolver resolver = getContentResolver();
                     Uri originalUri = data.getData();
-                    currentPicturePath = getRealPathFromUri(this,originalUri);
+                    //currentPicturePath = getRealPathFromUri(this,originalUri);
 
+                    String path = originalUri.toString();
+                    myrenderer.SetPath(path);
+                    myGLSurfaceView.requestRender();
+
+                    /*
                     try {
                         Bitmap photo = MediaStore.Images.Media.getBitmap(resolver, originalUri);
                         int degree = getBitmapDegree(currentPicturePath);
@@ -292,7 +534,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     } catch (IOException e) {
                         e.printStackTrace();
-                    }
+                    }*/
                     break;
                 default:
                     break;
@@ -592,7 +834,14 @@ public class MainActivity extends AppCompatActivity {
         int height = binaryimage[0].length;
         int sewidth = structelement.length;
         int seheight = structelement[0].length;
-        int[][] newbinaryimage = binaryimage;
+        int[][] newbinaryimage = new int[width][height];
+        //newbinaryimage = binaryimage;//浅拷贝
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                newbinaryimage[i][j] = binaryimage[i][j];
+            }
+        }
 
 
 
@@ -606,10 +855,10 @@ public class MainActivity extends AppCompatActivity {
                             if (structelement[a][b] ==0) {
                                 continue;
                             }
-                            temp += binaryimage[i - sewidth / 2 + a][i -seheight / 2 + b];
+                            temp += binaryimage[i - sewidth / 2 + a][j -seheight / 2 + b];
                         }
                         if (temp / (grayscale - 1) > 0) {
-                            newbinaryimage[i][j] = 0;
+                            newbinaryimage[i][j] = grayscale - 1;
                         }
                     }
                 }
@@ -626,7 +875,14 @@ public class MainActivity extends AppCompatActivity {
         int height = binaryimage[0].length;
         int sewidth = structelement.length;
         int seheight = structelement[0].length;
-        int[][] newbinaryimage = binaryimage;
+        int[][] newbinaryimage = new int[width][height];
+        //newbinaryimage = binaryimage;//浅拷贝
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                newbinaryimage[i][j] = binaryimage[i][j];
+            }
+        }
 
         //结构元非零元素个数
         int senum = 0;
@@ -641,15 +897,21 @@ public class MainActivity extends AppCompatActivity {
         for (int i = sewidth / 2; i < width - sewidth / 2; i++) {
             for (int j = seheight / 2; j < height - seheight / 2; j++) {
                 //结构单元运算
-                int temp = 0;
-                for (int a = 0; a < sewidth; a++) {
-                    for (int b = 0; b < seheight; b++) {
-                        if (structelement[a][b] ==0) {
-                            continue;
+                if (binaryimage[i][j] == (grayscale - 1)) {  //当前像素为白色
+                    int temp = 0;
+                    for (int a = 0; a < sewidth; a++) {
+                        for (int b = 0; b < seheight; b++) {
+                            if (structelement[a][b] == 0) {
+                                continue;
+                            }
+                            if (binaryimage[i - sewidth / 2 + a][j - seheight / 2 + b] == 0) {
+                                temp++;
+                            }
                         }
-                        temp += binaryimage[i - sewidth / 2 + a][i -seheight / 2 + b];
+
                     }
-                    if (temp / (grayscale - 1) < senum) {
+                    System.out.println(temp);
+                    if (temp > 0) {
                         newbinaryimage[i][j] = 0;
                     }
                 }
@@ -659,130 +921,7 @@ public class MainActivity extends AppCompatActivity {
         return newbinaryimage;
 
     }
-/*
-    private void binaryAreaLabel(int[][] binaryimage) {
-        int width = binaryimage.length;
-        int height = binaryimage[0].length;
-        int count = 0;
-        int[][] label = new int[width][height]; //连通域识别
-        //int[][] label0 = new int[width][height]; //像素被判断方向次数
-        boolean flag = true;
-        int[][] tempstore = new int[6][width*height];//0:i,1:j,2:左,3:右,4:上,5:下
-        int tempnum = 0;
 
-
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                if (label[i][j] == 0 && binaryimage[i][j] == 0) {
-                    count++;
-                    label[i][j] = count;
-                    int ii=i;
-                    int jj=j;
-                    //binaryimage[i][j] = 255;  //grayscale-1
-                    while (flag) {
-                        //向左
-                        if (ii - 1 >= 0 && label[ii - 1][jj] == 0 && binaryimage[ii - 1][jj] == 0) {
-                            label[ii - 1][jj] = count;
-                            tempstore[0][tempnum] = ii;
-                            tempstore[1][tempnum] = jj;
-                            //tempstore[2][tempnum] = 1;
-                            tempnum++;
-                            //label0[ii][jj]++;
-                            ii--;
-                            continue;
-                        }
-                        //向上
-                        if (jj - 1 >= 0 && label[ii][jj-1] == 0 && binaryimage[ii][jj-1] == 0) {
-                            label[ii][jj-1] = count;
-                            tempstore[0][tempnum] = ii;
-                            tempstore[1][tempnum] = jj;
-                            //tempstore[2][tempnum] = 1;
-                            tempnum++;
-                            //label0[ii][jj]++;
-                            jj--;
-                            continue;
-                        }
-                        //向右
-                        if (ii + 1 < width && label[ii+1][jj] == 0 && binaryimage[ii+1][jj] == 0) {
-                            label[ii+1][jj] = count;
-                            tempstore[0][tempnum] = ii;
-                            tempstore[1][tempnum] = jj;
-                            //tempstore[2][tempnum] = 1;
-                            tempnum++;
-                            //label0[ii][jj]++;
-                            ii++;
-                            continue;
-                        }
-                        //向下
-                        if (jj + 1 < height && label[ii][jj+1] == 0 && binaryimage[ii][jj+1] == 0) {
-                            //当向下遍历时，当前点其他三方向已遍历完成，向下遍历时当前像素四方向遍历完成，无需加入未处理完成数组
-                            label[ii][jj+1] = count;
-                            //tempstore[0][tempnum] = ii;
-                            //tempstore[1][tempnum] = jj;
-                            //tempstore[2][tempnum] = 1;
-                            //tempnum++;
-                            //label0[ii][jj]++;
-                            jj++;
-                            continue;
-                        }
-                        //返回未完全处理像素点
-                        if (tempnum < 0) {
-                            flag = false;
-                        } else {
-                            ii = tempstore[0][tempnum];
-                            jj = tempstore[1][tempnum];
-                            tempnum--;
-                        }
-                    }
-
-                }
-            }
-        }
-    }*/
-
-    /*//四邻域区域
-    private int[][] fourDirection (int[][] binaryimage, int[][] label, boolean flag,int count) {
-        int width = binaryimage.length;
-        int height = binaryimage[0].length;
-        if (flag) {
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    if (label[i][j] == count) {
-                        //count++;
-                        //label[i][j] = count;
-                        //binaryimage[i][j] = 255;  //grayscale-1
-                        //向左
-                        if (i - 1 >= 0 && binaryimage[i-1][j] == 0) {
-                            if (label[i-1][j] == 0) {
-                                label[i-1][j] = count;
-                            }
-                        }
-                        //向右
-                        if (i + 1 < width && binaryimage[i+1][j] == 0) {
-                            if (label[i+1][j] == 0) {
-                                label[i+1][j] = count;
-                            }
-                        }
-                        //向上
-                        if (j - 1 >= 0 && binaryimage[i][j-1] == 0) {
-                            if (label[i][j-1] == 0) {
-                                label[i][j-1] = count;
-                            }
-                        }
-                        //向下
-                        if (j + 1 < height && binaryimage[i][j+1] == 0) {
-                            if (label[i][j+1] == 0) {
-                                label[i][j+1] = count;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return label;
-
-    }*/
 
     //灰度图转Bitmap
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
@@ -798,6 +937,122 @@ public class MainActivity extends AppCompatActivity {
         return myBitmap;
     }
 
+
+    public static Context getContext() {
+        return context;
+    }
+
+
+    //opengl中的显示区域
+    class MyGLSurfaceView extends GLSurfaceView {
+        private float X, Y;
+        private double dis_start;
+        private float dis_x_start;
+        private float dis_y_start;
+        private boolean isZooming;
+        private boolean isZoomingNotStop;
+        private float x1_start;
+        private float x0_start;
+        private float y1_start;
+        private float y0_start;
+
+
+        public MyGLSurfaceView(Context context) {
+            super(context);
+
+            ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+            ConfigurationInfo info = am.getDeviceConfigurationInfo();
+            String v = info.getGlEsVersion(); //判断是否为3.0 ，一般4.4就开始支持3.0版本了。
+
+            Log.v("MainActivity", "GLES-version: " + v);
+
+            //设置一下opengl版本；
+            setEGLContextClientVersion(3);
+
+
+            setRenderer(myrenderer);
+
+
+            //调用 onPause 的时候保存EGLContext
+            setPreserveEGLContextOnPause(true);
+
+            //当发生交互时重新执行渲染， 需要配合requestRender();
+            setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+//            setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+
+        }
+
+
+        //触摸屏幕的事件
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @SuppressLint("ClickableViewAccessibility")
+        public boolean onTouchEvent(MotionEvent motionEvent) {
+
+            //ACTION_DOWN不return true，就无触发后面的各个事件
+            if (motionEvent != null) {
+                final float normalizedX = toOpenGLCoord(this, motionEvent.getX(), true);
+                final float normalizedY = toOpenGLCoord(this, motionEvent.getY(), false);
+
+                switch (motionEvent.getActionMasked()) {
+
+
+                    case MotionEvent.ACTION_DOWN:
+                        X=normalizedX;
+                        Y=normalizedY;
+                        break;
+                    case MotionEvent.ACTION_POINTER_DOWN:
+                        isZooming=true;
+                        float x1=toOpenGLCoord(this,motionEvent.getX(1),true);
+                        float y1=toOpenGLCoord(this,motionEvent.getY(1),false);
+                        dis_start=computeDis(normalizedX,x1,normalizedY,y1);
+
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        if(isZooming){
+                            float x2=toOpenGLCoord(this,motionEvent.getX(1),true);
+                            float y2=toOpenGLCoord(this,motionEvent.getY(1),false);
+                            double dis=computeDis(normalizedX,x2,normalizedY,y2);
+                            double scale=dis/dis_start;
+                            myrenderer.zoom((float) scale);
+                            requestRender();
+                            dis_start=dis;
+                        }else {
+//                            move(normalizedX - X, normalizedY - Y);
+                            X = normalizedX;
+                            Y = normalizedY;
+                        }
+                        break;
+                    case MotionEvent.ACTION_POINTER_UP:
+                        isZooming=false;
+                        X = normalizedX;
+                        Y = normalizedY;
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        break;
+                    default:break;
+
+                }
+                return true;
+            }
+            return false;
+        }
+
+
+        //坐标系变换
+        private float toOpenGLCoord(View view, float value, boolean isWidth) {
+            if (isWidth) {
+                return (value / (float) view.getWidth()) * 2 - 1;
+            } else {
+                return -((value / (float) view.getHeight()) * 2 - 1);
+            }
+        }
+
+
+        //距离计算
+        private double computeDis(float x1, float x2, float y1, float y2) {
+            return sqrt(pow((x2 - x1), 2) + pow((y2 - y1), 2));
+        }
+    }
 
 
 }
