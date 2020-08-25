@@ -4,6 +4,7 @@
     package="com.example.si">
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -12,7 +13,7 @@
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity"
             android:configChanges="keyboardHidden|orientation|layoutDirection|screenSize"
-            tools:ignore="ExtraText">
+            tools:ignore="ExtraText,Instantiatable">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,7 +26,8 @@
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
             android:exported="false"
-            android:grantUriPermissions="true">
+            android:grantUriPermissions="true"
+            tools:ignore="Instantiatable">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />

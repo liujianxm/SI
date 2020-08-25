@@ -6,6 +6,8 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
+import com.example.si.IMG_PROCESSING.CircleDetect.Point;
+
 import java.util.ArrayList;
 
 public class ImgObj_Para {
@@ -13,12 +15,12 @@ public class ImgObj_Para {
     public int[][][] tar_img;
     public int width;//图像宽
     public int height;
-    int size;
+    public int size;
     public Bitmap EdgeImage;
-    int[] ThHighLow = new int[2];  //存放高低阈值，0-高阈值，1-低阈值；
-    ArrayList<Point> circles;           //存放找到的圆
+    public int[] ThHighLow = new int[2];  //存放高低阈值，0-高阈值，1-低阈值；
+    public ArrayList<Point> circles;           //存放找到的圆
     //ArrayList<Point> line = new ArrayList<>();           //存放找到的圆
-    int circle_max;                    //输出最多圆的个数
+    public int circle_max;                    //输出最多圆的个数
 
     public ImgObj_Para(Bitmap bitmap){
         width = bitmap.getWidth();

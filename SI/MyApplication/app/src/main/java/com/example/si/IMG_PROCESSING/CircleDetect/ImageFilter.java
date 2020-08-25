@@ -1,4 +1,4 @@
-package com.example.si.IMG_PROCESSING;
+package com.example.si.IMG_PROCESSING.CircleDetect;
 
 import android.content.Context;
 import android.graphics.Bitmap;

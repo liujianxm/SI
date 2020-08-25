@@ -7,12 +7,13 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-//import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
+//import com.example.si.IMG_PROCESSING.CircleDetect.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.CircleDetect.EdgeDetect_fun;
 import com.example.si.ImageTools;
 
 import Jama.Matrix;
+import Jama.SingularValueDecomposition;
 
-import static com.example.si.IMG_PROCESSING.FourAreaLabel.myOTSU;
 import static java.lang.Math.PI;
 import static java.lang.Math.abs;
 import static java.lang.Math.exp;
@@ -651,6 +652,39 @@ public class HessianMatrixLine {
         System.out.println("newheight = "+newbitmap.getHeight());
         //newbitmap = objHM.binaryMergeToColor(newbitmap,bitmap);
         return newbitmap;
+    }
+
+    void basicMatrixGetRt(float[][] basicmatrix) {
+        double[][] newbasicmatrix = new double[basicmatrix.length][basicmatrix[0].length];
+        for (int i = 0; i < basicmatrix.length; i++) {
+            for (int j = 0; j < basicmatrix[0].length; j++) {
+                newbasicmatrix[i][j] = basicmatrix[i][j];
+            }
+        }
+        Matrix A = new Matrix(newbasicmatrix);
+        System.out.println("A = U S V^T");
+        //进行奇异值分解
+        SingularValueDecomposition s = A.svd();
+        Matrix U = s.getU();
+        Matrix S = s.getS();
+        Matrix V = s.getV();
+
+        double[][] temp = new double[3][3];
+//        for (int i = 0; i < 3; i++) {
+//            for (int j = 0; j < 3; j++){}
+//        }
+        temp[0][1] = -1;
+        temp[1][0] = 1;
+        temp[2][2] = 1;
+        Matrix W = new Matrix(temp);
+        Matrix R1 = U.times(W.transpose()).times(V.transpose());
+        Matrix R2 = U.times(W).times(V.transpose());
+        if (R1.det() < 0) R1 = R1.times(-1);
+        if (R2.det() < 0) R2 = R2.times(-1);
+        
+
+
+
     }
 
 }

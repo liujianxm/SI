@@ -1,4 +1,4 @@
-package com.example.si;
+package com.example.si.RENDER;
 
 import android.graphics.Bitmap;
 import android.graphics.Matrix;

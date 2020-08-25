@@ -2,44 +2,42 @@ package com.example.si;
 
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.net.Uri;
 import android.opengl.GLES10;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Build;
-import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+
+import com.example.si.IMG_PROCESSING.CornerDetection.HarrisCornerDetector;
+import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
+import com.example.si.RENDER.MyPattern2D;
+
+import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import static com.example.si.BitmapRotation.getBitmapDegree;
-import static com.example.si.BitmapRotation.rotateBitmapByDegree;
+import static com.example.si.RENDER.BitmapRotation.getBitmapDegree;
+import static com.example.si.RENDER.BitmapRotation.rotateBitmapByDegree;
 import static com.example.si.MainActivity.getContext;
 import static javax.microedition.khronos.opengles.GL10.GL_ALPHA_TEST;
 import static javax.microedition.khronos.opengles.GL10.GL_BLEND;
@@ -92,6 +90,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private float[] mz_neuron = new float[3];
     private float[] mz_block = new float[6];
 
+    private boolean multiImgFlag = false;
 
     private int[] texture = new int[1]; //生成纹理id
 
@@ -121,6 +120,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     };
 
     private ArrayList<ArrayList> curDrawed = new ArrayList<>();
+    private ArrayList<ImageMarker> MarkerList = new ArrayList<ImageMarker>();
 
     private ArrayList<Float> splitPoints = new ArrayList<Float>();
     private int splitType;
@@ -176,6 +176,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private Context context_myrenderer;
 
     private int degree = 0;
+
+    public void switchImg() { multiImgFlag = !multiImgFlag; }
 
     public Bitmap GetBitmap() { return bitmap2D; }
 
@@ -674,6 +676,400 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     public boolean getIfShowSWC() {
         return ifShowSWC;
+    }
+
+    public float[] solve2DMarker(float x, float y){
+        if (ifIn2DImage(x, y)){
+            System.out.println("innnnn");
+            float i;
+            float [] result = new float[3];
+            for (i = -1; i < 1; i += 0.005){
+                float [] invertfinalMatrix = new float[16];
+
+                Matrix.invertM(invertfinalMatrix, 0, finalMatrix, 0);
+
+                float [] temp = new float[4];
+                Matrix.multiplyMV(temp, 0, invertfinalMatrix, 0, new float[]{x, y, i, 1}, 0);
+                devideByw(temp);
+                float dis = Math.abs(temp[2] - mz[2] / 2);
+                if (dis < 0.1) {
+                    System.out.println(temp[0]);
+                    System.out.println(temp[1]);
+                    result = new float[]{temp[0], temp[1], mz[2] / 2};
+                    break;
+                }
+            }
+            result = ModeltoVolume(result);
+            System.out.println(result[0]);
+            System.out.println(result[1]);
+            return result;
+        }
+        return null;
+    }
+
+    /*
+    public void add2DMarker(float x, float y) throws CloneNotSupportedException {
+        float [] new_marker = solve2DMarker(x, y);
+        if (new_marker == null){
+            System.out.println("outtttt");
+            Toast.makeText(getContext(), "Please make sure the point is in the image", Toast.LENGTH_SHORT).show();
+            return;
+        }else {
+            ImageMarker imageMarker_drawed = new ImageMarker(new_marker[0],
+                    new_marker[1],
+                    new_marker[2]);
+            imageMarker_drawed.type = lastMarkerType;
+            System.out.println("set type to 3");
+
+            ArrayList<ImageMarker> tempMarkerList = (ArrayList<ImageMarker>)MarkerList.clone();
+            V_NeuronSWC_list tempCurveList = curSwcList.clone();
+
+            if (curUndo < UNDO_LIMIT){
+                curUndo += 1;
+                undoMarkerList.add(tempMarkerList);
+                undoCurveList.add(tempCurveList);
+            } else {
+                undoMarkerList.remove(0);
+                undoCurveList.remove(0);
+                undoMarkerList.add(tempMarkerList);
+                undoCurveList.add(tempCurveList);
+            }
+
+            MarkerList.add(imageMarker_drawed);
+
+//            if (process.size() < UNDO_LIMIT){
+//                process.add(Operate.DRAWMARKER);
+//                undoDrawMarkerList.add(imageMarker_drawed);
+//            } else {
+//                Operate first = process.firstElement();
+//                process.remove(0);
+//                process.add(Operate.DRAWMARKER);
+//                removeFirstUndo(first);
+//                undoDrawMarkerList.add(imageMarker_drawed);
+//            }
+        }
+    }
+
+*/
+
+    public boolean ifIn2DImage(float x, float y){
+        float [] x1 = new float[]{0 ,0, mz[2] / 2, 1};
+        float [] x2 = new float[]{mz[0], 0, mz[2] / 2, 1};
+        float [] x3 = new float[]{0, mz[1], mz[2] / 2, 1};
+        float [] x4 = new float[]{mz[0], mz[1], mz[2] / 2, 1};
+        float [] x1r = new float[4];
+        float [] x2r = new float[4];
+        float [] x3r = new float[4];
+        float [] x4r = new float[4];
+
+        Matrix.multiplyMV(x1r, 0, finalMatrix, 0, x1, 0);
+        Matrix.multiplyMV(x2r, 0, finalMatrix, 0, x2, 0);
+        Matrix.multiplyMV(x3r, 0, finalMatrix, 0, x3, 0);
+        Matrix.multiplyMV(x4r, 0, finalMatrix, 0, x4, 0);
+
+        devideByw(x1r);
+        devideByw(x2r);
+        devideByw(x3r);
+        devideByw(x4r);
+
+        float signOfTrig = (x2r[0] - x1r[0]) * (x3r[1] - x1r[1]) - (x2r[1] - x1r[1]) * (x3r[0] - x1r[0]);
+        float signOfAB = (x2r[0] - x1r[0]) * (y - x1r[1]) - (x2r[1] - x1r[1]) * (x - x1r[0]);
+        float signOfCA = (x1r[0] - x3r[0]) * (y - x3r[1]) - (x1r[1] - x3r[1]) * (x - x3r[0]);
+        float signOfBC = (x3r[0] - x2r[0]) * (y - x3r[1]) - (x3r[1] - x2r[1]) * (x - x3r[0]);
+
+        boolean d1 = (signOfAB * signOfTrig > 0);
+        boolean d2 = (signOfCA * signOfTrig > 0);
+        boolean d3 = (signOfBC * signOfTrig > 0);
+
+        boolean b1 =  d1 && d2 && d3;
+
+        float signOfTrig2 = (x3r[0] - x2r[0]) * (x4r[1] - x2r[1]) - (x3r[1] - x2r[1]) * (x4r[0] - x2r[0]);
+        float signOfCB = (x3r[0] - x2r[0]) * (y - x2r[1]) - (x3r[1] - x2r[1]) * (x - x2r[0]);
+        float signOfDB = (x2r[0] - x4r[0]) * (y - x4r[1]) - (x2r[1] - x4r[1]) * (x - x4r[0]);
+        float signOfDC = (x4r[0] - x3r[0]) * (y - x4r[1]) - (x4r[1] - x3r[1]) * (x - x4r[0]);
+
+        boolean d4 = (signOfCB * signOfTrig2 > 0);
+        boolean d5 = (signOfDB * signOfTrig2 > 0);
+        boolean d6 = (signOfDC * signOfTrig2 > 0);
+
+        boolean b2 = d4 && d5 && d6;
+
+        return b1 || b2;
+    }
+
+    //除法运算
+    private void devideByw(float[] x){
+        if(Math.abs(x[3]) < 0.000001f){
+            Log.v("devideByw","can not be devided by 0");
+            return;
+        }
+
+        for(int i=0; i<3; i++)
+            x[i] = x[i]/x[3];
+
+    }
+
+    private float[] ModeltoVolume(float[] input){
+        if (input == null)
+            return null;
+
+        float[] result = new float[3];
+        result[0] = (1.0f - input[0] / mz[0]) * sz[0];
+        result[1] = (1.0f - input[1] / mz[1]) * sz[1];
+        result[2] = input[2] / mz[2] * sz[2];
+
+        return result;
+    }
+
+    public void corner_detection() {
+
+//        if (bitmap2D == null)
+//            return;
+//
+//        Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+
+        //System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        // PC端一定要有这句话，但是android端一定不能有这句话，否则报错
+
+//        Mat src = new Mat();
+//
+//        Mat temp = new Mat();
+//
+//        Mat dst = new Mat();
+
+
+//        final int maxCorners = 40, blockSize = 3; //blockSize表示窗口大小，越大那么里面的像素点越多，选取梯度和方向变化最大的像素点作为角点，这样总的角点数肯定变少，而且也可能错过一些角点
+
+//        final double qualityLevel = 0.05, minDistance = 23.0, k = 0.04;
+
+        //qualityLevel：检测到的角点的质量等级，角点特征值小于qualityLevel*最大特征值的点将被舍弃；
+        //minDistance：两个角点间最小间距，以像素为单位；
+
+//        final boolean useHarrisDetector = false;
+
+//        MatOfPoint corners = new MatOfPoint();
+
+
+        File file = new File(filepath);
+        System.out.println(filepath);
+        long length = 0;
+        InputStream is1 = null;
+        if (file.exists()) {
+            try {
+                length = file.length();
+                is1 = new FileInputStream(file);
+//                grayscale =  rr.run(length, is);
+
+
+                Log.v("getIntensity_3d", filepath);
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Uri uri = Uri.parse(filepath);
+
+            try {
+                ParcelFileDescriptor parcelFileDescriptor =
+                        getContext().getContentResolver().openFileDescriptor(uri, "r");
+
+                is1 = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
+
+                length = (int) parcelFileDescriptor.getStatSize();
+
+
+            } catch (Exception e) {
+                Log.v("MyPattern", "Successfully load intensity");
+
+                Log.v("MyPattern", "Some problems in the MyPattern when load intensity");
+            }
+
+
+        }
+
+
+        BitmapFactory.Options options1 = new BitmapFactory.Options();
+        //设置inJustDecodeBounds为true表示只获取大小，不生成Btimap
+        options1.inJustDecodeBounds = true;
+        //解析图片大小
+        //InputStream stream = getContentResolver().openInputStream(uri);
+        BitmapFactory.decodeStream(is1, null, options1);
+        if (is1 != null)
+            System.out.println("isnnnnnn");
+        IOUtils.closeQuietly(is1); // 关闭流
+        // is.close();
+        int width = options1.outWidth;
+        int height = options1.outHeight;
+        int ratio = 0;
+        //如果宽度大于高度，交换宽度和高度
+        if (width > height) {
+            int temp2 = width;
+            width = height;
+            height = temp2;
+        }
+        //计算取样比例
+        int sampleRatio = 1;
+        if (width < 500 || height < 500)
+            sampleRatio = 1;
+        else{
+            int s1 = 2;
+            int s2 = 2;
+            while ((width / s1) > 500){
+                s1 *= 2;
+            }
+            while ((height / s2) > 900){
+                s2 *= 2;
+            }
+            sampleRatio = Math.max(s1, s2);
+        }
+        System.out.println(width);
+        System.out.println(height);
+        //定义图片解码选项
+        BitmapFactory.Options options2 = new BitmapFactory.Options();
+        options2.inSampleSize = sampleRatio;
+
+
+        //读取图片，并将图片缩放到指定的目标大小
+        // InputStream stream = getContentResolver().openInputStream(uri);
+        File file2 = new File(filepath);
+        long length2 = 0;
+        InputStream is2 = null;
+        if (file2.exists()) {
+            try {
+                length2 = file2.length();
+                is2 = new FileInputStream(file2);
+//                grayscale =  rr.run(length, is);
+
+
+                Log.v("getIntensity_3d", filepath);
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Uri uri = Uri.parse(filepath);
+
+            try {
+                ParcelFileDescriptor parcelFileDescriptor =
+                        getContext().getContentResolver().openFileDescriptor(uri, "r");
+
+                is2 = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
+
+                length2 = (int) parcelFileDescriptor.getStatSize();
+
+                Log.v("MyPattern", "Successfully load intensity");
+
+            } catch (Exception e) {
+                Log.v("MyPattern", "Some problems in the MyPattern when load intensity");
+            }
+
+
+        }
+
+
+        Bitmap image = BitmapFactory.decodeStream(is2, null, options2);
+        if (image == null) {
+            System.out.println("nnnnnn");
+        }
+
+        image = rotateBitmapByDegree(image, degree);
+
+//        System.out.println(image.getWidth());
+//        System.out.println(image.getHeight());
+
+        System.out.println("ssssss");
+        System.out.println(options2.inSampleSize);
+        IOUtils.closeQuietly(is2);
+        //is.close();
+
+
+        // Bitmap image = bitmap2D;//从bitmap中加载进来的图像有时候有四个通道，所以有时候需要多加一个转化
+        // Bitmap image = BitmapFactory.decodeResource(this.getResources(),R.drawable.cube);
+
+//        Utils.bitmapToMat(image, src);//把image转化为Mat
+
+//        dst = src.clone();
+
+//        Imgproc.cvtColor(src, temp, Imgproc.COLOR_BGR2GRAY);//这里由于使用的是Imgproc这个模块所有这里要这么写
+//
+//        Log.i("CV", "image type:" + (temp.type() == CvType.CV_8UC3));
+//        Imgproc.goodFeaturesToTrack(temp, corners, maxCorners, qualityLevel, minDistance,
+//
+//                new Mat(), blockSize, useHarrisDetector, k);
+//        Point[] pCorners = corners.toArray();
+
+        Bitmap destImage;
+//        Bitmap sourceImage = bitmap2D;
+        Bitmap sourceImage = image;
+        HarrisCornerDetector filter = new HarrisCornerDetector();
+        destImage = filter.filter(sourceImage, null);
+
+        int[] corner_x_y = filter.corner_xy;
+        int[] corner_x = new int[corner_x_y.length/2];
+        int[] corner_y = new int[corner_x_y.length/2];
+
+        System.out.println("LLLLLLLLLLLLLL");
+        System.out.println(corner_x_y.length);
+        System.out.println("xyxyxyxyxy");
+        for (int n=0;n<corner_x_y.length/2;n++)
+        {
+            corner_x[n]=corner_x_y[2*n+1];
+            corner_y[n]=corner_x_y[2*n];
+            System.out.println(corner_x[n]);
+            System.out.println(corner_y[n]);
+        }
+
+
+//        System.out.println(pCorners.length);
+
+
+//        int power = (int) (Math.log((double) sampleRatio) / Math.log(2));
+//        int actual_ratio = (int) Math.pow(2, power);
+//        if (actual_ratio>2){
+//            actual_ratio+=2;
+//        }
+
+        int actual_ratio = options2.inSampleSize;
+
+        System.out.println("aaaaaaaaa");
+        System.out.println(actual_ratio);
+        for (int i = 0; i < corner_x_y.length/2; i++) {
+
+            if (corner_x[i]==0&&corner_y[i]==0);
+            else{
+                ImageMarker imageMarker_drawed = new ImageMarker((float) corner_x[i] * actual_ratio,
+                        (float) corner_y[i] * actual_ratio,
+                        sz[2] / 2);
+                imageMarker_drawed.type = lastMarkerType;
+//            System.out.println("set type to 3");
+
+                MarkerList.add(imageMarker_drawed);}
+//            Imgproc.circle(dst, pCorners[i], (width+height)/(350*sampleRatio), new Scalar(255,255,0),2);
+
+        }
+//        System.out.println(pCorners.length);
+
+        // Imgproc.cvtColor(temp,dst,Imgproc.COLOR_GRAY2BGR);
+
+//        Utils.matToBitmap(dst,image);//把mat转化为bitmap
+//        bitmap2D = image;
+
+//        System.out.println(image.getWidth());
+//        System.out.println(mz[0]);
+//        myPattern2D = new MyPattern2D(bitmap2D, image.getWidth(), image.getHeight(), mz);
+
+        //ImageView imageView = findViewById(R.id.text_view);
+
+        //imageView.setImageBitmap(image);
+
+        //release
+
+//        src.release();
+
+//        temp.release();
+
+//        dst.release();
+
     }
 
 }

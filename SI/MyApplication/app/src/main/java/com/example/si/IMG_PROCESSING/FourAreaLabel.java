@@ -6,8 +6,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import java.util.BitSet;
-
 public class FourAreaLabel {
     int[][] binaryimage; //二值图，边界为grayscale-1，背景为0
     int width;

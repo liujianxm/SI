@@ -21,15 +21,13 @@ import android.content.pm.ConfigurationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 //import android.media.ExifInterface;
-import android.graphics.Paint;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import androidx.exifinterface.media.ExifInterface;
+
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -38,6 +36,7 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.content.Intent;
@@ -54,36 +53,34 @@ import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.Toast;
 
-import com.example.si.IMG_PROCESSING.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.CircleDetect.EdgeDetect_fun;
 import com.example.si.IMG_PROCESSING.FourAreaLabel;
-import com.example.si.IMG_PROCESSING.HoughCircle;
+import com.example.si.IMG_PROCESSING.CircleDetect.HoughCircle;
 import com.example.si.IMG_PROCESSING.HessianMatrixLine;
-import com.example.si.IMG_PROCESSING.ImageFilter;
+import com.example.si.IMG_PROCESSING.CircleDetect.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
-import com.example.si.IMG_PROCESSING.Point;
-import com.example.si.IMG_PROCESSING.RoberEdgeDetect;
+import com.example.si.IMG_PROCESSING.CircleDetect.Point;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-import com.nineoldandroids.view.ViewHelper;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Vector;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 
 public class MainActivity extends AppCompatActivity {
     private Button testbutton;
+    private Button img_switch;
+    private Button select_points;
+    private Button finished;
+    private Button loadImage;
+    private Button Process;
     private ImageView imageView;
     private Dialog dialog_pic;
     private static final int TAKE_PHOTO = 0;
@@ -93,11 +90,20 @@ public class MainActivity extends AppCompatActivity {
     private String currentPhotoPath;
     private String currentPicturePath;
     private Boolean ImageOpened = false;
+    private Boolean ImageOpened2 = false;
     private ScaleGestureDetector mScaleGestureDetector = null;
     private static MyGLSurfaceView myGLSurfaceView;
     private static MyRenderer myrenderer;
     private static Context context;
     private BasePopupView popupView;
+    private boolean isMutiImg;
+    private boolean isP1 = true;
+    private boolean isSelectPoints = false;
+    private boolean isFinished = false;
+    boolean isFinished1 = false;
+    boolean isFinished2 = false;
+    Bitmap img1 = null;
+    Bitmap img2 = null;
 
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -122,18 +128,24 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 //        setContentView(R.layout.activity_main);
 //        imageView = (ImageView) findViewById(R.id.imageview3);
 
+        //MultiDex.install(this);
         myrenderer = new MyRenderer();
         myGLSurfaceView = new MyGLSurfaceView(this);
         setContentView(myGLSurfaceView);
         popupView = new XPopup.Builder(this)
+                .dismissOnTouchOutside(false)
                 .asLoading("Processing......");
         context = getApplicationContext();
+
+
 
 
         /*
@@ -241,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
                     chooseFunctionDialog();
                 }
                 break;
+            //case R.id.
         }
         return true;
     }
@@ -313,9 +326,10 @@ public class MainActivity extends AppCompatActivity {
     //======================================================//
     void openPictureSelectDialog() {
         Context dialogContext = new ContextThemeWrapper(MainActivity.this, android.R.style.Theme_Light);
-        String[] choiceItems = new String[2];
+        String[] choiceItems = new String[3];
         choiceItems[0] = "camera";
         choiceItems[1] = "album";
+        choiceItems[2] = "3D-Reconstruction";
         ListAdapter adapter = new ArrayAdapter<String>(dialogContext, android.R.layout.simple_list_item_1, choiceItems);
         AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext);
         builder.setTitle("Add picture");
@@ -330,6 +344,10 @@ public class MainActivity extends AppCompatActivity {
                     case 1:
                         PickPhotoFromGallery();
                         ImageOpened = true;
+                        break;
+                    case 2:
+                        Reconstruction3D();
+                        //ImageOpened = true;
                         break;
                 }
                 dialog.dismiss();
@@ -576,6 +594,219 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, CHOOSE_PHOTO);
     }
 
+    private void Reconstruction3D() {
+
+
+        img_switch = new Button(this);
+        img_switch.setText("P1");
+        img_switch.setTextColor(Color.RED);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(120, 120);
+        params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
+        params.setMargins(0,0,160,20);
+        this.addContentView(img_switch,params);//
+        img_switch.setVisibility(View.VISIBLE);
+
+        loadImage = new Button(this);
+        loadImage.setText("Load");
+        loadImage.setTextColor(Color.RED);
+        params.setMargins(160,0,320,20);
+        this.addContentView(loadImage,params);//
+        loadImage.setVisibility(View.VISIBLE);
+
+        select_points = new Button(this);
+        select_points.setText("Points");
+        select_points.setTextColor(Color.RED);
+        params.setMargins(320,0,480,20);
+        this.addContentView(select_points,params);//
+        select_points.setVisibility(View.VISIBLE);
+
+        finished = new Button(this);
+        finished.setText("Finish");
+        finished.setTextColor(Color.RED);
+        params.setMargins(480,0,640,20);
+        this.addContentView(finished,params);//
+        finished.setVisibility(View.VISIBLE);
+
+        Process = new Button(this);
+        Process.setText("Process");
+        Process.setTextColor(Color.RED);
+        params.gravity = Gravity.BOTTOM | Gravity.LEFT;
+        params.setMargins(160,0,0,20);
+        this.addContentView(Process,params);//
+        Process.setVisibility(View.GONE);
+
+        img_switch.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                myrenderer.switchImg();
+
+                if (isP1){
+                    img_switch.setText("P2");
+                    functionMenu(isFinished2);
+                    if (ImageOpened2) {
+                        myrenderer.ResetImage(img2);
+                        myGLSurfaceView.requestRender();
+                    }
+
+                    //display points
+
+                } else {
+                    img_switch.setText("P1");
+                    functionMenu(isFinished1);
+                    if (ImageOpened) {
+                        myrenderer.ResetImage(img1);
+                        myGLSurfaceView.requestRender();
+                    }
+
+                    //display points
+
+                }
+            }
+        });
+
+        select_points.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //myrenderer.switchImg();
+
+                if (isP1){
+                    if (!myrenderer.ifImageLoaded()){
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    //wait for touch
+
+                    //getpoints  (x,y)
+
+                    //获取点周围小图像块
+                    //Bitmap newbitmap = getSmallImageBlock(Bitmap img1,x,y)
+
+                    //haar 角点检测获得点集
+                    if (myrenderer.if2dImageLoaded()){
+                        myrenderer.corner_detection();
+                        myGLSurfaceView.requestRender();
+                    } else {
+                        Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+                    }
+
+                    //点集中选取最优点
+
+                    //display points
+
+
+                } else {
+
+                    //wait for touch
+
+                    //getpoints
+
+                    //haar 角点检测修正点
+
+                    //display points
+
+                }
+            }
+        });
+
+        //loadimage
+        loadImage.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //myrenderer.switchImg();
+                if (isP1){
+//                    img_switch.setText("P2");
+                    functionMenu(isFinished1);
+                    if(!ImageOpened){
+                        Log.v("loadImage", "Please load img first!");
+                        if (Looper.myLooper() == null) {
+                            Looper.prepare();
+                        }
+                        Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
+                        Looper.loop();
+                        return;
+                    }
+                    PickPhotoFromGallery();
+                    ImageOpened = true;
+                    img1 = myrenderer.GetBitmap();
+
+                } else {
+//                    img_switch.setText("P1");
+                    functionMenu(isFinished1);
+                    if(!ImageOpened2){
+                        Log.v("loadImage", "Please load img first!");
+                        if (Looper.myLooper() == null) {
+                            Looper.prepare();
+                        }
+                        Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
+                        Looper.loop();
+                        return;
+                    }
+                    PickPhotoFromGallery();
+                    ImageOpened2 = true;
+                    img2 = myrenderer.GetBitmap();
+
+                }
+            }
+        });
+
+        //finished
+        finished.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isP1){
+                    isFinished1 = true;
+                } else {
+                    isFinished2 = true;
+                }
+                functionMenu(isFinished1);
+                functionMenu(isFinished2);
+                //isFinished = isFinished1 & isFinished2;
+                if (isFinished1 & isFinished2) {
+                    Process.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        //img_switch.setVisibility(View.GONE);
+
+
+    }
+
+    private void functionMenu (boolean isfiished) {
+        if (isfiished) {
+            select_points.setVisibility(View.GONE);
+            finished.setVisibility(View.GONE);
+        } else {
+            select_points.setVisibility(View.VISIBLE);
+            finished.setVisibility(View.VISIBLE);
+        }
+    }
+
+    //获取以（x,y）为中心x轴半径为30，y轴半径为40的图像块区域图像块
+    private Bitmap getSmallImageBlock(Bitmap image, int x, int y) {
+        int Rx = 30;
+        int Ry = 40;
+        int xfrom = max(0,x-Rx);
+        int xto = min(image.getWidth(),x+Rx);
+        int yfrom = max(0,y-Ry);
+        int yto = min(image.getHeight(),y+Ry);
+        int xlen = xto - xfrom + 1;
+        int ylen = yto - yfrom + 1;
+
+//        int color;
+        Bitmap myBitmap = null;
+        if (isP1) {
+            myBitmap = Bitmap.createBitmap( xlen, ylen, Bitmap.Config.ARGB_8888 );
+            for (int w = 0; w < xlen; w++) {
+                for (int h = 0; h < ylen; h++) {
+//                    color = image.getPixel(w,h);
+                    myBitmap.setPixel(w, h, image.getPixel(xfrom+w,yfrom+h));
+                }
+            }
+        }
+        return myBitmap;
+    }
+    //org.gradle.java.home=C\:\\MySoft\\Java
 /*
     private String getImageFilePath() {
         String mCaptureDir = "/storage/emulated/0/C3/cameraPhoto";

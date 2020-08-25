@@ -1,10 +1,9 @@
-package com.example.si.IMG_PROCESSING;
+package com.example.si.IMG_PROCESSING.CircleDetect;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.renderscript.ScriptIntrinsicLUT;
 
 import java.util.ArrayList;
 
