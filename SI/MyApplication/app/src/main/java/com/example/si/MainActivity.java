@@ -21,8 +21,8 @@ import android.content.pm.ConfigurationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+
 import android.graphics.Color;
-import android.graphics.Matrix;
 //import android.media.ExifInterface;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
@@ -56,25 +56,40 @@ import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.CircleDetect.EdgeDetect_fun;
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
-import com.example.si.IMG_PROCESSING.FourAreaLabel;
+
 import com.example.si.IMG_PROCESSING.CircleDetect.HoughCircle;
+import com.example.si.IMG_PROCESSING.GSDT.GSDT_Para;
 import com.example.si.IMG_PROCESSING.HessianMatrixLine;
 import com.example.si.IMG_PROCESSING.CircleDetect.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.CircleDetect.Point;
+import com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
+
+
 
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Objects;
 
+
+import Jama.Matrix;
+
+import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D.ArrayToMarkerList;
+import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D.MarkerListToArray;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+
+import static com.example.si.IMG_PROCESSING.GSDT.GSDT_2D.GSDT_Fun;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
+
+import static com.example.si.IMG_PROCESSING.CircleDetect.CircleDetect_new.CircleDetect_Fun;
+
 
 public class MainActivity extends AppCompatActivity {
     private Button testbutton;
@@ -134,6 +149,20 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+/*
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.i("cv", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+        } else {
+            Log.i("cv", "OpenCV library found inside package. Using it!");
+        }
+    }
+
+ */
 
 
     @Override
@@ -204,6 +233,8 @@ public class MainActivity extends AppCompatActivity {
 //        });
 
 
+
+
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_PERMISSION_CODE);
@@ -237,6 +268,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onTouchEvent(MotionEvent event){
         return mScaleGestureDetector.onTouchEvent(event);
     }
+
 
     //================新添menu部分======================//
     public boolean onCreateOptionsMenu(Menu menu){
@@ -296,21 +328,25 @@ public class MainActivity extends AppCompatActivity {
                     case 2:
                         Toast.makeText(MainActivity.this, "HoughCircle function..", Toast.LENGTH_LONG).show();
                         try {
-                            Circle_Fun();
+
+                            Hough_Circle_Fun();//HoughCircle
+                           // Circle_Fun();
+                            //Hessian_Fun();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         break;
                     case 3:
                         Toast.makeText(MainActivity.this,"Test Function..",Toast.LENGTH_LONG).show();
-
                         Log.d("TAG", "Click Test Button");
                         try {
-                            Test_Fun();
+                         //   Circle_Fun();
+                         //  Test_Fun();
+                            Convert2Dto3D_Test();
+
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-
                         break;
                 }
                 dialog.dismiss();
@@ -365,32 +401,97 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private void Hough_Circle_Fun() throws Exception {
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        popupView.show();
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+                if (bitmap == null) {
+                    Log.v("Test_Fun", "Please load img first!");
+                    if (Looper.myLooper() == null) {
+                        Looper.prepare();
+                    }
+                    Toast_in_Thread("Please load image first!");
+                    Looper.loop();
+                    return;
+                }
+                Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
+                System.out.println("Enter here(the gauss finished!!)");
+                ArrayList<Point> circles = new ArrayList<>();//存放找到的圆
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                    try {
+                        circles =  HoughCircle.HoughCircle_Fun(blurbitmap);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("The number of circles:"+circles.size());
+                    //Toast.makeText(this, "Circles number:"+circles.size(), Toast.LENGTH_LONG).show();
+                    System.out.println("Enter here(the circles have been found!!)");
+                }
+                Bitmap new_bitmap = Point.DrawCircle(circles,bitmap);
+                System.out.println("Enter here(the circles have been drawn!!)");
+                //imageView.setImageBitmap(new_bitmap);
+                myrenderer.ResetImage(new_bitmap);
+                myGLSurfaceView.requestRender();
+                System.out.println("Enter here(the bitmap have been updated!!)");
+                ImageTools.recycle_fun(bitmap);
+                ImageTools.recycle_fun(blurbitmap);
+                uiHandler.sendEmptyMessage(1);
+            }
+        });
+
+        thread.start();
+    }
+
+
+
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     private void Circle_Fun() throws Exception {
-        Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
-        if(bitmap == null){
-            Log.v("Test_Fun", "Please load img first!");
-            if (Looper.myLooper() == null) {
-                Looper.prepare();
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        popupView.show();
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
+                if (bitmap == null) {
+                    Log.v("Test_Fun", "Please load img first!");
+                    if (Looper.myLooper() == null) {
+                        Looper.prepare();
+                    }
+                    Toast_in_Thread("Please load image first!");
+                    Looper.loop();
+                    return;
+                }
+            Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
+            System.out.println("Enter here(the gauss finished!!)");
+                /////////////CircleDetect_new/////////////////
+                Bitmap new_bitmap = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                    try {
+                        new_bitmap = CircleDetect_Fun(bitmap,blurbitmap);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                //imageView.setImageBitmap(new_bitmap);
+            myrenderer.ResetImage(new_bitmap);
+            myGLSurfaceView.requestRender();
+            System.out.println("Enter here(the bitmap have been updated!!)");
+            ImageTools.recycle_fun(bitmap);
+            ImageTools.recycle_fun(blurbitmap);
+            uiHandler.sendEmptyMessage(1);
             }
-            Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
-            Looper.loop();
-            return;
-        }
-        Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
-        System.out.println("Enter here(the gauss finished!!)");
-        ArrayList<Point> circles = new ArrayList<>();//存放找到的圆
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            circles =  HoughCircle.HoughCircle_Fun(blurbitmap);
-            System.out.println("The number of circles:"+circles.size());
-            Toast.makeText(this, "Circles number:"+circles.size(), Toast.LENGTH_LONG).show();
-            System.out.println("Enter here(the circles have been found!!)");
-        }
-        Bitmap new_bitmap = Point.DrawCircle(circles,bitmap);
-        System.out.println("Enter here(the circles have been drawn!!)");
-        imageView.setImageBitmap(new_bitmap);
-        System.out.println("Enter here(the bitmap have been updated!!)");
-        bitmap.recycle();//回收bitmap
+        });
+
+        thread.start();
     }
 
 
@@ -406,8 +507,41 @@ public class MainActivity extends AppCompatActivity {
             Looper.loop();
             return;
         }
+        //////////距离变换////////////
+        ImgObj_Para imobj = new ImgObj_Para(bitmap);
+        imobj.colorToGray2D(bitmap);
+        GSDT_Para p = new GSDT_Para();
+        int[][] binay_img = ImageTools.myOTSU(imobj.gray_img,imobj.height,imobj.width,256);
+        //p.phi = GSDT_Fun(p, imobj.gray_img);
+        p.phi = GSDT_Fun(p, binay_img);//////////////////////////////
+        float max_value = p.phi[0][0];
+        for(int i=0; i<p.phi.length; i++){
+            for(int j=0; j<p.phi[0].length; j++){
+                //imobj.tar_img[1][i][j] = (int) p.phi[i][j]/255;
+                if(p.phi[i][j]>max_value) max_value = p.phi[i][j];
+            }
+        }
+        for(int i=0; i<p.phi.length; i++){
+            for(int j=0; j<p.phi[0].length; j++){
+                imobj.tar_img[1][i][j] = (int) (p.phi[i][j]/100)*255;
+            }
+        }
+        Bitmap new_bitmap = imobj.gray2DToBitmap(imobj.tar_img,imobj.width,imobj.height);
+        myrenderer.ResetImage(new_bitmap);
+        myGLSurfaceView.requestRender();
         /////////////用于函数测试/////////////
-        Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
+/*        Mat src = new Mat();//测试opencv
+        Mat temp = new Mat();
+        Mat dst = new Mat();
+        Utils.bitmapToMat(bitmap,src);//把image转化为Mat
+        Imgproc.cvtColor(src,temp,Imgproc.COLOR_BGR2GRAY);//这里由于使用的是Imgproc这个模块所有这里要这么写
+        Log.i("CV", "image type:" + (temp.type() == CvType.CV_8UC3));
+        Imgproc.cvtColor(temp,dst, Imgproc.COLOR_GRAY2BGR);
+        Utils.matToBitmap(dst,bitmap);//把mat转化为bitmap
+        myrenderer.ResetImage(bitmap);
+        myGLSurfaceView.requestRender();
+ */
+/*        Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
         System.out.println("Enter here(the function)");
         //ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -421,7 +555,11 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("Enter here2");
         bitmap.recycle(); //回收bitmap
 
+ */
     }
+
+
+
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     private void Test_Fun() throws Exception {
@@ -434,7 +572,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
-                if(bitmap == null){
+                if (bitmap == null) {
                     Log.v("Test_Fun", "Please load img first!");
                     if (Looper.myLooper() == null) {
                         Looper.prepare();
@@ -455,6 +593,14 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
+                /*
+                Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
+                /////////////CircleDetect_new/////////////////
+                Bitmap new_bitmap = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                   new_bitmap = CircleDetect_Fun(bitmap,blurbitmap);
+                }
+                 */
 
                 System.out.println("Enter here1");
                 myrenderer.ResetImage(bitmap);
@@ -471,12 +617,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
         thread.start();
-
     }
 
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    private void EdgeDetect_Test(){
+        private void EdgeDetect_Test(){
         try {
             Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
             if(bitmap == null){
@@ -489,16 +633,25 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             Bitmap blur_bitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);
-            System.out.println("Enter here(the function)");
+            //System.out.println("Enter here(the function)");
             ImgObj_Para iobj = new ImgObj_Para(blur_bitmap);
-            double dRationHigh=0.9,dRationLow=0.78;///可调
+            double dRationHigh=0.84,dRationLow=0.6;///可调
             //double dRationHigh=0.85,dRationLow=0.5;///可调
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 EdgeDetect_fun.Canny_edge(iobj,blur_bitmap,dRationHigh,dRationLow);
             }
-            System.out.println("Enter here1");
-            imageView.setImageBitmap(iobj.EdgeImage);
-            System.out.println("Enter here2");
+            //System.out.println("Enter here1");
+            ImageTools.recycle_fun(bitmap);
+            ImageTools.recycle_fun(blur_bitmap);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                myrenderer.ResetImage(iobj.gray2DToBitmap(iobj.tar_img,iobj.width,iobj.height));
+            }
+            // myrenderer.ResetImg(iobj.EdgeImage);
+            //imageView.setImageBitmap(iobj.EdgeImage);
+
+            //myrenderer.ResetImg(blur_bitmap);
+            //System.out.println("Enter here2");
+            myGLSurfaceView.requestRender();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -516,8 +669,13 @@ public class MainActivity extends AppCompatActivity {
                 case TAKE_PHOTO:
                     String status = Environment.getExternalStorageState();//读取SD卡状态
                     if (status.equals(Environment.MEDIA_MOUNTED)) {
-
-                        myrenderer.SetPath(currentPhotoPath);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            try {
+                                myrenderer.SetPath(currentPhotoPath);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
                         //System.out.println(showPic.getAbsolutePath());
                         myGLSurfaceView.requestRender();
 
@@ -541,11 +699,13 @@ public class MainActivity extends AppCompatActivity {
                     ContentResolver resolver = getContentResolver();
                     Uri originalUri = data.getData();
                     //currentPicturePath = getRealPathFromUri(this,originalUri);
-
                     String path = originalUri.toString();
-                    myrenderer.SetPath(path);
+                    try {
+                        myrenderer.SetPath(path);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     myGLSurfaceView.requestRender();
-
                     if (isMutiImg) {
                         if (isP1) {
                             img1 = myrenderer.GetBitmap();
@@ -555,6 +715,7 @@ public class MainActivity extends AppCompatActivity {
                             //System.out.println(img2 == null);
                         }
                     }
+
 
                     /*
                     try {
@@ -588,7 +749,6 @@ public class MainActivity extends AppCompatActivity {
             //            String photoFilePath = null;
             try {
                 photoFile = createImageFile();
-                File showPic = photoFile;
             } catch (IOException ex) {
                 // Error occurred while creating the File
             }
@@ -801,7 +961,7 @@ public class MainActivity extends AppCompatActivity {
                                 Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
                             }
                         } else {
-                            if (pointnum1 > pointnum2) {
+                            if (pointnum1 >= pointnum2) {
                                 isFinished1 = true;
                                 functionMenu(true);
                                 myrenderer.setMarkerNum(MarkerList1.size());
@@ -824,7 +984,7 @@ public class MainActivity extends AppCompatActivity {
                                 Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
                             }
                         } else {
-                            if (pointnum1 < pointnum2) {
+                            if (pointnum1 <= pointnum2) {
                                 isFinished2 = true;
                                 functionMenu(true);
                                 myrenderer.setMarkerNum(MarkerList2.size());
@@ -852,12 +1012,44 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 //图一点集为MarkerList1
                 //图二点集为MarkerList2
-
-
+                double[][] Po_list1 = MarkerListToArray(MarkerList1);
+                double[][] Po_list2 = MarkerListToArray(MarkerList2);
+                Convert2DTo3D p = new Convert2DTo3D();
+                p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+                p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+                ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+                for(ImageMarker im: Point3D){
+                    Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+                }
             }
         });
 
     }
+
+    /**
+     * 测试外参矩阵的计算以及恢复三维坐标
+     *
+     */
+
+    private void Convert2Dto3D_Test(){
+        Convert2DTo3D p = new Convert2DTo3D();
+        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
+        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
+        p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+        for(ImageMarker im: Point3D){
+            Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+        }
+        //double std1 = Objects.requireNonNull(p.getWholeMeanStdValue(new double[][]{{1,2},{3,4}}))[1];
+        //Log.d("Std", String.valueOf(std1));
+        double[] po1mean = p.AvgValue(new Matrix(new double[][]{{1,2},{3,4}}));
+        Log.d("Mean", po1mean[0]+","+po1mean[1]);
+        Matrix a = new Matrix(new double[][]{{1,2},{3,4}}).times(0.5);
+        Log.d("Times", a.get(0,0)+","+a.get(0,1));
+    }
+
+
 
     private void functionMenu (boolean isfiished) {
         if (isfiished) {
@@ -924,12 +1116,13 @@ public class MainActivity extends AppCompatActivity {
         return image;
     }
 
-    /**
+    /*
      * 获取图片的旋转角度
      *
      * @param path 图片绝对路径
      * @return 图片的旋转角度
      */
+    /*
     public static int getBitmapDegree(String path) {
         int degree = 0;
         try {
@@ -961,6 +1154,7 @@ public class MainActivity extends AppCompatActivity {
      * @param degree 指定的旋转角度
      * @return 旋转后的图片
      */
+    /*
     public static Bitmap rotateBitmapByDegree(Bitmap bitmap, int degree) {
         // 根据旋转角度，生成旋转矩阵
         Matrix matrix = new Matrix();
@@ -972,6 +1166,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return newBitmap;
     }
+    */
 
 
     /////////////////////////////////////
@@ -1417,6 +1612,13 @@ public class MainActivity extends AppCompatActivity {
         private double computeDis(float x1, float x2, float y1, float y2) {
             return sqrt(pow((x2 - x1), 2) + pow((y2 - y1), 2));
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        // TODO Auto-generated method stub
+        super.onDestroy();
+        Log.d("Mainactivity","界面被销毁了");
     }
 
 
