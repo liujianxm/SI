@@ -4,6 +4,8 @@ package com.example.si;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+
+import android.graphics.Rect;
 import android.net.Uri;
 import android.opengl.GLES10;
 import android.opengl.GLES30;
@@ -18,6 +20,7 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 
 import com.example.si.IMG_PROCESSING.CornerDetection.ByteTranslate;
+
 import com.example.si.IMG_PROCESSING.CornerDetection.HarrisCornerDetector;
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 import com.example.si.IMG_PROCESSING.CornerDetection.XYZ;
@@ -26,10 +29,14 @@ import com.example.si.RENDER.MyPattern2D;
 
 import org.apache.commons.io.IOUtils;
 
+
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+
+import java.io.IOException;
+
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -200,9 +207,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     public void ResetImage(Bitmap new_image) {
         bitmap2D = new_image;
         myPattern2D = null;
-
         ifFileSupport = true;
     }
+
     public void ResetMarkerlist(ArrayList<ImageMarker> markerlist) {
         MarkerList = markerlist;
     }
@@ -285,13 +292,13 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         //深蓝
 //        GLES30.glClearColor(0.098f, 0.098f, 0.439f, 1.0f);
         //西红柿
-//        GLES30.glClearColor(1f, 1f, 1f, 1.0f);
+        GLES30.glClearColor(1f, 1f, 1f, 1.0f);
         //紫色
 //        GLES30.glClearColor(0.192f, 0.105f, 0.572f, 1.0f);
         //浅蓝
 //        GLES30.glClearColor(0.623f, 0.658f, 0.854f, 1.0f);
         //中蓝
-        GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);
+//        GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);
         //浅紫
 //        GLES30.glClearColor(0.929f, 0.906f, 0.965f, 1.0f);
 
@@ -313,7 +320,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 
 //        if (fileType == FileType.JPG || fileType == FileType.PNG)
-            myPattern2D.draw(finalMatrix);
+        myPattern2D.draw(finalMatrix);
 
 
         GLES30.glDisable(GL_BLEND);
@@ -435,9 +442,10 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     }
 
 
+
     //设置文件路径
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void SetPath(String message) {
+    public void SetPath(String message) throws IOException {
 
         filepath = message;
         cur_scale = 1.0f;
@@ -469,10 +477,35 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     }
 
+    //根据目标图片大小来计算Sample图片大小
+    public static int CaculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight){
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+        if(height > reqHeight || width >reqWidth){
+            final int halfHeight = height/2;
+            final int halfWidth = width/2;
+            while ((halfHeight/inSampleSize)>reqHeight&&(halfWidth/inSampleSize)>reqWidth){
+                inSampleSize *= 2;
+            }
+        }
+        Log.d("MyRender","inSampleSize"+inSampleSize);
+        return inSampleSize;
+    }
+    //解码压缩后的图片
+    public static Bitmap decodeSampleBitmapFromResource(InputStream is,int reqWidth,int reqHeight){
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        Rect outPadding = new Rect(-1,-1,-1,-1);
+        BitmapFactory.decodeStream(is, null,options);
+        options.inSampleSize = CaculateInSampleSize(options,reqWidth,reqHeight);
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeStream(is,null, options);
+    }
 
     //    @RequiresApi(api = Build.VERSION_CODES.N)
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void loadImage2D() {
+    private void loadImage2D() throws IOException {
         File file = new File(filepath);
         long length = 0;
         InputStream is = null;
@@ -496,7 +529,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 is = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
 
                 length = (int) parcelFileDescriptor.getStatSize();
-
                 fd = parcelFileDescriptor.getFileDescriptor();
 
                 Log.v("MyPattern", "Successfully load intensity");
@@ -506,11 +538,15 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
         }
 
-        bitmap2D = BitmapFactory.decodeStream(is);
-
-        if (file.exists()) {
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        bitmap2D = BitmapFactory.decodeStream(is, null,options);
+        //图片过大压缩
+        if(bitmap2D.getWidth()>2000&&bitmap2D.getHeight()>2000){
+            bitmap2D = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / 4, bitmap2D.getHeight() / 4);
+        }
+        if(file.exists()){
             degree = getBitmapDegree(filepath);
-        }else {
+        }else{
             degree = getBitmapDegree(fd);
         }
 //        ByteArrayOutputStream st = new ByteArrayOutputStream();
@@ -528,12 +564,12 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //            }
             System.out.println("degree: " + degree);
 
+
             bitmap2D = rotateBitmapByDegree(bitmap2D, degree);
 //            ByteArrayOutputStream outputStream = new ByteArrayOutputStream(bitmap.getByteCount());
             sz[0] = bitmap2D.getWidth();
             sz[1] = bitmap2D.getHeight();
             sz[2] = Math.max(sz[0], sz[1]);
-
             Integer[] num = {sz[0], sz[1]};
             float max_dim = (float) Collections.max(Arrays.asList(num));
             Log.v("MyRenderer", Float.toString(max_dim));
@@ -543,7 +579,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             mz[2] = Math.max(mz[0], mz[1]);
 
         }
-
+        is.close();
     }
 
 
@@ -764,6 +800,34 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             result = ModeltoVolume(result);
             System.out.println(result[0]);
             System.out.println(result[1]);
+
+            //----------------------------
+            //获取小区域图像
+            int Rx = round(bitmap2D.getWidth() / 100f);
+            int Ry = round(bitmap2D.getHeight() / 100f);
+            Bitmap tempBitmap = bitmap2D;
+            bitmap2D = getSmallImageBlock(round(result[0]),round(result[1]),Rx,Ry);
+
+            //haar角点检测
+            ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
+
+//                    MarkerList;MarkerListTemp =new ArrayList<ImageMarker>();
+//            System.out.println(MarkerList.isEmpty());
+            MarkerList.clear();
+            if (if2dImageLoaded()){
+                corner_detection();
+//                        myGLSurfaceView.requestRender();
+            } else {
+                Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+            }
+            //选取最近的角点
+            if (!MarkerList.isEmpty()) {
+                result = getMostPossiblePoint(result, MarkerList,Rx,Ry);
+            }
+            MarkerList = MarkerListTemp;
+            bitmap2D = tempBitmap;
+            //----------------------------
+
             return result;
         }
         return null;
