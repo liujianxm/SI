@@ -24,6 +24,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
 //import android.media.ExifInterface;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import androidx.exifinterface.media.ExifInterface;
@@ -54,6 +55,7 @@ import android.widget.ListAdapter;
 import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.CircleDetect.EdgeDetect_fun;
+import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 import com.example.si.IMG_PROCESSING.FourAreaLabel;
 import com.example.si.IMG_PROCESSING.CircleDetect.HoughCircle;
 import com.example.si.IMG_PROCESSING.HessianMatrixLine;
@@ -96,14 +98,18 @@ public class MainActivity extends AppCompatActivity {
     private static MyRenderer myrenderer;
     private static Context context;
     private BasePopupView popupView;
-    private boolean isMutiImg;
+    private boolean isMutiImg = false;
     private boolean isP1 = true;
     private boolean isSelectPoints = false;
     private boolean isFinished = false;
+    private boolean ifPoint = false;
     boolean isFinished1 = false;
     boolean isFinished2 = false;
     Bitmap img1 = null;
     Bitmap img2 = null;
+
+    private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
+    private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
 
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -334,6 +340,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext);
         builder.setTitle("Add picture");
         builder.setSingleChoiceItems(adapter, -1, new DialogInterface.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.P)
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
@@ -347,6 +354,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case 2:
                         Reconstruction3D();
+                        isMutiImg = true;
                         //ImageOpened = true;
                         break;
                 }
@@ -538,6 +546,16 @@ public class MainActivity extends AppCompatActivity {
                     myrenderer.SetPath(path);
                     myGLSurfaceView.requestRender();
 
+                    if (isMutiImg) {
+                        if (isP1) {
+                            img1 = myrenderer.GetBitmap();
+                            //System.out.println(img1 == null);
+                        } else {
+                            img2 = myrenderer.GetBitmap();
+                            //System.out.println(img2 == null);
+                        }
+                    }
+
                     /*
                     try {
                         Bitmap photo = MediaStore.Images.Media.getBitmap(resolver, originalUri);
@@ -594,115 +612,107 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, CHOOSE_PHOTO);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.P)
     private void Reconstruction3D() {
-
 
         img_switch = new Button(this);
         img_switch.setText("P1");
+        img_switch.setAllCaps(false);
         img_switch.setTextColor(Color.RED);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(120, 120);
-        params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-        params.setMargins(0,0,160,20);
-        this.addContentView(img_switch,params);//
+        FrameLayout.LayoutParams params_img_switch = new FrameLayout.LayoutParams(230, 120);
+        params_img_switch.gravity = Gravity.TOP | Gravity.LEFT;
+        params_img_switch.setMargins(50,20,0,0);
+        this.addContentView(img_switch,params_img_switch);//
         img_switch.setVisibility(View.VISIBLE);
 
         loadImage = new Button(this);
         loadImage.setText("Load");
-        loadImage.setTextColor(Color.RED);
-        params.setMargins(160,0,320,20);
-        this.addContentView(loadImage,params);//
+        loadImage.setAllCaps(false);
+        loadImage.setTextColor(Color.BLACK);
+        FrameLayout.LayoutParams params_loadImage = new FrameLayout.LayoutParams(230, 120);
+        params_loadImage.gravity = Gravity.TOP | Gravity.LEFT;
+        params_loadImage.setMargins(300,20,0,0);
+        this.addContentView(loadImage,params_loadImage);//
         loadImage.setVisibility(View.VISIBLE);
 
         select_points = new Button(this);
-        select_points.setText("Points");
-        select_points.setTextColor(Color.RED);
-        params.setMargins(320,0,480,20);
-        this.addContentView(select_points,params);//
+        select_points.setText("Point");
+        select_points.setAllCaps(false);
+        select_points.setTextColor(Color.BLACK);
+        FrameLayout.LayoutParams params_select_points = new FrameLayout.LayoutParams(230, 120);
+        params_select_points.gravity = Gravity.TOP | Gravity.LEFT;
+        params_select_points.setMargins(550,20,0,0);
+        this.addContentView(select_points,params_select_points);//
         select_points.setVisibility(View.VISIBLE);
 
         finished = new Button(this);
         finished.setText("Finish");
-        finished.setTextColor(Color.RED);
-        params.setMargins(480,0,640,20);
-        this.addContentView(finished,params);//
+        finished.setAllCaps(false);
+        finished.setTextColor(Color.BLACK);
+        FrameLayout.LayoutParams params_finished = new FrameLayout.LayoutParams(230, 120);
+        params_finished.gravity = Gravity.TOP | Gravity.LEFT;
+        params_finished.setMargins(800,20,0,0);
+        this.addContentView(finished,params_finished);//
         finished.setVisibility(View.VISIBLE);
 
         Process = new Button(this);
         Process.setText("Process");
+        Process.setAllCaps(false);
         Process.setTextColor(Color.RED);
-        params.gravity = Gravity.BOTTOM | Gravity.LEFT;
-        params.setMargins(160,0,0,20);
-        this.addContentView(Process,params);//
+        FrameLayout.LayoutParams params_Process = new FrameLayout.LayoutParams(230, 120);
+        params_Process.gravity = Gravity.TOP | Gravity.RIGHT;
+        params_Process.setMargins(0,20,50,00);
+        this.addContentView(Process,params_Process);//
         Process.setVisibility(View.GONE);
 
         img_switch.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                myrenderer.switchImg();
 
+                clearSelect_points();
                 if (isP1){
+                    MarkerList1 = myrenderer.getMarkerList();
+                    Log.v("img_switch", "Change to P2");
+                    isP1 = !isP1;
                     img_switch.setText("P2");
                     functionMenu(isFinished2);
+
+                    //display points
+                    myrenderer.ResetMarkerlist(MarkerList2);
+
+                    System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
+
                     if (ImageOpened2) {
                         myrenderer.ResetImage(img2);
-                        myGLSurfaceView.requestRender();
-                    }
 
-                    //display points
-
-                } else {
-                    img_switch.setText("P1");
-                    functionMenu(isFinished1);
-                    if (ImageOpened) {
-                        myrenderer.ResetImage(img1);
-                        myGLSurfaceView.requestRender();
-                    }
-
-                    //display points
-
-                }
-            }
-        });
-
-        select_points.setOnClickListener(new Button.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //myrenderer.switchImg();
-
-                if (isP1){
-                    if (!myrenderer.ifImageLoaded()){
-                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    //wait for touch
-
-                    //getpoints  (x,y)
-
-                    //获取点周围小图像块
-                    //Bitmap newbitmap = getSmallImageBlock(Bitmap img1,x,y)
-
-                    //haar 角点检测获得点集
-                    if (myrenderer.if2dImageLoaded()){
-                        myrenderer.corner_detection();
                         myGLSurfaceView.requestRender();
                     } else {
-                        Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+                        if (ImageOpened) {
+                            clearPreImage();
+                        }
+                        //return;
                     }
 
-                    //点集中选取最优点
-
-                    //display points
-
-
                 } else {
-
-                    //wait for touch
-
-                    //getpoints
-
-                    //haar 角点检测修正点
+                    MarkerList2 = myrenderer.getMarkerList();
+                    Log.v("img_switch", "Change to P1");
+                    isP1 = !isP1;
+                    img_switch.setText("P1");
+                    functionMenu(isFinished1);
 
                     //display points
+                    myrenderer.ResetMarkerlist(MarkerList1);
+
+                    if (ImageOpened) {
+                        myrenderer.ResetImage(img1);
+
+                        myGLSurfaceView.requestRender();
+                    } else {
+                        if (ImageOpened2) {
+                            clearPreImage();
+                        }
+                        //return;
+                    }
 
                 }
             }
@@ -712,40 +722,53 @@ public class MainActivity extends AppCompatActivity {
         loadImage.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //myrenderer.switchImg();
+                clearSelect_points();
                 if (isP1){
-//                    img_switch.setText("P2");
-                    functionMenu(isFinished1);
-                    if(!ImageOpened){
-                        Log.v("loadImage", "Please load img first!");
-                        if (Looper.myLooper() == null) {
-                            Looper.prepare();
-                        }
-                        Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
-                        Looper.loop();
-                        return;
-                    }
+                    Log.v("loadImage", "load Image1");
+                    //functionMenu(isFinished1);
                     PickPhotoFromGallery();
+                    MarkerList1.clear();
                     ImageOpened = true;
-                    img1 = myrenderer.GetBitmap();
 
                 } else {
-//                    img_switch.setText("P1");
-                    functionMenu(isFinished1);
-                    if(!ImageOpened2){
-                        Log.v("loadImage", "Please load img first!");
-                        if (Looper.myLooper() == null) {
-                            Looper.prepare();
-                        }
-                        Toast.makeText(getContext(), "Please load image first!", Toast.LENGTH_LONG).show();
-                        Looper.loop();
-                        return;
-                    }
+                    Log.v("loadImage", "load Image2");
+                    //functionMenu(isFinished2);
                     PickPhotoFromGallery();
+                    MarkerList2.clear();
                     ImageOpened2 = true;
-                    img2 = myrenderer.GetBitmap();
 
                 }
+            }
+        });
+
+        select_points.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isP1) {
+                    if (img1 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } else {
+                    if (img2 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+
+                ifPoint = !ifPoint;
+
+                if (ifPoint == true) {
+                    select_points.setTextColor(Color.BLUE);
+                } else {
+                    select_points.setTextColor(Color.BLACK);
+                    if (isP1) {
+                        MarkerList1 = myrenderer.getMarkerList();
+                    } else {
+                        MarkerList2 = myrenderer.getMarkerList();
+                    }
+                }
+
             }
         });
 
@@ -753,59 +776,124 @@ public class MainActivity extends AppCompatActivity {
         finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (isP1){
-                    isFinished1 = true;
+                if (isP1) {
+                    if (img1 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                 } else {
-                    isFinished2 = true;
+                    if (img2 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                 }
-                functionMenu(isFinished1);
-                functionMenu(isFinished2);
-                //isFinished = isFinished1 & isFinished2;
+
+                clearSelect_points();
+                int pointnum1 = MarkerList1.size();
+                int pointnum2 = MarkerList2.size();
+                if (isP1){
+                    if (pointnum1 > 8) {
+                        if (isFinished2) {
+                            if (pointnum1 == pointnum2) {
+                                isFinished1 = true;
+                                functionMenu(true);
+                            } else {
+                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            if (pointnum1 > pointnum2) {
+                                isFinished1 = true;
+                                functionMenu(true);
+                                myrenderer.setMarkerNum(MarkerList1.size());
+                            } else {
+                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } else {
+                        Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                    }
+
+
+                } else {
+                    if (pointnum2 > 8) {
+                        if (isFinished1) {
+                            if (pointnum1 == pointnum2) {
+                                isFinished2 = true;
+                                functionMenu(true);
+                            } else {
+                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            if (pointnum1 < pointnum2) {
+                                isFinished2 = true;
+                                functionMenu(true);
+                                myrenderer.setMarkerNum(MarkerList2.size());
+                            } else {
+                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } else {
+                        Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                    }
+
+                }
+
+
                 if (isFinished1 & isFinished2) {
+                    img_switch.setVisibility(View.GONE);
                     Process.setVisibility(View.VISIBLE);
                 }
             }
         });
 
-        //img_switch.setVisibility(View.GONE);
+        //Process
+        Process.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //图一点集为MarkerList1
+                //图二点集为MarkerList2
 
+
+            }
+        });
 
     }
 
     private void functionMenu (boolean isfiished) {
         if (isfiished) {
+            loadImage.setVisibility(View.GONE);
             select_points.setVisibility(View.GONE);
             finished.setVisibility(View.GONE);
         } else {
+            loadImage.setVisibility(View.VISIBLE);
             select_points.setVisibility(View.VISIBLE);
             finished.setVisibility(View.VISIBLE);
         }
     }
 
-    //获取以（x,y）为中心x轴半径为30，y轴半径为40的图像块区域图像块
-    private Bitmap getSmallImageBlock(Bitmap image, int x, int y) {
-        int Rx = 30;
-        int Ry = 40;
-        int xfrom = max(0,x-Rx);
-        int xto = min(image.getWidth(),x+Rx);
-        int yfrom = max(0,y-Ry);
-        int yto = min(image.getHeight(),y+Ry);
-        int xlen = xto - xfrom + 1;
-        int ylen = yto - yfrom + 1;
-
-//        int color;
-        Bitmap myBitmap = null;
-        if (isP1) {
-            myBitmap = Bitmap.createBitmap( xlen, ylen, Bitmap.Config.ARGB_8888 );
-            for (int w = 0; w < xlen; w++) {
-                for (int h = 0; h < ylen; h++) {
-//                    color = image.getPixel(w,h);
-                    myBitmap.setPixel(w, h, image.getPixel(xfrom+w,yfrom+h));
-                }
-            }
-        }
-        return myBitmap;
+    private void clearSelect_points () {
+        ifPoint = false;
+        select_points.setTextColor(Color.BLACK);
     }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void clearPreImage() {
+        Bitmap temp = myrenderer.GetBitmap();
+        if (temp == null) {
+            return;
+        }
+        int width = temp.getWidth();
+        int height  = temp.getHeight();
+        Bitmap myBitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
+        int color;
+        color = Color.argb(1, 121, 134, 203);
+        //GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);
+        //浅紫
+        myBitmap.eraseColor(color);
+        myrenderer.ResetImage(myBitmap);
+        myGLSurfaceView.requestRender();
+    }
+
     //org.gradle.java.home=C\:\\MySoft\\Java
 /*
     private String getImageFilePath() {
@@ -1259,6 +1347,52 @@ public class MainActivity extends AppCompatActivity {
                         Y = normalizedY;
                         break;
                     case MotionEvent.ACTION_UP:
+                        try{
+                            if (!isZooming) {
+                                if (ifPoint) {
+                                    Log.v("actionUp", "Pointinggggggggggg");
+                                    System.out.println(myrenderer.getMarkerList().size());
+                                    System.out.println(myrenderer.getMarkerNum());
+                                    System.out.println("***---***");
+                                    Log.v("actionUping", "Pointinggggggggggg");
+                                    if (isFinished1 || isFinished2) {
+                                        if (myrenderer.getMarkerList().size() < myrenderer.getMarkerNum()) {
+                                            myrenderer.add2DMarker(normalizedX, normalizedY);
+                                        } else {
+                                            clearSelect_points();
+                                            Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
+                                        }
+                                    } else {
+                                        myrenderer.add2DMarker(normalizedX, normalizedY);
+                                    }
+
+
+
+/*                                   if (myrenderer.getFileType() == MyRenderer.FileType.JPG || myrenderer.getFileType() == MyRenderer.FileType.PNG) {
+//                                        System.out.println(myrenderer.getMarkerList().size());
+//                                        System.out.println(myrenderer.getMarkerNum());
+//                                        System.out.println("***---***");
+                                        Log.v("actionUping", "Pointinggggggggggg");
+                                        myrenderer.add2DMarker(normalizedX, normalizedY);
+//                                        if (myrenderer.getMarkerList().size() < myrenderer.getMarkerNum()) {
+//
+//                                        } else {
+//                                            ifPoint = !ifPoint;
+//                                            Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
+//                                        }
+                                    } else {
+                                        Log.v("actionUping", "Pointinggggggggggg");
+                                        myrenderer.setMarkerDrawed(normalizedX, normalizedY);
+                                    }
+                                    */
+                                    Log.v("actionPointerDown", "(" + X + "," + Y + ")");
+                                    requestRender();
+
+                                }
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         break;
                     default:break;
 

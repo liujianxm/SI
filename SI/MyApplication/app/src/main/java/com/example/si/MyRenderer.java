@@ -13,11 +13,15 @@ import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
+import com.example.si.IMG_PROCESSING.CornerDetection.ByteTranslate;
 import com.example.si.IMG_PROCESSING.CornerDetection.HarrisCornerDetector;
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
+import com.example.si.IMG_PROCESSING.CornerDetection.XYZ;
+import com.example.si.RENDER.MyDraw;
 import com.example.si.RENDER.MyPattern2D;
 
 import org.apache.commons.io.IOUtils;
@@ -39,6 +43,11 @@ import javax.microedition.khronos.opengles.GL10;
 import static com.example.si.RENDER.BitmapRotation.getBitmapDegree;
 import static com.example.si.RENDER.BitmapRotation.rotateBitmapByDegree;
 import static com.example.si.MainActivity.getContext;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static java.lang.Math.pow;
+import static java.lang.Math.round;
+import static java.lang.Math.sqrt;
 import static javax.microedition.khronos.opengles.GL10.GL_ALPHA_TEST;
 import static javax.microedition.khronos.opengles.GL10.GL_BLEND;
 import static javax.microedition.khronos.opengles.GL10.GL_ONE_MINUS_SRC_ALPHA;
@@ -72,7 +81,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private ByteBuffer imageBuffer;
     private byte[] image2D;
     private Bitmap bitmap2D;
-
+    private MyDraw myDraw;
     private int mProgram;
 
     //    private boolean ispause = false;
@@ -85,6 +94,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private int vol_w;
     private int vol_h;
     private int vol_d;
+    private int markernum;
     private int[] sz = new int[3];
     private float[] mz = new float[3];
     private float[] mz_neuron = new float[3];
@@ -177,15 +187,24 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     private int degree = 0;
 
+    public ArrayList<ImageMarker> getMarkerList() { return MarkerList; }
     public void switchImg() { multiImgFlag = !multiImgFlag; }
 
     public Bitmap GetBitmap() { return bitmap2D; }
+    public int getMarkerNum() { return markernum; }
+
+    public void setMarkerNum(int num) {
+        markernum = num;
+    }
 
     public void ResetImage(Bitmap new_image) {
         bitmap2D = new_image;
         myPattern2D = null;
 
         ifFileSupport = true;
+    }
+    public void ResetMarkerlist(ArrayList<ImageMarker> markerlist) {
+        MarkerList = markerlist;
     }
 
     //初次渲染画面
@@ -278,6 +297,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         if (myPattern2D == null) {
             myPattern2D = new MyPattern2D(bitmap2D, sz[0], sz[1], mz);
+            if (myDraw == null)
+                myDraw = new MyDraw();
         }
 
         //把颜色缓冲区设置为我们预设的颜色
@@ -299,8 +320,46 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         GLES30.glDisable(GL_ALPHA_TEST);
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
+        if (!ifNavigationLococation){
+            if (fileType == FileType.JPG || fileType == FileType.PNG)
+                myPattern2D.draw(finalMatrix);
+            //现画的marker
+            if (MarkerList.size() > 0) {
+                float radius = 0.02f;
+                if (fileType == FileType.JPG || fileType == FileType.PNG)
+                    radius = 0.01f;
+                for (int i = 0; i < MarkerList.size(); i++) {
+//                System.out.println("start draw marker---------------------");
+                    ImageMarker imageMarker = MarkerList.get(i);
+                    float[] markerModel = VolumetoModel(new float[]{imageMarker.x, imageMarker.y, imageMarker.z});
+                    if (imageMarker.radius == 5) {
+                        myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
+                    } else {
+                        myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, radius);
+                    }
+//                Log.v("onDrawFrame: ", "(" + markerDrawed.get(i) + ", " + markerDrawed.get(i+1) + ", " + markerDrawed.get(i+2) + ")");
+
+                }
+            }
+        }
+
+
+
+
+
     }
 
+    private float[] VolumetoModel(float[] input){
+        if (input == null)
+            return null;
+
+        float[] result = new float[3];
+        result[0] = (sz[0] - input[0]) / sz[0] * mz[0];
+        result[1] = (sz[1] - input[1]) / sz[1] * mz[1];
+        result[2] = input[2] / sz[2] * mz[2];
+
+        return result;
+    }
 
     private static String insertImageToSystem(Context context, String imagePath) {
         String url = "";
@@ -388,11 +447,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         ifFileSupport = true;
         myPattern2D = null;
 
-        if (fileType == FileType.PNG || fileType == FileType.JPG) {
-            loadImage2D();
-            ifFileLoaded = true;
-            ifFileSupport = true;
-        }
+//        if (fileType == FileType.PNG || fileType == FileType.JPG) {
+//            loadImage2D();
+//            ifFileLoaded = true;
+//            ifFileSupport = true;
+//        }
 
         Log.v("SetPath", Arrays.toString(mz));
 
@@ -455,6 +514,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             degree = getBitmapDegree(fd);
         }
 //        ByteArrayOutputStream st = new ByteArrayOutputStream();
+
+        System.out.println("Myrenderer bitmap");
+
         if (bitmap2D != null) {
 
 //            int degree = 0;
@@ -464,7 +526,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //            else {
 //                degree = getBitmapDegree(filepath);
 //            }
-            System.out.println(degree);
+            System.out.println("degree: " + degree);
 
             bitmap2D = rotateBitmapByDegree(bitmap2D, degree);
 //            ByteArrayOutputStream outputStream = new ByteArrayOutputStream(bitmap.getByteCount());
@@ -707,9 +769,22 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         return null;
     }
 
-    /*
+
     public void add2DMarker(float x, float y) throws CloneNotSupportedException {
         float [] new_marker = solve2DMarker(x, y);
+        System.out.println();
+        System.out.println("----------------");
+        System.out.println("markernum = "+markernum);
+        System.out.println("MarkerList.size() = "+MarkerList.size());
+        System.out.println("----------------");
+        System.out.println();
+//        if (MarkerList.size() < markernum) {
+//            new_marker = ;
+//        } else {
+//            Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+
         if (new_marker == null){
             System.out.println("outtttt");
             Toast.makeText(getContext(), "Please make sure the point is in the image", Toast.LENGTH_SHORT).show();
@@ -721,19 +796,19 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             imageMarker_drawed.type = lastMarkerType;
             System.out.println("set type to 3");
 
-            ArrayList<ImageMarker> tempMarkerList = (ArrayList<ImageMarker>)MarkerList.clone();
-            V_NeuronSWC_list tempCurveList = curSwcList.clone();
+//            ArrayList<ImageMarker> tempMarkerList = (ArrayList<ImageMarker>)MarkerList.clone();
+//            V_NeuronSWC_list tempCurveList = curSwcList.clone();
 
-            if (curUndo < UNDO_LIMIT){
-                curUndo += 1;
-                undoMarkerList.add(tempMarkerList);
-                undoCurveList.add(tempCurveList);
-            } else {
-                undoMarkerList.remove(0);
-                undoCurveList.remove(0);
-                undoMarkerList.add(tempMarkerList);
-                undoCurveList.add(tempCurveList);
-            }
+//            if (curUndo < UNDO_LIMIT){
+//                curUndo += 1;
+//                undoMarkerList.add(tempMarkerList);
+//                undoCurveList.add(tempCurveList);
+//            } else {
+//                undoMarkerList.remove(0);
+//                undoCurveList.remove(0);
+//                undoMarkerList.add(tempMarkerList);
+//                undoCurveList.add(tempCurveList);
+//            }
 
             MarkerList.add(imageMarker_drawed);
 
@@ -750,7 +825,364 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         }
     }
 
-*/
+    // add the marker drawed into markerlist
+    public void setMarkerDrawed(float x, float y) throws CloneNotSupportedException {
+
+        if(solveMarkerCenter(x, y) != null) {
+            float[] new_marker = solveMarkerCenter(x, y);
+
+            ImageMarker imageMarker_drawed = new ImageMarker(new_marker[0],
+                    new_marker[1],
+                    new_marker[2]);
+            imageMarker_drawed.type = lastMarkerType;
+            System.out.println("set type to 3");
+
+//            ArrayList<ImageMarker> tempMarkerList = (ArrayList<ImageMarker>)MarkerList.clone();
+//            V_NeuronSWC_list tempCurveList = curSwcList.clone();
+//
+//            if (curUndo < UNDO_LIMIT){
+//                curUndo += 1;
+//                undoMarkerList.add(tempMarkerList);
+//                undoCurveList.add(tempCurveList);
+//            } else {
+//                undoMarkerList.remove(0);
+//                undoCurveList.remove(0);
+//                undoMarkerList.add(tempMarkerList);
+//                undoCurveList.add(tempCurveList);
+//            }
+
+            MarkerList.add(imageMarker_drawed);
+
+//            if (process.size() < UNDO_LIMIT){
+//                process.add(Operate.DRAWMARKER);
+//                undoDrawMarkerList.add(imageMarker_drawed);
+//            } else {
+//                Operate first = process.firstElement();
+//                process.remove(0);
+//                process.add(Operate.DRAWMARKER);
+//                removeFirstUndo(first);
+//                undoDrawMarkerList.add(imageMarker_drawed);
+//            }
+        }
+    }
+
+    //寻找marker点的位置~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    public float[] solveMarkerCenter(float x, float y){
+
+//        float [] result = new float[3];
+        float [] loc1 = new float[3];
+        float [] loc2 = new float[3];
+
+//        get_NearFar_Marker(x, y, loc1, loc2);
+        get_NearFar_Marker_2(x, y, loc1, loc2);
+
+        Log.v("loc1",Arrays.toString(loc1));
+        Log.v("loc2",Arrays.toString(loc2));
+
+        float steps = 512;
+        float [] step = devide(minus(loc1, loc2), steps);
+        Log.v("step",Arrays.toString(step));
+
+
+        if(make_Point_near(loc1, loc2)){
+//            Log.v("loc1",Arrays.toString(loc1));
+//            Log.v("loc2",Arrays.toString(loc2));
+
+            float [] Marker = getCenterOfLineProfile(loc1, loc2);
+//            float [] Marker = {60.1f, 63.2f, 63.6f};
+            if (Marker == null){
+                return null;
+            }
+
+            Log.v("Marker",Arrays.toString(Marker));
+
+            //获取小区域图像
+            int Rx = round(bitmap2D.getWidth() / 100);
+            int Ry = round(bitmap2D.getHeight() / 100);
+            Bitmap tempBitmap = bitmap2D;
+            bitmap2D = getSmallImageBlock(round(Marker[0]),round(Marker[1]),Rx,Ry);
+
+            //haar角点检测
+            ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
+
+//                    MarkerList;MarkerListTemp =new ArrayList<ImageMarker>();
+//            System.out.println(MarkerList.isEmpty());
+            MarkerList.clear();
+            if (if2dImageLoaded()){
+                corner_detection();
+//                        myGLSurfaceView.requestRender();
+            } else {
+                Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+            }
+            //选取最近的角点
+            if (!MarkerList.isEmpty()) {
+                Marker = getMostPossiblePoint(Marker, MarkerList,Rx,Ry);
+            }
+            MarkerList = MarkerListTemp;
+            bitmap2D = tempBitmap;
+
+//            float intensity = Sample3d(Marker[0], Marker[1], Marker[2]);
+//            Log.v("intensity",Float.toString(intensity));
+
+            return Marker;
+        }else {
+            Log.v("solveMarkerCenter","please make sure the point inside the bounding box");
+//            Looper.prepare();
+            Toast.makeText(getContext(), "please make sure the point inside the bounding box", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+
+    }
+
+    //获取以（x,y）为中心x轴半径为30，y轴半径为40的图像块区域图像块
+    private Bitmap getSmallImageBlock(int x, int y,int Rx, int Ry) {
+        int xfrom = max(0,x-Rx);
+        int xto = min(bitmap2D.getWidth(),x+Rx);
+        int yfrom = max(0,y-Ry);
+        int yto = min(bitmap2D.getHeight(),y+Ry);
+        int xlen = xto - xfrom + 1;
+        int ylen = yto - yfrom + 1;
+
+//        int color;
+        Bitmap myBitmap = null;
+        myBitmap = Bitmap.createBitmap( xlen, ylen, Bitmap.Config.ARGB_8888 );
+        for (int w = 0; w < xlen; w++) {
+            for (int h = 0; h < ylen; h++) {
+//                    color = image.getPixel(w,h);
+                myBitmap.setPixel(w, h, bitmap2D.getPixel(xfrom+w,yfrom+h));
+            }
+        }
+        return myBitmap;
+    }
+
+    //从点集中获取与特定点最近的点
+    private float[] getMostPossiblePoint(float[] Marker, ArrayList<ImageMarker> MarkerList, int Rx, int Ry) {
+        double mindst = Integer.MAX_VALUE;
+        double dst;
+        int index = 0;
+        XYZ value;
+        for (int i = 0; i < MarkerList.size(); i++) {
+            value = MarkerList.get(i).getXYZ();
+            dst = sqrt((pow(value.x,31) + pow(value.y,41)));
+            if (mindst > dst) {
+                mindst = dst;
+                index = i;
+            }
+        }
+        value = MarkerList.get(index).getXYZ();
+        Marker[0] += value.x - Rx - 1;
+        Marker[1] += value.y - Rx - 1;
+        Marker[2] = value.z;
+        return Marker;
+    }
+
+    //用于透视投影中获取近平面和远平面的焦点
+    private void get_NearFar_Marker_2(float x, float y, float [] res1, float [] res2){
+
+        //mvp矩阵的逆矩阵
+        float [] invertfinalMatrix = new float[16];
+
+        Matrix.invertM(invertfinalMatrix, 0, finalMatrix, 0);
+//        Log.v("invert_rotation",Arrays.toString(invertfinalMatrix));
+
+        float [] near = new float[4];
+        float [] far = new float[4];
+
+        Matrix.multiplyMV(near, 0, invertfinalMatrix, 0, new float [] {x, y, -1, 1}, 0);
+        Matrix.multiplyMV(far, 0, invertfinalMatrix, 0, new float [] {x, y, 1, 1}, 0);
+
+        devideByw(near);
+        devideByw(far);
+
+//        Log.v("near",Arrays.toString(near));
+//        Log.v("far",Arrays.toString(far));
+
+        for(int i=0; i<3; i++){
+            res1[i] = near[i];
+            res2[i] = far[i];
+        }
+
+    }
+
+    //找到靠近boundingbox的两处端点
+    private boolean make_Point_near(float[] loc1, float[] loc2){
+
+        float steps = 512;
+        float [] near = loc1;
+        float [] far = loc2;
+        float [] step = devide(minus(near, far), steps);
+
+        float[][] dim = new float[3][2];
+        for(int i=0; i<3; i++){
+            dim[i][0]= 0;
+            dim[i][1]= mz[i];
+        }
+
+        int num = 0;
+        while(num<steps && !IsInBoundingBox(near, dim)){
+            near = minus(near, step);
+            num++;
+        }
+        if(num == steps)
+            return false;
+
+
+        while(!IsInBoundingBox(far, dim)){
+            far = plus(far, step);
+        }
+
+        near = plus(near, step);
+        far = minus(far, step);
+
+        for(int i=0; i<3; i++){
+            loc1[i] = near[i];
+            loc2[i] = far[i];
+        }
+
+//        Log.v("make_point_near","here we are");
+        return true;
+
+    }
+
+    //类似于光线投射，找直线上强度最大的一点
+    // in Image space (model space)
+    private float[] getCenterOfLineProfile(float[] loc1, float[] loc2){
+
+        float[] result = new float[3];
+        float[] loc1_index = new float[3];
+        float[] loc2_index = new float[3];
+        boolean isInBoundingBox = false;
+
+//        for(int i=0; i<3; i++){
+//            loc1_index[i] = loc1[i] * sz[i];
+//            loc2_index[i] = loc2[i] * sz[i];
+//        }
+
+        loc1_index = ModeltoVolume(loc1);
+        loc2_index = ModeltoVolume(loc2);
+
+//        float f = 0.8f;
+
+        float[] d = minus(loc1_index, loc2_index);
+        normalize(d);
+
+        float[][] dim = new float[3][2];
+        for(int i=0; i<3; i++){
+            dim[i][0] = 0;
+            dim[i][1] = sz[i] - 1;
+        }
+
+
+
+//        for(int i=0; i<2; i++){
+//            loc1_index[i] = (1.0f - loc1[i]) * sz[2 - i];
+//            loc2_index[i] = (1.0f - loc2[i]) * sz[2 - i];
+//        }
+//
+//
+//        loc1_index[2] = loc1[2] * sz[0];
+//        loc2_index[2] = loc2[2] * sz[0];
+
+
+        result = devide(plus(loc1_index, loc2_index), 2);
+
+        float max_value = 0f;
+
+        //单位向量
+//        float[] d = minus(loc1_index, loc2_index);
+//        normalize(d);
+
+        Log.v("getCenterOfLineProfile:", "step: " + Arrays.toString(d));
+
+        //判断是不是一个像素
+        float length = distance(loc1_index, loc2_index);
+        if(length < 0.5)
+            return result;
+
+        int nstep = (int)(length+0.5);
+        float one_step = length/nstep;
+
+        Log.v("getCenterOfLineProfile", Float.toString(one_step));
+
+//            float[][] dim = new float[3][2];
+//            for(int i=0; i<3; i++){
+//                dim[i][0] = 0;
+//                dim[i][1] = sz[i] - 1;
+//            }
+
+
+//            float[] sum_loc = {0, 0, 0};
+//            float sum = 0;
+        float[] poc;
+        for (int i = 0; i <= nstep; i++) {
+
+            float value;
+
+            poc = minus(loc1_index, multiply(d, one_step * i));
+//            poc = multiply(d, one_step);
+
+//            Log.v("getCenterOfLineProfile:", "update the max");
+
+//            Log.v("getCenterOfLineProfile", "(" + poc[0] + "," + poc[1] + "," + poc[2] + ")");
+
+
+            if (IsInBoundingBox(poc, dim)) {
+
+                value = Sample3d(poc[0], poc[1], poc[2]);
+//                    sum_loc[0] += poc[0] * value;
+//                    sum_loc[1] += poc[1] * value;
+//                    sum_loc[2] += poc[2] * value;
+//                    sum += value;
+                isInBoundingBox = true;
+                if(value > max_value){
+//                    Log.v("getCenterOfLineProfile", "(" + poc[0] + "," + poc[1] + "," + poc[2] + "): " +value);
+//                    Log.v("getCenterOfLineProfile:", "update the max");
+                    max_value = value;
+                    for (int j = 0; j < 3; j++){
+                        result[j] = poc[j];
+                    }
+                    isInBoundingBox = true;
+                }
+            }
+        }
+
+//            if (sum != 0) {
+//                result[0] = sum_loc[0] / sum;
+//                result[1] = sum_loc[1] / sum;
+//                result[2] = sum_loc[2] / sum;
+//            }else{
+//                break;
+//            }
+
+//            for (int k = 0; k < 3; k++){
+//                loc1_index[k] = result[k] + d[k] * (length * f / 2);
+//                loc2_index[k] = result[k] - d[k] * (length * f / 2);
+//            }
+
+
+        if(!isInBoundingBox){
+            Toast.makeText(getContext(), "please make sure the point inside the bounding box", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+        return result;
+    }
+
+    //判断是否在图像内部了
+    private boolean IsInBoundingBox(float[] x, float[][] dim){
+        int length = x.length;
+
+        for(int i=0; i<length; i++){
+//            Log.v("IsInBoundingBox", Float.toString(x[i]));
+            if(x[i]>=dim[i][1] || x[i]<=dim[i][0])
+                return false;
+        }
+//        Log.v("IsInBoundingBox", Arrays.toString(x));
+//        Log.v("IsInBoundingBox", Arrays.toString(dim));
+        return true;
+    }
 
     public boolean ifIn2DImage(float x, float y){
         float [] x1 = new float[]{0 ,0, mz[2] / 2, 1};
@@ -797,6 +1229,141 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         return b1 || b2;
     }
 
+    float Sample3d(float x, float y, float z){
+        int x0, x1, y0, y1, z0, z1;
+        x0 = (int) Math.floor(x);         x1 = (int) Math.ceil(x);
+        y0 = (int) Math.floor(y);         y1 = (int) Math.ceil(y);
+        z0 = (int) Math.floor(z);         z1 = (int) Math.ceil(z);
+
+        float xf, yf, zf;
+        xf = x-x0;
+        yf = y-y0;
+        zf = z-z0;
+
+        float [][][] is = new float[2][2][2];
+        is[0][0][0] = grayData(x0, y0, z0);
+        is[0][0][1] = grayData(x0, y0, z1);
+        is[0][1][0] = grayData(x0, y1, z0);
+        is[0][1][1] = grayData(x0, y1, z1);
+        is[1][0][0] = grayData(x1, y0, z0);
+        is[1][0][1] = grayData(x1, y0, z1);
+        is[1][1][0] = grayData(x1, y1, z0);
+        is[1][1][1] = grayData(x1, y1, z1);
+
+        float [][][] sf = new float[2][2][2];
+        sf[0][0][0] = (1-xf)*(1-yf)*(1-zf);
+        sf[0][0][1] = (1-xf)*(1-yf)*(  zf);
+        sf[0][1][0] = (1-xf)*(  yf)*(1-zf);
+        sf[0][1][1] = (1-xf)*(  yf)*(  zf);
+        sf[1][0][0] = (  xf)*(1-yf)*(1-zf);
+        sf[1][0][1] = (  xf)*(1-yf)*(  zf);
+        sf[1][1][0] = (  xf)*(  yf)*(1-zf);
+        sf[1][1][1] = (  xf)*(  yf)*(  zf);
+
+        float result = 0f;
+
+        for(int i=0; i<2; i++)
+            for(int j=0; j<2; j++)
+                for(int k=0; k<2; k++)
+                    result +=  is[i][j][k] * sf[i][j][k];
+
+//        for(int i=0; i<2; i++)
+//            for(int j=0; j<2; j++)
+//                for(int k=0; k<2; k++)
+//                    Log.v("Sample3d", Float.toString(is[i][j][k]));
+
+        return result;
+    }
+
+    private int grayData(int x, int y, int z){
+        int result = 0;
+        if (data_length == 1){
+            byte b = grayscale[z * sz[0] * sz[1] + y * sz[0] + x];
+            result = ByteTranslate.byte1ToInt(b);
+        }else if (data_length == 2){
+            byte [] b = new byte[2];
+            b[0] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 2];
+            b[1] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 2 + 1];
+            result = ByteTranslate.byte2ToInt(b, isBig);
+        }else if (data_length == 4){
+            byte [] b = new byte[4];
+            b[0] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 4];
+            b[1] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 4 + 1];
+            b[2] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 4 + 2];
+            b[3] = grayscale[(z * sz[0] * sz[1] + y * sz[0] + x) * 4 + 3];
+            result = ByteTranslate.byte2ToInt(b, isBig);
+        }
+        return result;
+    }
+
+    private float distance(float[] x, float[] y){
+        int length = x.length;
+        float sum = 0;
+
+        for(int i=0; i<length; i++){
+            sum += Math.pow(x[i]-y[i], 2);
+        }
+        return (float)Math.sqrt(sum);
+    }
+
+    private void normalize(float[] x){
+        int length = x.length;
+        float sum = 0;
+
+        for(int i=0; i<length; i++)
+            sum += Math.pow(x[i], 2);
+
+        for(int i=0; i<length; i++)
+            x[i] = x[i] / (float)Math.sqrt(sum);
+    }
+
+    //加法运算
+    private float [] plus(float[] x, float[] y){
+        if(x.length != y.length){
+            Log.v("plus","length is not the same!");
+            return null;
+        }
+
+        int length = x.length;
+        float [] result = new float[length];
+
+        for (int i=0; i<length; i++)
+            result[i] = x[i] + y[i];
+        return result;
+    }
+
+    //减法运算
+    private float [] minus(float[] x, float[] y){
+        if(x.length != y.length){
+            Log.v("minus","length is not the same!");
+            return null;
+        }
+
+        int length = x.length;
+        float [] result = new float[length];
+
+        for (int i=0; i<length; i++)
+            result[i] = x[i] - y[i];
+        return result;
+    }
+
+
+
+    //除法运算
+    private float [] devide(float[] x, float num){
+        if(num == 0){
+            Log.v("devide","can not be devided by 0");
+        }
+
+        int length = x.length;
+        float [] result = new float[length];
+
+        for(int i=0; i<length; i++)
+            result[i] = x[i]/num;
+
+        return result;
+    }
+
     //除法运算
     private void devideByw(float[] x){
         if(Math.abs(x[3]) < 0.000001f){
@@ -807,6 +1374,21 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         for(int i=0; i<3; i++)
             x[i] = x[i]/x[3];
 
+    }
+
+    //乘法运算
+    private float [] multiply(float[] x, float num){
+        if(num == 0){
+            Log.v("multiply","can not be multiply by 0");
+        }
+
+        int length = x.length;
+        float [] result = new float[length];
+
+        for(int i=0; i<length; i++)
+            result[i] = x[i] * num;
+
+        return result;
     }
 
     private float[] ModeltoVolume(float[] input){
@@ -848,7 +1430,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        final boolean useHarrisDetector = false;
 
 //        MatOfPoint corners = new MatOfPoint();
-
 
         File file = new File(filepath);
         System.out.println(filepath);
@@ -999,8 +1580,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        Point[] pCorners = corners.toArray();
 
         Bitmap destImage;
-//        Bitmap sourceImage = bitmap2D;
-        Bitmap sourceImage = image;
+        Bitmap sourceImage = bitmap2D;
+//        Bitmap sourceImage = image;
         HarrisCornerDetector filter = new HarrisCornerDetector();
         destImage = filter.filter(sourceImage, null);
 
@@ -1008,15 +1589,15 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         int[] corner_x = new int[corner_x_y.length/2];
         int[] corner_y = new int[corner_x_y.length/2];
 
-        System.out.println("LLLLLLLLLLLLLL");
-        System.out.println(corner_x_y.length);
-        System.out.println("xyxyxyxyxy");
+        System.out.println("++++++++++");
+        System.out.println("corner_x_y.length = "+corner_x_y.length);
+        System.out.println("++++++++++");
         for (int n=0;n<corner_x_y.length/2;n++)
         {
             corner_x[n]=corner_x_y[2*n+1];
             corner_y[n]=corner_x_y[2*n];
-            System.out.println(corner_x[n]);
-            System.out.println(corner_y[n]);
+            //System.out.println(corner_x[n]);
+            //System.out.println(corner_y[n]);
         }
 
 
