@@ -1,6 +1,7 @@
 package com.example.si.IMG_PROCESSING.Reconstruction3D;
 
 
+
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 
 import java.util.ArrayList;
@@ -18,24 +19,24 @@ public class Convert2DTo3D {
     public enum MobileModel { MIX2, HUAWEI };//枚举手机型号
 //    private static Matrix I_Matrix = new Matrix(new double[][] {{1,0,0},{0,1,0},{0,0,1}});
     public MobileModel MyMobileModel;
-    public Matrix X_3D = null;
-    public Matrix P2_Selected;
+    public Matrix X_3D = null;//用来存放恢复匹配点的三维坐标
+    Matrix P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}});//3*4矩阵
+    public Matrix P2_Selected;//筛选出的角度二的投影矩阵
+    public ArrayList<ImageMarker> FeaturePoints3D;//特征点对应的三维点坐标
 
     /**
      * 2D-3D主函数
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
-     * @return 格式为n*4
      */
-    public boolean Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
+    public void Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
         Matrix PoListHo_1 = CaculateKPoList(PoList_1,this.MyMobileModel);
         Matrix PoListHo_2 = CaculateKPoList(PoList_2,this.MyMobileModel);//inv(K)*x，矩阵格式为n*3
        // Matrix E = ComputeFundamental(PoListHo_1, PoListHo_2);//计算本质矩阵E
         Matrix E = compute_fundamental_normalized(PoListHo_1, PoListHo_2);
         ArrayList<Matrix> P2 = ComputePFromEssential(E);//计算第二角度可能的投影矩阵
-        Matrix P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}});//3*4矩阵
+        //Matrix P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}});//3*4矩阵
         X_3D = SelectPFrom4P(PoListHo_1,PoListHo_2,P1,P2);//恢复的三位坐标矩阵
-        return true;
     }
 
     /**
@@ -168,16 +169,16 @@ public class Convert2DTo3D {
         }
         double[] po1mean = AvgValue(PoList_1);
         double[] po2mean = AvgValue(PoList_2);//计算均值
-        double std1 = Objects.requireNonNull(getWholeMeanStdValue(PoList_1.getMatrix(0, Po_num, 0, 2).getArray()))[1];
-        double std2 = Objects.requireNonNull(getWholeMeanStdValue(PoList_2.getMatrix(0, Po_num, 0, 2).getArray()))[1];
+        double std1 = Objects.requireNonNull(getWholeMeanStdValue(PoList_1.getMatrix(0, Po_num-1, 0, 2).getArray()))[1];
+        double std2 = Objects.requireNonNull(getWholeMeanStdValue(PoList_2.getMatrix(0, Po_num-1, 0, 2).getArray()))[1];
         double S1 = sqrt(2)/std1;
         double S2 = sqrt(2)/std2;
         double[][] temp1 = {{S1,0,-S1*po1mean[0]}, {0,S1,-S1*po1mean[1]}, {0,0,1}};
         Matrix T1 = new Matrix(temp1);
-        PoList_1 = T1.times(PoList_1);
+        PoList_1 = T1.times(PoList_1.transpose()).transpose();
         double[][] temp2 = {{S2,0,-S2*po2mean[0]}, {0,S2,-S2*po2mean[1]}, {0,0,1}};
-        Matrix T2 = new Matrix(temp1);
-        PoList_2 = T2.times(PoList_2);
+        Matrix T2 = new Matrix(temp2);
+        PoList_2 = T2.times(PoList_2.transpose()).transpose();
         Matrix F = ComputeFundamental(PoList_1,PoList_2);
         F = (T1.inverse()).times(F.times(T2));
         return F.times(1/F.get(2,2));
@@ -229,7 +230,7 @@ public class Convert2DTo3D {
             mean /= Height*Width;
             for (j = 0; j < Height; j++) {
                 for (i = 0; i < Width; i++) {
-                    std += Math.pow(Po_list[j][i] - meanStd[0], 2);
+                    std += Math.pow(Po_list[j][i] - mean, 2);
                 }
             }
             std /= Height*Width-1;
@@ -399,6 +400,7 @@ public class Convert2DTo3D {
         for(int k = 0; k<Flag.length; k++){
             if(!Flag[k]){
                 XSelected[pos] = X.getMatrix(0,3,k,k).getColumnPackedCopy();//此处有问题
+               // XSelected[pos] = (X.getMatrix(0,3,k,k).times(1/X.get(3,k))).getColumnPackedCopy();//除以其次坐标
                 pos++;
             }
         }
@@ -406,15 +408,29 @@ public class Convert2DTo3D {
         return this.X_3D;
     }
 
+    /**
+     * 求找出的特征点的三位坐标
+     * @param FeaturePoList_1 特征匹配点
+     * @param FeaturePoList_2 特征匹配点
+     * @return FeaturePoints3D
+     */
+    public ArrayList<ImageMarker> CaculateFeaturePoints3D(ArrayList<ImageMarker> FeaturePoList_1, ArrayList<ImageMarker> FeaturePoList_2){
+        Matrix PoList_1 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_1));//n*3矩阵
+        Matrix PoList_2 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_2));//n*3矩阵
+        Matrix X = TriangulateMultiPoints(PoList_1,PoList_2,P1,this.P2_Selected);//4*n
+        FeaturePoints3D = ArrayToMarkerList(X.transpose());
+        return FeaturePoints3D;
+    }
+
     //To be continue..
 
-    /**将MarkerList类转换为二维数组
-     *
+    /**
+     * 将MarkerList类转换为二维数组
      * @param markerList
      * @return
      */
-    private static int[][] MarkerListToArray (ArrayList<ImageMarker> markerList) {
-        int[][] array_markerList = new int[markerList.size()][2];
+    public static double[][] MarkerListToArray (ArrayList<ImageMarker> markerList) {
+        double[][] array_markerList = new double[markerList.size()][2];
         for (int i = 0; i < markerList.size(); i++) {
             array_markerList[i][0] = round(markerList.get(i).x);
             array_markerList[i][1] = round(markerList.get(i).y);
@@ -422,16 +438,21 @@ public class Convert2DTo3D {
         return array_markerList;
     }
 
-    private static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X_3D) {
+    /**
+     * 将三维点转化为 MarkerList
+     * @param X_3D
+     * @return
+     */
+    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X_3D) {
         ArrayList<ImageMarker> MarkerList = new ArrayList<>(X_3D.getRowDimension());
         for (int i = 0; i < X_3D.getRowDimension(); i++) {
-            array_markerList[i][0] = round(markerList.get(i).x);
-            array_markerList[i][1] = round(markerList.get(i).y);
+           ImageMarker temp = new ImageMarker((float) X_3D.get(i,0),(float) X_3D.get(i,1),(float) X_3D.get(i,2));
+           MarkerList.add(temp);
         }
-        return array_markerList;
+        return MarkerList;
     }
-//    double[][] polist1 = new double[][]{{710, 617}, {662, 472}, {101, 146}, {719, 548}, {8, 717}, {649, 567}, {438, 91}, {431, 80}, {310, 231}, {679, 477}};
-//    double[][] polist2 = new double[][]{{9.47, 12.87}, { 7.98, 10.85}, {1.81, 2.46}, {8.96, 12.18}, {5.91, 8.04}, {8.68, 11.80}, {3.46, 4.71}, {3.33, 4.52}, {3.81096705, 5.18}, {8.13, 11.05}};
+//    double[][] polist1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
+//    double[][] polist2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
 //    Matrix E_set = new Matrix(new double[][]{{9.2657E-04, -3.0478E-01, 1.0417E-02},{-5.5426E-02, -3.2049E-01, 6.2389E-01},{7.2953E-04, -6.4118E-01, 2.9404E-02}});
 //    Matrix K = get_IntrinsicMatrix(MobileModel.MIX2);//3*3矩阵
 //    Matrix F_set = (K.inverse().transpose()).times(E_set.times(K.inverse()));
