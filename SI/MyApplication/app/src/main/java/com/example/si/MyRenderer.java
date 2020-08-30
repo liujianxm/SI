@@ -97,6 +97,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private float angleY = 0.0f;
     private float angleZ = 0.0f;
     private int mTextureId;
+    int[] R = new int[2];  //图像长宽/100
 
     private int vol_w;
     private int vol_h;
@@ -204,8 +205,26 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         markernum = num;
     }
 
+    //设置marker颜色
+    //支持种类为1-8
+    public void setLastMarkerType(int type) {
+        lastMarkerType = type;
+    }
+
     public void ResetImage(Bitmap new_image) {
+
         bitmap2D = new_image;
+        sz[0] = bitmap2D.getWidth();
+        sz[1] = bitmap2D.getHeight();
+        sz[2] = Math.max(sz[0], sz[1]);
+        Integer[] num = {sz[0], sz[1]};
+        float max_dim = (float) Collections.max(Arrays.asList(num));
+        Log.v("MyRenderer", Float.toString(max_dim));
+
+        mz[0] = (float) sz[0] / max_dim;
+        mz[1] = (float) sz[1] / max_dim;
+        mz[2] = Math.max(mz[0], mz[1]);
+
         myPattern2D = null;
         ifFileSupport = true;
     }
@@ -798,15 +817,18 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 }
             }
             result = ModeltoVolume(result);
-            System.out.println(result[0]);
-            System.out.println(result[1]);
 
-            //----------------------------
+            System.out.println("result[0] = "+result[0]);
+            System.out.println("result[1] = "+result[1]);
+
+            //-------------------------
             //获取小区域图像
-            int Rx = round(bitmap2D.getWidth() / 100f);
-            int Ry = round(bitmap2D.getHeight() / 100f);
+            R[0] = round(bitmap2D.getWidth() / 100f);
+            R[1] = round(bitmap2D.getHeight() / 100f);
+            System.out.println("R[0] = "+R[0]);
+            System.out.println("R[1] = "+R[1]);
             Bitmap tempBitmap = bitmap2D;
-            bitmap2D = getSmallImageBlock(round(result[0]),round(result[1]),Rx,Ry);
+            bitmap2D = getSmallImageBlock(round(result[0]),round(result[1]),R[0],R[1]);
 
             //haar角点检测
             ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
@@ -822,7 +844,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
             //选取最近的角点
             if (!MarkerList.isEmpty()) {
-                result = getMostPossiblePoint(result, MarkerList,Rx,Ry);
+
+                result = getMostPossiblePoint(result, MarkerList,R);
+
             }
             MarkerList = MarkerListTemp;
             bitmap2D = tempBitmap;
@@ -961,31 +985,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
             Log.v("Marker",Arrays.toString(Marker));
 
-            //获取小区域图像
-            int Rx = round(bitmap2D.getWidth() / 100);
-            int Ry = round(bitmap2D.getHeight() / 100);
-            Bitmap tempBitmap = bitmap2D;
-            bitmap2D = getSmallImageBlock(round(Marker[0]),round(Marker[1]),Rx,Ry);
-
-            //haar角点检测
-            ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
-
-//                    MarkerList;MarkerListTemp =new ArrayList<ImageMarker>();
-//            System.out.println(MarkerList.isEmpty());
-            MarkerList.clear();
-            if (if2dImageLoaded()){
-                corner_detection();
-//                        myGLSurfaceView.requestRender();
-            } else {
-                Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
-            }
-            //选取最近的角点
-            if (!MarkerList.isEmpty()) {
-                Marker = getMostPossiblePoint(Marker, MarkerList,Rx,Ry);
-            }
-            MarkerList = MarkerListTemp;
-            bitmap2D = tempBitmap;
-
 //            float intensity = Sample3d(Marker[0], Marker[1], Marker[2]);
 //            Log.v("intensity",Float.toString(intensity));
 
@@ -1022,23 +1021,22 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     }
 
     //从点集中获取与特定点最近的点
-    private float[] getMostPossiblePoint(float[] Marker, ArrayList<ImageMarker> MarkerList, int Rx, int Ry) {
+    private float[] getMostPossiblePoint(float[] Marker, ArrayList<ImageMarker> MarkerList, int[] R) {
         double mindst = Integer.MAX_VALUE;
         double dst;
         int index = 0;
-        XYZ value;
+        ImageMarker value;
         for (int i = 0; i < MarkerList.size(); i++) {
-            value = MarkerList.get(i).getXYZ();
-            dst = sqrt((pow(value.x,31) + pow(value.y,41)));
+            value = MarkerList.get(i);
+            dst = sqrt((pow(value.x,R[0]+1) + pow(value.y,R[1]+1)));
             if (mindst > dst) {
                 mindst = dst;
                 index = i;
             }
         }
-        value = MarkerList.get(index).getXYZ();
-        Marker[0] += value.x - Rx - 1;
-        Marker[1] += value.y - Rx - 1;
-        Marker[2] = value.z;
+        value = MarkerList.get(index);
+        Marker[0] += value.x - R[0] - 1;
+        Marker[1] += value.y - R[1] - 1;
         return Marker;
     }
 

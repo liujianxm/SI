@@ -7,22 +7,39 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 
 import com.example.si.BuildConfig;
+import com.example.si.IMG_PROCESSING.GSDT.GSDT_Para;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
+import com.example.si.ImageTools;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-public class HoughCircle {
+import static com.example.si.IMG_PROCESSING.CircleDetect.HoughCircle.ImgGrad;
+import static com.example.si.IMG_PROCESSING.GSDT.GSDT_2D.GSDT_Fun;
+
+public class CircleDetect_new {
+    private static final float PI = 3.1415f;
+
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    public static ArrayList<Point> HoughCircle_Fun(Bitmap blur_bitmap) throws Exception {
-        ////////////////////////////////////
+    public static Bitmap CircleDetect_Fun(Bitmap bitmap,Bitmap blur_bitmap) throws Exception {
         ImgObj_Para imobj = new ImgObj_Para(blur_bitmap);//创建图像处理对象
-        ///双边滤波///
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        imobj.colorToGray2D(blur_bitmap);
+/*        ///双边滤波///
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             blur_bitmap = ImageFilter.bilateralFilter(blur_bitmap,9,100,100);
         }
 
+ */
+
+
+        ///////////GSDT部分///////////
+        GSDT_Para p = new GSDT_Para();
+        int[][] binay_img = ImageTools.myOTSU(imobj.gray_img,imobj.height,imobj.width,256);
+        //p.phi = GSDT_Fun(p, imobj.gray_img);
+        p.phi = GSDT_Fun(p, binay_img);//////////////////////////////
+ //       binay_img = imobj.binaryReverse(binay_img);//////////////////
+ //       p.phi_1 = GSDT_Fun(p, binay_img);////////////////////////////
         double dRationHigh=0.88,dRationLow=0.38;///canny边缘检测高低阈值比例
         EdgeDetect_fun.Canny_edge(imobj,blur_bitmap,dRationHigh,dRationLow);//边缘检测
         //System.out.println("Enter here(the Edgedetect has been finished)");
@@ -30,25 +47,23 @@ public class HoughCircle {
             //HoughCircleGradient(imobj,1,217,58,200,28,imobj.circles,imobj.circle_max);
             int max_radius = Math.min(imobj.width/2,imobj.height/2);
             //Log.d("HoughCirle:","最大半径值:"+max_radius);
-            //HoughCircleGradient(imobj,1,max_radius/2,0,max_radius,25,imobj.circles,imobj.circle_max);//参数影响特别大
-            HoughCircleGradient(imobj,1,60,30,40,4,imobj.circles,imobj.circle_max);//参数影响特别大
-            //HoughCircleGradient(imobj,1,25,29,32,33,imobj.circles,imobj.circle_max);//参数影响特别大
+            CircleDetect_Main(imobj,p,1,60,30,40,5,imobj.circles,imobj.circle_max);
+           // CircleDetect_Main(imobj,p,1,max_radius/2,20,max_radius,33,imobj.circles,imobj.circle_max);
             //Log.d("HoughCirle:","输出圆心个数:"+imobj.circles.size());
             //System.out.println("Enter here(the main fun of Houghcircle has been finished)");
         }
-        //return imobj.line;
-        //return imobj.centers_test;
-        return imobj.circles;
+        Log.v("CircleDetect_Fun", "The number of the circles:"+imobj.circles.size());
+        return Point.DrawCircle(imobj.circles,bitmap);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public static void HoughCircleGradient(ImgObj_Para imobj, float dp, float min_dist, int min_radius, int max_radius, int acc_threshold, ArrayList<Point> circles, int circle_max){
+    public static void CircleDetect_Main(ImgObj_Para imobj, GSDT_Para p, float dp, float min_dist, int min_radius, int max_radius, int acc_threshold, ArrayList<Point> circles, int circle_max){
         int img_width = imobj.width;//输入图像宽(bitmap)
         int img_height = imobj.height;//输入图像高
         //为了提高运算精度，定义一个数值的位移量
         final int SHIFT = 10, ONE = 1 << SHIFT, R_THRESH = 30;//R_THRESH是起始值，赋给max_count,后续会被覆盖
         int[][] edges = imobj.tar_img[1];//图像边界信息
-       // Log.v("HoughCircle","edges:"+edges[40][234]);
+        // Log.v("HoughCircle","edges:"+edges[40][234]);
         int[][] accum;//定义累加器矩阵
         //定义排序向量,最大堆优先队列
         PriorityQueue<Point> sort_buf = new PriorityQueue<Point>(new Comparator<Point>() {
@@ -89,11 +104,7 @@ public class HoughCircle {
         int[][] dx = new int[img_height][img_width];					//存放各点水平方向梯度值(edge)
         int[][] dy = new int[img_height][img_width];					//存放各点垂直方向梯度值(edge)
         //int[][] edgeGradXY = new int[img_height][img_width];					//存放各点XY方向的综合梯度值(edge)
-        //ImgGrad(edges,imobj.edgeGradX,imobj.edgeGradY,img_height,img_width);
         ImgGrad(edges,dx,dy,img_height,img_width);
-        //int[][] dx = imobj.edgeGradX;//水平梯度矩阵
-        //int[][] dy = imobj.edgeGradY;//垂直梯度矩阵
-        //int[][] dxy = imobj.edgeGradXY;
         //对边缘图像计算累加和
         //int flag = 0;
         for(x=0;x<img_height;x++){
@@ -124,17 +135,6 @@ public class HoughCircle {
                         if(x2<=0 || y2<=0 || x2>=arows || y2>=acols) break;//change
                         adata[y2*astep+x2]++;//累加器相应位置加一
                         accum[x2][y2]++;
-/*
-                        //================
-                        if(flag>2550&&flag<2700) {
-                            Point poi = new Point();
-                            poi.x = x2;
-                            poi.y = y2;
-                            imobj.line.add(poi);
-                        }
-                        //================
-*/
-
                     }
                     sx = -sx;//位移量设置为反方向
                     sy = -sy;
@@ -151,24 +151,46 @@ public class HoughCircle {
                 nz.add(nz_temp);
             }
         }
-        ////////////////////////
-//        imobj.accum_val = adata;
-        /////////////////////////
+
         nz_count = nz.size();
         Log.v("HoughCircle","nz_count:"+nz_count);
         if(nz_count==0) return;
+
+        ///////////////////////////GSDT//////////////////////////
+        float[] GSDTMinMax = GetMaxMinValue(p.phi);
+//        float[] GSDTMinMax_1 = GetMaxMinValue(p.phi_1);
+        int[] AccumMinMax = GetMaxMinValue(accum);
+        //////////计算加权累积值/////////////
+        for(x=0;x<img_height;x++) {
+            for (y = 0; y < img_width; y++) {
+                p.phi[x][y] = (int) (255*(p.phi[x][y]-GSDTMinMax[0])/(GSDTMinMax[1]-GSDTMinMax[0]));
+//                p.phi_1[x][y] = (int) (255*(p.phi_1[x][y]-GSDTMinMax_1[0])/(GSDTMinMax_1[1]-GSDTMinMax_1[0]));
+               // p.phi[x][y] = normalization(p.phi[x][y],GSDTMinMax[0],GSDTMinMax[1],0,255);
+                accum[x][y] = 255 * (accum[x][y] - AccumMinMax[0]) / (AccumMinMax[1] - AccumMinMax[0]);
+               // accum[x][y] = normalization(accum[x][y],AccumMinMax[0],AccumMinMax[1],0,255);
+                //Log.v("Circle==========","p.phi["+x+"]["+y+"]:"+p.phi[x][y]);
+                //Log.v("Circle=>>>>>>>>>","accum["+x+"]["+y+"]:"+accum[x][y]);
+                p.phi[x][y] = (float) (0.15*p.phi[x][y]+0.85*accum[x][y]);//////////////////
+                //p.phi[x][y] = (float) (0*p.phi_1[x][y]+0.5*p.phi[x][y]+0.5*accum[x][y]);//////////////////
+                //Log.v("Circle=>>>>>>>>>","phi["+x+"]["+y+"]:"+p.phi[x][y]);
+            }
+        }
+
+        int threshold = 100;
         //遍历累加器矩阵找到可能的圆心
         for(x=1;x<arows-1;x++){
             for(y=1;y<acols-1;y++){
                 //if(edges[x][y]==255) continue;///////test
-                int base = y*(arows+2) + x;
-                //如果当前的值大于阈值，并且在4邻域内是最大值，则认为是圆心
-                if((adata[base]>acc_threshold) && (adata[base]>adata[base-1]) && (adata[base]>adata[base+1]) && (adata[base]>adata[base-arows-2]) && (adata[base]>adata[base+arows+2])){
+                //int base = y*(arows+2) + x;
+                int base = (int)p.phi[x][y];
+                //如果当前的值大于阈值，并且在8邻域内是最大值，则认为是圆心
+                if((base>threshold) && (base>p.phi[x-1][y]) && (base>p.phi[x+1][y]) && (base>p.phi[x][y+1]) && (base>p.phi[x][y-1])&&(base>p.phi[x+1][y+1])
+                &&(base>p.phi[x-1][y-1])&&(base>p.phi[x-1][y+1])&&(base>p.phi[x+1][y-1])){
                     //压入圆心序列
                     Point po_temp = new Point();
                     po_temp.x = x;
                     po_temp.y = y;
-                    po_temp.accu_value = accum[x][y];
+                    po_temp.accu_value = (int)p.phi[x][y];
                     sort_buf.add(po_temp);
                     //Log.v("TEST========" ,po_temp.accu_value +",("+po_temp.y+","+po_temp.x+")");
 //                    if(imobj.max_accum<accum[x][y]){
@@ -180,12 +202,6 @@ public class HoughCircle {
                 }
             }
         }
-
-//        Point center = new Point();
-//        center.x = imobj.max_accum_x;
-//       center.y = imobj.max_accum_y;
-//        imobj.centers_test.add(center);
-
         //将可能的圆心点按照累积值降序重新排列，再存入centers
         while(!sort_buf.isEmpty()){
             Point po_sorted = sort_buf.poll();
@@ -217,10 +233,10 @@ public class HoughCircle {
             int max_count = R_THRESH;
             //判断当前的圆心与之前确定作为输出的圆心是否为同一个圆心
             for(j=0;j<circles.size();j++){
-                Point p = circles.get(j);
+                Point po = circles.get(j);
                 //计算当前圆心与提取出的圆心之间的距离，
                 // 如果两者距离小于所设的阈值，则认为两个圆心是同一个圆心，退出循环
-                if((p.x-cx)*(p.x-cx)+(p.y-cy)*(p.y-cy)<min_dist) break;
+                if((po.x-cx)*(po.x-cx)+(po.y-cy)*(po.y-cy)<min_dist) break;
             }
             //如果j < circles->total，说明当前的圆心已被认为与之前确定作为输出的圆心是同一个圆心，
             // 则抛弃该圆心，返回上面的for循环
@@ -250,6 +266,7 @@ public class HoughCircle {
             int nz_count1 = k,start_idx = nz_count1 - 1;
             //nz_count1等于0也就是k等于0，说明当前的圆心没有所对应的圆，
             // 意味着当前圆心不是真正的圆心，所以抛弃该圆心，返回上面的for循环
+            float nz_ratio = 0.0f;//目前圆周上点占完整圆周点的比例值
             if(nz_count1 == 0) continue;
             dist_sum = start_dist = ddata[start_idx];
             for(j=start_idx-2;j>=0;j--){
@@ -258,11 +275,13 @@ public class HoughCircle {
                 //d表示当前半径值，start_dist表示上一次通过下面if语句更新后的半径值，dr表示半径距离分辨率，如果这两个半径距离之差大于距离分辨率，
                 // 说明这两个半径一定不属于同一个圆，而两次满足if语句条件之间的那些半径值可以认为是相等的，即是属于同一个圆
                 if(d-start_dist>dr){
-                    float r_cur = ddata[(int)(j+start_idx)/2];
+                    float r_cur = ddata[(j+start_idx) /2];
+                    float temp_ratio = (start_idx - j)/(r_cur*2*PI);
                     ////////////////////////////
-                    if((start_idx-j)*r_best>=max_count*r_cur||(r_best<1.192092896e-07f && start_idx-j>=max_count)){
+                    if(temp_ratio>=nz_ratio && ((start_idx-j)*r_best>=max_count*r_cur||(r_best<1.192092896e-07f && start_idx-j>=max_count))){
                         r_best = r_cur;//把当前半径值作为最佳半径值
                         max_count = start_idx - j;//更新最大值
+                        nz_ratio = temp_ratio;
                     }
                     //更新半径距离和序号
                     start_dist = d;
@@ -272,93 +291,54 @@ public class HoughCircle {
                 dist_sum += d;//？？？作用
             }
             //最终确定输出
-            if(max_count>acc_threshold && r_best != 0){
+            if(max_count>acc_threshold && r_best!=0){
                 Log.d("HoughCirle:","圆心："+cx +"," + cy);
                 Log.d("HoughCirle:","输出r_best:"+r_best);
                 Point po_circle = new Point();
                 po_circle.x = (int)cx;
                 po_circle.y = (int)cy;
                 po_circle.radius = r_best;
-                Log.d("HoughCirle:","accumulation:"+accum[po_circle.x][po_circle.y]);
+                Log.d("HoughCirle:","accumulation:"+p.phi[po_circle.x][po_circle.y]);
                 circles.add(po_circle);
                 if(circles.size()>=circle_max) return;
             }
         }
 
         Log.d("HoughCirle:","圆心个数:"+circles.size());
-
-    }
-/*
-    public static void templet(int[][] ori_img,int[][] tar_img,int iwidth,int iheight,double[] templet,int tmpsize){
-        int i,j,pos;
-        int row,col;
-        int half_tmpSize = tmpsize/2;
-        double sum;
-        for(i = 0;i<iheight;i++){
-            for(j = 0;j<iwidth;j++){
-                pos = 0;//记录模板位置
-                sum = 0.0;//记录该点与模板加权微分结果
-                for(row=-half_tmpSize;row<=half_tmpSize;row++){
-                    for(col=-half_tmpSize;col<=half_tmpSize;col++){
-                        if((i+row>=0)&&(i+row<iheight)&&(j+col>=0)&&(j+col<iwidth)){
-                            sum += ori_img[i+row][j+col]*templet[pos];
-                        }
-                        pos++;
-                    }//end for(col)
-                }//end for(row)
-                tar_img[i][j] = (int)Math.abs(sum+0.5);
-            }//end for(j)
-        }//end for(i)
+        //return accum;
+        //return p.phi;
     }
 
-    public static void GradSobel(int[][] ori_img,int[][] gradimageX,int[][] gradimageY,int[][] gradimageXY,int iwidth,int iheight){
-        int i,j;
-        double t;
-        double[] tmpX = {-1.0,0.0,1.0,-1.0,0.0,1.0,-1.0,0.0,1.0};
-        double[] tmpY = {1.0,1.0,1.0,0.0,0.0,0.0,-1.0,-1.0,-1.0};
-        //double[] tmpX = {-1.0,0.0,1.0,-2.0,0.0,2.0,-1.0,0.0,1.0};
-        //double[] tmpY = {1.0,2.0,1.0,0.0,0.0,0.0,-1.0,-2.0,-1.0};
-        int tmpSize = 3;
-        //计算水平x方向加权微分，结果存在proimageX中
-        templet(ori_img,gradimageX,iwidth,iheight,tmpX,tmpSize);
-        //计算水平y方向加权微分，结果存在proimageY中
-        templet(ori_img,gradimageY,iwidth,iheight,tmpY,tmpSize);
-        //求各点梯度值
-        for(i=0;i<iheight;i++){
-            for(j=0;j<iwidth;j++){
-                t = Math.sqrt(1.0*gradimageX[i][j]*gradimageX[i][j]+gradimageY[i][j]*gradimageY[i][j])+0.5;
-                //if(t>255.0) t = 255;
-                gradimageXY[i][j] = (int)t;
+   // NORMALIZATION 将数据x归一化到任意区间[ymin,ymax]范围的方法
+    public static int normalization( float x, float xMin, float xMax, int yMin, int yMax){
+        int y = (int) ((yMax-yMin)*(x-xMin)/(xMax-xMin) + yMin);
+        return y;
+    }
+    //获取数组的最大值和最小值,out[0] = Min, out[1] = Max
+    public static float[] GetMaxMinValue(float[][] Array){
+        float[] out= {0.0f,0.0f};
+        int Width = Array.length;
+        int Height = Array[0].length;
+        for(int i=0;i<Width;i++){
+            for(int j=0;j<Height;j++){
+                if(Array[i][j]<out[0]) out[0] = Array[i][j];
+                if(Array[i][j]>out[1]) out[1] = Array[i][j];
             }
         }
+        return out;
     }
-
- */
-
-    public static void ImgGrad(int[][] ori_img,int[][] gradimageX,int[][] gradimageY,int iwidth,int iheight){
-        int[][] gradX = new int[iwidth][iheight];
-        int[][] gradY = new int[iwidth][iheight];
-        for(int i = 1;i<iwidth;i++){
-            for(int j = 1;j<iheight;j++) {
-                gradimageX[i-1][j-1] = Math.abs(ori_img[i][j]-ori_img[i-1][j]);
-                gradX[i][j] = Math.abs(ori_img[i-1][j]-ori_img[i][j]);
-                gradimageY[i-1][j-1] = Math.abs(ori_img[i][j]-ori_img[i][j-1]);
-                gradY[i][j] = Math.abs(ori_img[i][j-1]-ori_img[i][j]);
+    //获取数组的最大值和最小值,out[0] = Min, out[1] = Max
+    public static int[] GetMaxMinValue(int[][] Array){
+        int[] out= {0,0};
+        int Width = Array.length;
+        int Height = Array[0].length;
+        for(int i=0;i<Width;i++){
+            for(int j=0;j<Height;j++){
+                if(Array[i][j]<out[0]) out[0] = Array[i][j];
+                if(Array[i][j]>out[1]) out[1] = Array[i][j];
             }
         }
-        for(int k=0;k<iheight;k++) gradimageX[iwidth-1][k] = 0;
-        for(int t=0;t<iwidth;t++) gradimageY[t][iheight-1] = 0;
-        for(int k1=0;k1<iheight;k1++) gradX[0][k1] = 0;
-        for(int t1=0;t1<iwidth;t1++) gradY[t1][0] = 0;
-        for(int i1 = 0;i1<iwidth;i1++){
-            for(int j1 = 0;j1<iheight;j1++) {
-                if(gradimageX[i1][j1] != gradX[i1][j1]){
-                    gradimageX[i1][j1] = 0;
-                }
-                if(gradimageY[i1][j1] != gradY[i1][j1]){
-                    gradimageY[i1][j1] = 0;
-                }
-            }
-        }
+        return out;
     }
+
 }

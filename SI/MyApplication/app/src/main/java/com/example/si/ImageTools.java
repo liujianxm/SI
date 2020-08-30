@@ -27,11 +27,161 @@ import android.widget.ImageView;
 
 /**
  * Tools for handler picture
- *
- * @author Ryan.Tang
- *
  */
 public final class ImageTools {
+
+    //OTSU二值化
+    public static int[][] myOTSU(int[][] grayimage, int width, int height, int grayscale) {
+        int[] pixelCount = new int[grayscale];
+        float[] pixelPro = new float[grayscale];
+        int i, j, pixelSum = width * height, threshold = 0;
+        float w0, w1, u0tmp, u1tmp, u0, u1, deltaTmp, deltaMax = 0;
+
+        //统计每个灰度级中像素的个数
+        for(i = 0; i < width; i++) {
+            for(j = 0;j < height;j++) {
+                pixelCount[grayimage[i][j]]++;
+            }
+        }
+
+        //计算每个灰度级的像素数目占整幅图像的比例
+        for(i = 0; i < grayscale; i++) {
+            pixelPro[i] = (float)pixelCount[i] / pixelSum;
+        }
+
+        //遍历所有从0到255灰度级的阈值分割条件，测试哪一个的类间方差最大
+        for(i = 0; i < grayscale; i++) {
+            w0 = w1 = u0tmp = u1tmp = u0 = u1 = deltaTmp = 0;
+            for(j = 0; j < grayscale; j++) {
+                if(j <= i) {  //背景部分
+                    w0 += pixelPro[j];
+                    u0tmp += j * pixelPro[j];
+                } else {  //前景部分
+                    w1 += pixelPro[j];
+                    u1tmp += j * pixelPro[j];
+                }
+            }
+            u0 = u0tmp / w0;
+            u1 = u1tmp / w1;
+            deltaTmp = (float)(w0 *w1* Math.pow((u0 - u1), 2)) ;
+            if(deltaTmp > deltaMax) {
+                deltaMax = deltaTmp;
+                threshold = i;
+            }
+        }
+
+        //根据threshold对图像进行二值化
+        for(i = 0; i < width; i++) {
+            for(j = 0; j < height; j++) {
+                if (grayimage[i][j] < threshold) {
+                    grayimage[i][j] = 0;  //忘记哪个是零哪个是一
+                } else {
+                    grayimage[i][j] = grayscale - 1;
+                }
+            }
+        }
+
+        return grayimage;
+
+    }
+
+    //二值图腐蚀运算
+    //structelement形如
+    // {{0,1,0},
+    //  {1,1,1},
+    //  {0,1,0}}
+    public static int[][] myerode(int[][] binaryimage, int[][] structelement, int grayscale) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        int sewidth = structelement.length;
+        int seheight = structelement[0].length;
+        int[][] newbinaryimage = new int[width][height];
+        //newbinaryimage = binaryimage;//浅拷贝
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                newbinaryimage[i][j] = binaryimage[i][j];
+            }
+        }
+
+        for (int i = sewidth / 2; i < width - sewidth / 2; i++) {
+            for (int j = seheight / 2; j < height - seheight / 2; j++) {
+                //结构单元运算
+                if (binaryimage[i][j] == 0) {  //当前像素为黑色
+                    int temp = 0;
+                    for (int a = 0; a < sewidth; a++) {
+                        for (int b = 0; b < seheight; b++) {
+                            if (structelement[a][b] ==0) {
+                                continue;
+                            }
+                            temp += binaryimage[i - sewidth / 2 + a][j -seheight / 2 + b];
+                        }
+                    }
+                    if (temp / (grayscale - 1) > 0) {
+                        newbinaryimage[i][j] = grayscale - 1;
+                    }
+                }
+            }
+        }
+        return newbinaryimage;
+
+    }
+
+    //二值图膨胀运算
+    public static int[][] mydilate(int[][] binaryimage, int[][] structelement, int grayscale) {
+        int width = binaryimage.length;
+        int height = binaryimage[0].length;
+        int sewidth = structelement.length;
+        int seheight = structelement[0].length;
+        int[][] newbinaryimage = new int[width][height];
+        //newbinaryimage = binaryimage;//浅拷贝
+
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                newbinaryimage[i][j] = binaryimage[i][j];
+            }
+        }
+
+        //结构元非零元素个数
+        int senum = 0;
+        for (int i = 0; i < sewidth; i++) {
+            for (int j = 0; j < seheight; j++) {
+                if (structelement[i][j] != 0) {
+                    senum++;
+                }
+            }
+        }
+       // System.out.println("senum = "+senum);
+
+        for (int i = sewidth / 2; i < width - sewidth / 2; i++) {
+            for (int j = seheight / 2; j < height - seheight / 2; j++) {
+                //结构单元运算
+                if (binaryimage[i][j] == (grayscale - 1)) {  //当前像素为白色
+                    int temp = 0;
+                    for (int a = 0; a < sewidth; a++) {
+                        for (int b = 0; b < seheight; b++) {
+                            if (structelement[a][b] == 0) {
+                                continue;
+                            }
+                            if (binaryimage[i - sewidth / 2 + a][j -seheight / 2 + b] == 0) {
+                                temp++;
+                            }
+                        }
+
+                    }
+                   // System.out.println(temp);
+                    if (temp > 0) {
+                        newbinaryimage[i][j] = 0;
+                    }
+                }
+
+            }
+        }
+
+        return newbinaryimage;
+
+    }
+
 
     public static boolean saveBitmap(Bitmap bitmap, String path, String fileName) {
         File file = new File(path);
@@ -53,6 +203,14 @@ public final class ImageTools {
         return true;
     }
 
+    public static void recycle_fun(Bitmap bitmap){
+        // 先判断是否已经回收
+        if(bitmap != null && !bitmap.isRecycled()){
+            // 回收并且置为null
+            bitmap.recycle();
+            bitmap = null;
+        }
+    }
 
     public static Bitmap getBitmapfromimageView(ImageView imView){
         imView.setDrawingCacheEnabled(true);
@@ -72,8 +230,8 @@ public final class ImageTools {
         int w = drawable.getIntrinsicWidth();
         int h = drawable.getIntrinsicHeight();
 
-        Bitmap.Config config = drawable.getOpacity() != PixelFormat.OPAQUE ? Bitmap.Config.ARGB_8888
-                : Bitmap.Config.RGB_565;
+        Config config = drawable.getOpacity() != PixelFormat.OPAQUE ? Config.ARGB_8888
+                : Config.RGB_565;
         Bitmap bitmap = Bitmap.createBitmap(w, h, config);
         Canvas canvas = new Canvas(bitmap);
         drawable.setBounds(0, 0, w, h);

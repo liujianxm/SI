@@ -66,7 +66,7 @@ import com.example.si.IMG_PROCESSING.CircleDetect.Point;
 import com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
-
+import com.lxj.xpopup.interfaces.OnSelectListener;
 
 
 import java.io.File;
@@ -86,6 +86,7 @@ import static java.lang.Math.min;
 
 import static com.example.si.IMG_PROCESSING.GSDT.GSDT_2D.GSDT_Fun;
 import static java.lang.Math.pow;
+import static java.lang.Math.round;
 import static java.lang.Math.sqrt;
 
 import static com.example.si.IMG_PROCESSING.CircleDetect.CircleDetect_new.CircleDetect_Fun;
@@ -93,11 +94,6 @@ import static com.example.si.IMG_PROCESSING.CircleDetect.CircleDetect_new.Circle
 
 public class MainActivity extends AppCompatActivity {
     private Button testbutton;
-    private Button img_switch;
-    private Button select_points;
-    private Button finished;
-    private Button loadImage;
-    private Button Process;
     private ImageView imageView;
     private Dialog dialog_pic;
     private static final int TAKE_PHOTO = 0;
@@ -106,23 +102,28 @@ public class MainActivity extends AppCompatActivity {
     private Uri photoURI;
     private String currentPhotoPath;
     private String currentPicturePath;
-    private Boolean ImageOpened = false;
-    private Boolean ImageOpened2 = false;
     private ScaleGestureDetector mScaleGestureDetector = null;
     private static MyGLSurfaceView myGLSurfaceView;
     private static MyRenderer myrenderer;
     private static Context context;
     private BasePopupView popupView;
+
+    private Button img_switch;
+    private Button select_points;
+    private Button finished;
+    private Button loadImage;
+    private Button Process;
+    private Boolean ImageOpened = false;
+    private Boolean ImageOpened2 = false;
     private boolean isMutiImg = false;
     private boolean isP1 = true;
-    private boolean isSelectPoints = false;
-    private boolean isFinished = false;
     private boolean ifPoint = false;
-    boolean isFinished1 = false;
-    boolean isFinished2 = false;
-    Bitmap img1 = null;
-    Bitmap img2 = null;
-
+    private boolean isFinished1 = false;
+    private boolean isFinished2 = false;
+    private boolean isProcessed = false;
+    private boolean isProcessed2 = false;
+    private Bitmap img1 = null;
+    private Bitmap img2 = null;
     private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
     private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
 
@@ -381,10 +382,12 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
                     case 0:
+                        clear3D_Reconstruction();
                         checkPermission();
                         ImageOpened = true;
                         break;
                     case 1:
+                        clear3D_Reconstruction();
                         PickPhotoFromGallery();
                         ImageOpened = true;
                         break;
@@ -678,7 +681,15 @@ public class MainActivity extends AppCompatActivity {
                         }
                         //System.out.println(showPic.getAbsolutePath());
                         myGLSurfaceView.requestRender();
-
+                        if (isMutiImg) {
+                            if (isP1) {
+                                img1 = myrenderer.GetBitmap();
+                                //System.out.println(img1 == null);
+                            } else {
+                                img2 = myrenderer.GetBitmap();
+                                //System.out.println(img2 == null);
+                            }
+                        }
 
                         //Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStorageDirectory() + "/image.jpg");
 //                        try {
@@ -839,11 +850,11 @@ public class MainActivity extends AppCompatActivity {
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList2);
-
-                    System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
+                    //System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
 
                     if (ImageOpened2) {
                         myrenderer.ResetImage(img2);
+
 
                         myGLSurfaceView.requestRender();
                     } else {
@@ -882,22 +893,18 @@ public class MainActivity extends AppCompatActivity {
         loadImage.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-                clearSelect_points();
-                if (isP1){
-                    Log.v("loadImage", "load Image1");
-                    //functionMenu(isFinished1);
-                    PickPhotoFromGallery();
-                    MarkerList1.clear();
-                    ImageOpened = true;
-
-                } else {
-                    Log.v("loadImage", "load Image2");
-                    //functionMenu(isFinished2);
-                    PickPhotoFromGallery();
-                    MarkerList2.clear();
-                    ImageOpened2 = true;
-
-                }
+//                if (isP1) {
+//                    if (img1 == null) {
+//                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+//                        return;
+//                    }
+//                } else {
+//                    if (img2 == null) {
+//                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+//                        return;
+//                    }
+//                }
+                Loadimage(v);
             }
         });
 
@@ -949,9 +956,11 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 clearSelect_points();
-                int pointnum1 = MarkerList1.size();
-                int pointnum2 = MarkerList2.size();
+
                 if (isP1){
+                    MarkerList1 = myrenderer.getMarkerList();
+                    int pointnum1 = MarkerList1.size();
+                    int pointnum2 = MarkerList2.size();
                     if (pointnum1 > 8) {
                         if (isFinished2) {
                             if (pointnum1 == pointnum2) {
@@ -975,7 +984,10 @@ public class MainActivity extends AppCompatActivity {
 
 
                 } else {
-                    if (pointnum2 > 8) {
+                    MarkerList2 = myrenderer.getMarkerList();
+                    int pointnum1 = MarkerList1.size();
+                    int pointnum2 = MarkerList2.size();
+                    if (pointnum2 > 8 || isProcessed) {
                         if (isFinished1) {
                             if (pointnum1 == pointnum2) {
                                 isFinished2 = true;
@@ -1012,18 +1024,130 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 //图一点集为MarkerList1
                 //图二点集为MarkerList2
-                double[][] Po_list1 = MarkerListToArray(MarkerList1);
-                double[][] Po_list2 = MarkerListToArray(MarkerList2);
-                Convert2DTo3D p = new Convert2DTo3D();
-                p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-                p.Convert2DTo3D_Fun(Po_list1, Po_list2);
-                ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
-                for(ImageMarker im: Point3D){
-                    Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+                if (!isProcessed) {
+                    isProcessed = true;
+                    //计算相机外参矩阵
+//                    double[][] Po_list1 = MarkerListToArray(MarkerList1);
+//                    double[][] Po_list2 = MarkerListToArray(MarkerList2);
+//                    Convert2DTo3D p = new Convert2DTo3D();
+//                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+//                    for(ImageMarker im: Point3D){
+//                        Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//                    }
+
+                    //提示运行完成
+                    Toast.makeText(getContext(), "The external parameter matrix of camera is calculated!", Toast.LENGTH_SHORT).show();
+                    //初始化下一阶段界面按钮
+                    initiateForReconstruction3D();
+                } else {
+                    isProcessed2 = !isProcessed2;
+                    //目标点投射到三维
                 }
+
+
+
+                //改变marker颜色可以直接对相应ImageMarker对象的type属性进行修改，深蓝色为3号，type支持1-8
             }
         });
 
+    }
+
+    /**
+     * function for the Load button
+     *
+     * @param v the button: Laod
+     */
+    private void Loadimage(View v) {
+
+        new XPopup.Builder(this)
+                .atView(v)  // 依附于所点击的View，内部会自动判断在上方或者下方显示
+                .asAttachList(new String[]{"Camera", "Album"},
+//                        new int[]{R.mipmap.ic_launcher, R.mipmap.ic_launcher},
+                        new int[]{},
+                        new OnSelectListener() {
+                            @Override
+                            public void onSelect(int position, String text) {
+//                                if (!(ifPoint || ifPainting || ifDeletingMarker || ifDeletingLine || ifSpliting))
+//                                    ll_top.addView(buttonUndo);033777
+                                switch (text) {
+
+//                                    case "Delete Marker":
+//                                        ifDeletingMarker = !ifDeletingMarker;
+//                                        ifPainting = false;
+//                                        ifPoint = false;
+//                                        ifDeletingLine = false;
+//                                        ifSpliting = false;
+//                                        ifChangeLineType = false;
+//                                        ifChangeMarkerType = false;
+//                                        ifDeletingMultiMarker = false;
+//                                        if (ifDeletingMarker && !ifSwitch) {
+//                                            draw_i.setImageResource(R.drawable.ic_marker_delete);
+//
+//                                            try {
+//                                                ifSwitch = false;
+//                                                ll_bottom.addView(Switch);
+////                                                ll_top.addView(buttonUndo_i, lp_undo_i);
+//                                            }catch (Exception e){
+//                                                e.printStackTrace();
+//                                            }
+//
+//                                        } else {
+//                                            ifSwitch = false;
+//                                            ifDeletingMarker = false;
+//                                            Switch.setText("Pause");
+//                                            Switch.setTextColor(Color.BLACK);
+//                                            draw_i.setImageResource(R.drawable.ic_draw_main);
+//                                            ll_bottom.removeView(Switch);
+////                                            ll_top.removeView(buttonUndo_i);
+//                                        }
+//                                        break;
+
+                                    case "Camera":
+                                        //拍照获取图片
+                                        clearSelect_points();
+                                        if (isP1){
+                                            Log.v("loadImage", "load Image1");
+                                            //functionMenu(isFinished1);
+                                            checkPermission();
+                                            MarkerList1.clear();
+                                            ImageOpened = true;
+
+                                        } else {
+                                            Log.v("loadImage", "load Image2");
+                                            //functionMenu(isFinished2);
+                                            checkPermission();
+                                            MarkerList2.clear();
+                                            ImageOpened2 = true;
+
+                                        }
+                                        break;
+
+                                    case "Album":
+                                        //相册读取图片
+                                        clearSelect_points();
+                                        if (isP1){
+                                            Log.v("loadImage", "load Image1");
+                                            //functionMenu(isFinished1);
+                                            PickPhotoFromGallery();
+                                            MarkerList1.clear();
+                                            ImageOpened = true;
+
+                                        } else {
+                                            Log.v("loadImage", "load Image2");
+                                            //functionMenu(isFinished2);
+                                            PickPhotoFromGallery();
+                                            MarkerList2.clear();
+                                            ImageOpened2 = true;
+
+                                        }
+                                        break;
+
+                                }
+                            }
+                        })
+                .show();
     }
 
     /**
@@ -1050,9 +1174,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private void functionMenu (boolean isfinished) {
+        if (isfinished) {
 
-    private void functionMenu (boolean isfiished) {
-        if (isfiished) {
             loadImage.setVisibility(View.GONE);
             select_points.setVisibility(View.GONE);
             finished.setVisibility(View.GONE);
@@ -1084,6 +1208,84 @@ public class MainActivity extends AppCompatActivity {
         myBitmap.eraseColor(color);
         myrenderer.ResetImage(myBitmap);
         myGLSurfaceView.requestRender();
+    }
+
+//    //将MarkerList类转换为二维数组
+//    private int[][] MarkerListToArray (ArrayList<ImageMarker> markerList) {
+//        int[][] array_markerList = new int[markerList.size()][2];
+//        for (int i = 0; i < markerList.size(); i++) {
+//            array_markerList[i][0] = round(markerList.get(i).x);
+//            array_markerList[i][1] = round(markerList.get(i).y);
+//        }
+//        return array_markerList;
+//    }
+
+    //
+    private void clear3D_Reconstruction() {
+        img1 = null;
+        img2 = null;
+        MarkerList1.clear();
+        MarkerList2.clear();
+        isP1 = false;
+        ifPoint = false;
+        isFinished1 = false;
+        isFinished2 = false;
+        isMutiImg = false;
+        ImageOpened = false;
+        ImageOpened2 = false;
+        isProcessed = false;
+        isProcessed2 = false;
+        img_switch.setVisibility(View.GONE);
+        loadImage.setVisibility(View.GONE);
+        select_points.setVisibility(View.GONE);
+        finished.setVisibility(View.GONE);
+        Process.setVisibility(View.GONE);
+    }
+
+    //private void resetButtonAfterProcess() {}
+
+    private void interestPointsTo3D() {}
+
+    private void initiateForReconstruction3D() {
+        MarkerList1.clear();
+        MarkerList2.clear();
+        myrenderer.ResetMarkerlist(MarkerList1);
+        myrenderer.setMarkerNum(0);
+        myGLSurfaceView.requestRender();
+
+//        if (isP1) {
+//            myrenderer.ResetMarkerlist(MarkerList1);
+//            myrenderer.setMarkerNum(0);
+//            myGLSurfaceView.requestRender();
+//        } else {
+//            myrenderer.ResetMarkerlist(MarkerList2);
+//            myrenderer.setMarkerNum(0);
+//            myGLSurfaceView.requestRender();
+//        }
+
+        isFinished1 = false;
+        isFinished2 = false;
+        System.out.println("++++++++++++++++++++++-------");
+
+//        img_switch.setVisibility(View.VISIBLE);
+//        loadImage.setVisibility(View.VISIBLE);
+//        select_points.setVisibility(View.VISIBLE);
+//        finished.setVisibility(View.VISIBLE);
+//        Process.setVisibility(View.GONE);
+
+        loadImage.setVisibility(View.GONE);
+        img_switch.setVisibility(View.VISIBLE);
+
+        FrameLayout.LayoutParams params_select_points = new FrameLayout.LayoutParams(230, 120);
+        params_select_points.setMargins(300,20,0,0);
+        select_points.setLayoutParams(params_select_points);//
+        select_points.setVisibility(View.VISIBLE);
+
+        FrameLayout.LayoutParams params_finished = new FrameLayout.LayoutParams(230, 120);
+        params_finished.setMargins(550,20,0,0);
+        finished.setLayoutParams(params_finished);//
+        finished.setVisibility(View.VISIBLE);
+
     }
 
     //org.gradle.java.home=C\:\\MySoft\\Java
@@ -1546,10 +1748,10 @@ public class MainActivity extends AppCompatActivity {
                             if (!isZooming) {
                                 if (ifPoint) {
                                     Log.v("actionUp", "Pointinggggggggggg");
-                                    System.out.println(myrenderer.getMarkerList().size());
-                                    System.out.println(myrenderer.getMarkerNum());
-                                    System.out.println("***---***");
-                                    Log.v("actionUping", "Pointinggggggggggg");
+//                                    System.out.println(myrenderer.getMarkerList().size());
+//                                    System.out.println(myrenderer.getMarkerNum());
+//                                    System.out.println("***---***");
+//                                    Log.v("actionUping", "Pointinggggggggggg");
                                     if (isFinished1 || isFinished2) {
                                         if (myrenderer.getMarkerList().size() < myrenderer.getMarkerNum()) {
                                             myrenderer.add2DMarker(normalizedX, normalizedY);

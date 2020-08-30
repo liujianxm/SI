@@ -47,20 +47,22 @@ public class EdgeDetect_fun {
         //=============
         //ImgGrad(imgobj.temp_img,imgobj.edgeGradX,imgobj.edgeGradY,imgobj.height,imgobj.width);
         //imgobj.tar_img[1] = imgobj.edgeGradY;
-/*
-        ///膨胀腐蚀//
-        int[][] str_elem = {{0,1,0}, {1,1,1},{0,1,0}};
-        imgobj.temp_img = ImageTools.myerode(imgobj.temp_img,str_elem,256);
-        imgobj.temp_img = ImageTools.mydilate(imgobj.temp_img,str_elem,256);
 
-        pnGradX = null;
-        pnGradY = null;
-        pnGradXY = null;
-        pnGradTheta = null;
- */
         ////////
         //imgobj.tar_img[1] = imgobj.temp_img;
         imgobj.EdgeImage = imgobj.gray2DToBitmap(imgobj.tar_img,Width,Height);
+
+
+//        imgobj.tar_img[1] = imgobj.binaryReverse(imgobj.tar_img[1]);
+        ///膨胀腐蚀//
+//        int[][] str_elem = {{0,0,1,0,0},{1,1,1,1,1},{1,1,1,1,1},{1,1,1,1,1},{0,0,1,0,0}};
+//        imgobj.tar_img[1] = ImageTools.mydilate(imgobj.tar_img[1],str_elem,256);//膨胀
+//        imgobj.tar_img[1] = ImageTools.myerode(imgobj.tar_img[1],str_elem,256);//腐蚀
+//        imgobj.tar_img[1] = imgobj.binaryReverse(imgobj.tar_img[1]);
+
+        ////////
+        //imgobj.tar_img[1] = imgobj.temp_img;
+       // imgobj.EdgeImage = imgobj.gray2DToBitmap(imgobj.tar_img,Width,Height);
         return true;
     }
 
@@ -168,10 +170,10 @@ public class EdgeDetect_fun {
             if(nHist[k]!=0) nMaxMag = k;
         }
         //System.out.println("nEdgeNb:" + nEdgeNb);
-        //计算梯度比高阈值小的像素数目
+    //计算梯度比高阈值小的像素数目
         nHighCount = (int)(dRationHigh*nEdgeNb + 0.5);
         //System.out.println("nHighCount:"+nHighCount);
-        //计算高阈值nThHigh
+    //计算高阈值nThHigh
         k = 1;
         sum = nHist[1];
         while((k<(nMaxMag-1))&&(sum<nHighCount)){
@@ -186,6 +188,9 @@ public class EdgeDetect_fun {
         if(ThHighLow[1] < 15) {
             ThHighLow[1] = 15;
             if(ThHighLow[0] <= ThHighLow[1]) ThHighLow[0] = ThHighLow[0] + 15;
+        }
+        if(ThHighLow[0] < 25) {
+            ThHighLow[0] = 25;
         }
         System.out.println("nThHigh:" + ThHighLow[0]);
         System.out.println("nThLow:" + ThHighLow[1]);

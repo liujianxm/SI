@@ -80,4 +80,6 @@ public class ImgObj_Para {
         return myBitmap;
     }
 
+
+
 }

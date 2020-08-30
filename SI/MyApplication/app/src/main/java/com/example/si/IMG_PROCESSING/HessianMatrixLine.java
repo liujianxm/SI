@@ -653,7 +653,7 @@ public class HessianMatrixLine {
         //newbitmap = objHM.binaryMergeToColor(newbitmap,bitmap);
         return newbitmap;
     }
-
+/*
     void basicMatrixGetRt(float[][] basicmatrix) {
         double[][] newbasicmatrix = new double[basicmatrix.length][basicmatrix[0].length];
         for (int i = 0; i < basicmatrix.length; i++) {
@@ -685,6 +685,9 @@ public class HessianMatrixLine {
 
 
 
-    }
+    }*/
+
+    //提取条状物基本骨架
+
 
 }
