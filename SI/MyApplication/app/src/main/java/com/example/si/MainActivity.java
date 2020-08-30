@@ -943,6 +943,7 @@ public class MainActivity extends AppCompatActivity {
         finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+                boolean flag = false;
                 if (isP1) {
                     if (img1 == null) {
                         Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
@@ -961,7 +962,14 @@ public class MainActivity extends AppCompatActivity {
                     MarkerList1 = myrenderer.getMarkerList();
                     int pointnum1 = MarkerList1.size();
                     int pointnum2 = MarkerList2.size();
-                    if (pointnum1 > 8) {
+                    System.out.println("flag = "+flag);
+
+                    if (!isProcessed) {
+                        flag = pointnum1 > 8;
+                    } else {
+                        flag = pointnum1 > 0;
+                    }
+                    if (flag) {
                         if (isFinished2) {
                             if (pointnum1 == pointnum2) {
                                 isFinished1 = true;
@@ -979,7 +987,12 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     } else {
-                        Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                        if (!isProcessed) {
+                            Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "Point number must be more than 0!", Toast.LENGTH_SHORT).show();
+                        }
+
                     }
 
 
@@ -987,7 +1000,16 @@ public class MainActivity extends AppCompatActivity {
                     MarkerList2 = myrenderer.getMarkerList();
                     int pointnum1 = MarkerList1.size();
                     int pointnum2 = MarkerList2.size();
-                    if (pointnum2 > 8 || isProcessed) {
+                    System.out.println("flag = "+flag);
+                    System.out.println("MarkerList1.isEmpty() = "+MarkerList1.isEmpty());
+                    System.out.println("MarkerList2.isEmpty() = "+MarkerList2.isEmpty());
+
+                    if (!isProcessed) {
+                        flag = pointnum2 > 8;
+                    } else {
+                        flag = pointnum2 > 0;
+                    }
+                    if (flag) {
                         if (isFinished1) {
                             if (pointnum1 == pointnum2) {
                                 isFinished2 = true;
@@ -1005,7 +1027,11 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     } else {
-                        Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                        if (!isProcessed) {
+                            Toast.makeText(getContext(), "Point number must be more than 8!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "Point number must be more than 0!", Toast.LENGTH_SHORT).show();
+                        }
                     }
 
                 }
@@ -1247,32 +1273,22 @@ public class MainActivity extends AppCompatActivity {
     private void interestPointsTo3D() {}
 
     private void initiateForReconstruction3D() {
+
         MarkerList1.clear();
         MarkerList2.clear();
-        myrenderer.ResetMarkerlist(MarkerList1);
+        if (isP1) {
+            myrenderer.ResetMarkerlist(MarkerList1);
+        } else {
+            myrenderer.ResetMarkerlist(MarkerList2);
+        }
+
         myrenderer.setMarkerNum(0);
         myGLSurfaceView.requestRender();
 
-//        if (isP1) {
-//            myrenderer.ResetMarkerlist(MarkerList1);
-//            myrenderer.setMarkerNum(0);
-//            myGLSurfaceView.requestRender();
-//        } else {
-//            myrenderer.ResetMarkerlist(MarkerList2);
-//            myrenderer.setMarkerNum(0);
-//            myGLSurfaceView.requestRender();
-//        }
-
         isFinished1 = false;
         isFinished2 = false;
-        System.out.println("++++++++++++++++++++++-------");
 
-//        img_switch.setVisibility(View.VISIBLE);
-//        loadImage.setVisibility(View.VISIBLE);
-//        select_points.setVisibility(View.VISIBLE);
-//        finished.setVisibility(View.VISIBLE);
-//        Process.setVisibility(View.GONE);
-
+        Process.setVisibility(View.GONE);
         loadImage.setVisibility(View.GONE);
         img_switch.setVisibility(View.VISIBLE);
 
