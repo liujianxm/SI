@@ -382,12 +382,16 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 switch (which) {
                     case 0:
-                        clear3D_Reconstruction();
+                        if (isMutiImg) {
+                            clear3D_Reconstruction();
+                        }
                         checkPermission();
                         ImageOpened = true;
                         break;
                     case 1:
-                        clear3D_Reconstruction();
+                        if (isMutiImg) {
+                            clear3D_Reconstruction();
+                        }
                         PickPhotoFromGallery();
                         ImageOpened = true;
                         break;
@@ -1053,15 +1057,21 @@ public class MainActivity extends AppCompatActivity {
                 if (!isProcessed) {
                     isProcessed = true;
                     //计算相机外参矩阵
-//                    double[][] Po_list1 = MarkerListToArray(MarkerList1);
-//                    double[][] Po_list2 = MarkerListToArray(MarkerList2);
-//                    Convert2DTo3D p = new Convert2DTo3D();
-//                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2);
-//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+                    double[][] Po_list1 = MarkerListToArray(MarkerList1);
+                    double[][] Po_list2 = MarkerListToArray(MarkerList2);
+                    Convert2DTo3D p = new Convert2DTo3D();
+                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+                    p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
+                    p.Point3DTo2D(p.X_3D, p.P1);
+                    p.Point3DTo2D(p.X_3D, p.P2_Selected);
+                    MarkerList1.addAll(p.Point3Dto2D1);
+                    MarkerList2.addAll(p.Point3Dto2D2);
+
+//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);//保存三维坐标
 //                    for(ImageMarker im: Point3D){
-//                        Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
 //                    }
+                    double[] error = p.CalculateError(p.X_3D,Po_list2);
 
                     //提示运行完成
                     Toast.makeText(getContext(), "The external parameter matrix of camera is calculated!", Toast.LENGTH_SHORT).show();
@@ -1070,6 +1080,12 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     isProcessed2 = !isProcessed2;
                     //目标点投射到三维
+                    if (isP1) {
+                        myrenderer.ResetMarkerlist(MarkerList1);
+                    } else {
+                        myrenderer.ResetMarkerlist(MarkerList2);
+                    }
+                    myGLSurfaceView.requestRender();
                 }
 
 
@@ -1079,6 +1095,49 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+
+    /**
+     * 测试外参矩阵的计算以及恢复三维坐标
+     *
+     */
+
+    private void Convert2Dto3D_Test(){
+        Convert2DTo3D p = new Convert2DTo3D();
+        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
+        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
+        p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
+//        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+//        System.out.println("==============所得三维点坐标==================");
+//        for(ImageMarker im: Point3D){
+//            Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//        }
+//        double[][] Po_list = new double[][]{{326}, {325}, {332}, {334}, {377}, {377}, {388}, {392}, {438}};
+//        Matrix test = matrixReshape(Po_list,3,3);
+//        for (int i=0; i<3; i++){
+//            for (int j=0; j<3; j++){
+//                out.println("第"+i+","+j+"个点的值：" + test.get(i,j));
+//            }
+//        }
+//        Matrix A = new Matrix(new double[][]{{4, -1, 6}, {1, 4, 0}, {5, 6, 1}});
+//        SingularValueDecomposition s = A.svd()
+//        Matrix V = s.getV();
+//        for (int i=0; i<V.getRowDimension(); i++){
+//            for (int j=0; j<V.getRowDimension(); j++){
+//                out.println("第"+i+","+j+"个点的值：" + V.get(i,j));
+//            }
+//        }
+        //double std1 = Objects.requireNonNull(p.getWholeMeanStdValue(new double[][]{{1,2},{3,4}}))[1];
+        //Log.d("Std", String.valueOf(std1));
+        // double[] po1mean = p.AvgValue(new Matrix(new double[][]{{1,2},{3,4}}));
+        // Log.d("Mean", po1mean[0]+","+po1mean[1]);
+        // Matrix a = new Matrix(new double[][]{{1,2},{3,4}}).times(0.5);
+        // Log.d("Times", a.get(0,0)+","+a.get(0,1));
+        double[] error = p.CalculateError(p.X_3D,Po_list2);
+    }
+
+
+
 
     /**
      * function for the Load button
@@ -1176,29 +1235,6 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    /**
-     * 测试外参矩阵的计算以及恢复三维坐标
-     *
-     */
-
-    private void Convert2Dto3D_Test(){
-        Convert2DTo3D p = new Convert2DTo3D();
-        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
-        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
-        p.Convert2DTo3D_Fun(Po_list1, Po_list2);
-        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
-        for(ImageMarker im: Point3D){
-            Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
-        }
-        //double std1 = Objects.requireNonNull(p.getWholeMeanStdValue(new double[][]{{1,2},{3,4}}))[1];
-        //Log.d("Std", String.valueOf(std1));
-        double[] po1mean = p.AvgValue(new Matrix(new double[][]{{1,2},{3,4}}));
-        Log.d("Mean", po1mean[0]+","+po1mean[1]);
-        Matrix a = new Matrix(new double[][]{{1,2},{3,4}}).times(0.5);
-        Log.d("Times", a.get(0,0)+","+a.get(0,1));
-    }
-
 
     private void functionMenu (boolean isfinished) {
         if (isfinished) {
@@ -1274,16 +1310,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void initiateForReconstruction3D() {
 
-        MarkerList1.clear();
-        MarkerList2.clear();
-        if (isP1) {
-            myrenderer.ResetMarkerlist(MarkerList1);
-        } else {
-            myrenderer.ResetMarkerlist(MarkerList2);
-        }
-
-        myrenderer.setMarkerNum(0);
-        myGLSurfaceView.requestRender();
+//        MarkerList1.clear();
+//        MarkerList2.clear();
+//        if (isP1) {
+//            myrenderer.ResetMarkerlist(MarkerList1);
+//        } else {
+//            myrenderer.ResetMarkerlist(MarkerList2);
+//        }
+//
+//        myrenderer.setMarkerNum(0);
+//        myGLSurfaceView.requestRender();
 
         isFinished1 = false;
         isFinished2 = false;

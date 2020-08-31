@@ -823,8 +823,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
             //-------------------------
             //获取小区域图像
-            R[0] = round(bitmap2D.getWidth() / 100f);
-            R[1] = round(bitmap2D.getHeight() / 100f);
+            R[0] = round(bitmap2D.getWidth() / 500f);
+            R[1] = round(bitmap2D.getHeight() / 500f);
             System.out.println("R[0] = "+R[0]);
             System.out.println("R[1] = "+R[1]);
             Bitmap tempBitmap = bitmap2D;
@@ -847,7 +847,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
                 result = getMostPossiblePoint(result, MarkerList,R);
 
-            }
+            }// else {
+//                return null;
+//            }
             MarkerList = MarkerListTemp;
             bitmap2D = tempBitmap;
             //----------------------------
