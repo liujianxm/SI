@@ -823,14 +823,17 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
             //-------------------------
             //获取小区域图像
-            R[0] = round(bitmap2D.getWidth() / 500f);
-            R[1] = round(bitmap2D.getHeight() / 500f);
+
+            R[0] = round(bitmap2D.getWidth() / 100f);
+            R[1] = round(bitmap2D.getHeight() / 100f);
+//            R[0] = 5;
+//            R[1] = 8;
             System.out.println("R[0] = "+R[0]);
             System.out.println("R[1] = "+R[1]);
             Bitmap tempBitmap = bitmap2D;
             bitmap2D = getSmallImageBlock(round(result[0]),round(result[1]),R[0],R[1]);
 
-            //haar角点检测
+            //haaris角点检测
             ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
 
 //                    MarkerList;MarkerListTemp =new ArrayList<ImageMarker>();
@@ -844,12 +847,18 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
             //选取最近的角点
             if (!MarkerList.isEmpty()) {
-
+                //附近存在角点则矫正
                 result = getMostPossiblePoint(result, MarkerList,R);
+                System.out.println("----------------------");
+                System.out.println("result[0] = "+result[0]);
+                System.out.println("result[1] = "+result[1]);
 
-            }// else {
-//                return null;
-//            }
+            } else {
+//                附近无角点则返回坐标（-1，-1）
+                Toast.makeText(getContext(), "There is no corner point at that position!", Toast.LENGTH_SHORT).show();
+                result[0] = -1;
+                result[1] = -1;
+            }
             MarkerList = MarkerListTemp;
             bitmap2D = tempBitmap;
             //----------------------------
@@ -862,18 +871,12 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     public void add2DMarker(float x, float y) throws CloneNotSupportedException {
         float [] new_marker = solve2DMarker(x, y);
-        System.out.println();
-        System.out.println("----------------");
-        System.out.println("markernum = "+markernum);
-        System.out.println("MarkerList.size() = "+MarkerList.size());
-        System.out.println("----------------");
-        System.out.println();
-//        if (MarkerList.size() < markernum) {
-//            new_marker = ;
-//        } else {
-//            Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
+//        System.out.println();
+//        System.out.println("----------------");
+//        System.out.println("markernum = "+markernum);
+//        System.out.println("MarkerList.size() = "+MarkerList.size());
+//        System.out.println("----------------");
+//        System.out.println();
 
         if (new_marker == null){
             System.out.println("outtttt");
@@ -899,8 +902,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //                undoMarkerList.add(tempMarkerList);
 //                undoCurveList.add(tempCurveList);
 //            }
+            //若检测到的坐标为（-1，-1）,则不添加新marker
+            if (!(imageMarker_drawed.x == -1 && imageMarker_drawed.y ==-1)) {
+                MarkerList.add(imageMarker_drawed);
+            }
 
-            MarkerList.add(imageMarker_drawed);
 
 //            if (process.size() < UNDO_LIMIT){
 //                process.add(Operate.DRAWMARKER);
@@ -1001,7 +1007,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
     }
 
-    //获取以（x,y）为中心x轴半径为30，y轴半径为40的图像块区域图像块
+    //获取以（x,y）为中心x轴半径为Rx，y轴半径为Ry的图像块区域图像块
     private Bitmap getSmallImageBlock(int x, int y,int Rx, int Ry) {
         int xfrom = max(0,x-Rx);
         int xto = min(bitmap2D.getWidth(),x+Rx);
@@ -1009,6 +1015,10 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         int yto = min(bitmap2D.getHeight(),y+Ry);
         int xlen = xto - xfrom + 1;
         int ylen = yto - yfrom + 1;
+        System.out.println("xfrom = "+xfrom);
+        System.out.println("xto = "+xto);
+        System.out.println("yfrom = "+yfrom);
+        System.out.println("yto = "+yto);
 
 //        int color;
         Bitmap myBitmap = null;
@@ -1036,7 +1046,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 index = i;
             }
         }
+
         value = MarkerList.get(index);
+        System.out.println("+++++++++++++++++++++");
+        System.out.println("value.x = "+value.x);
+        System.out.println("value.y = "+value.y);
         Marker[0] += value.x - R[0] - 1;
         Marker[1] += value.y - R[1] - 1;
         return Marker;
@@ -1679,11 +1693,13 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         System.out.println("aaaaaaaaa");
         System.out.println(actual_ratio);
         for (int i = 0; i < corner_x_y.length/2; i++) {
-
             if (corner_x[i]==0&&corner_y[i]==0);
             else{
-                ImageMarker imageMarker_drawed = new ImageMarker((float) corner_x[i] * actual_ratio,
-                        (float) corner_y[i] * actual_ratio,
+//                ImageMarker imageMarker_drawed = new ImageMarker((float) corner_x[i] * actual_ratio,
+//                        (float) corner_y[i] * actual_ratio,
+//                        sz[2] / 2);
+                ImageMarker imageMarker_drawed = new ImageMarker((float) corner_x[i],
+                        (float) corner_y[i],
                         sz[2] / 2);
                 imageMarker_drawed.type = lastMarkerType;
 //            System.out.println("set type to 3");

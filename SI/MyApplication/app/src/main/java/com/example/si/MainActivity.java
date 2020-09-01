@@ -341,9 +341,8 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this,"Test Function..",Toast.LENGTH_LONG).show();
                         Log.d("TAG", "Click Test Button");
                         try {
-                         //   Circle_Fun();
+                            Circle_Fun();
                          //  Test_Fun();
-                            Convert2Dto3D_Test();
 
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -720,16 +719,68 @@ public class MainActivity extends AppCompatActivity {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    myGLSurfaceView.requestRender();
+
                     if (isMutiImg) {
-                        if (isP1) {
-                            img1 = myrenderer.GetBitmap();
-                            //System.out.println(img1 == null);
+                        boolean flag1,flag2;
+                        if (isP1 && ImageOpened) {
+                            flag1 = false;
                         } else {
+                            flag1 = ImageOpened;
+                        }
+                        if (isP1 && ImageOpened2) {
+                            flag2 = false;
+                        } else {
+                            flag2 = ImageOpened2;
+                        }
+                        if (flag1 || flag2) {
+                            Bitmap temp1 = myrenderer.GetBitmap();
+                            Bitmap temp2;
+                            if (isP1) {
+                                temp2 = img2;
+                            } else {
+                                temp2 = img1;
+                            }
+                            if ((temp1.getWidth() != temp2.getWidth()) || (temp1.getHeight() != temp2.getHeight())) {
+                                Toast.makeText(getContext(), "Please load images token by the same camera!", Toast.LENGTH_LONG).show();
+                                if (isP1) {
+                                    if (ImageOpened) {
+                                        myrenderer.ResetImage(img1);
+                                        myrenderer.ResetMarkerlist(MarkerList1);
+                                        myGLSurfaceView.requestRender();
+                                    } else {
+                                        clearPreImage();
+                                    }
+
+                                } else {
+                                    if (ImageOpened2) {
+                                        myrenderer.ResetImage(img2);
+                                        myrenderer.ResetMarkerlist(MarkerList2);
+                                        myGLSurfaceView.requestRender();
+                                    } else {
+                                        clearPreImage();
+                                    }
+
+                                }
+
+                                return;
+
+                            }
+                        }
+
+                        if (isP1) {
+                            Log.v("loadImage", "load Image1");
+                            img1 = myrenderer.GetBitmap();
+                            MarkerList1.clear();
+                            ImageOpened = true;
+                        } else {
+                            Log.v("loadImage", "load Image2");
                             img2 = myrenderer.GetBitmap();
-                            //System.out.println(img2 == null);
+                            MarkerList2.clear();
+                            ImageOpened2 = true;
                         }
                     }
+
+
 
 
                     /*
@@ -897,17 +948,7 @@ public class MainActivity extends AppCompatActivity {
         loadImage.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                if (isP1) {
-//                    if (img1 == null) {
-//                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
-//                        return;
-//                    }
-//                } else {
-//                    if (img2 == null) {
-//                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
-//                        return;
-//                    }
-//                }
+                Log.v("load image", "Image loading!");
                 Loadimage(v);
             }
         });
@@ -915,6 +956,17 @@ public class MainActivity extends AppCompatActivity {
         select_points.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //测试解方程函数
+//                double[][] array = {{0,2,7},{1,1,1},{2,5,3}};
+//                double[][] array2 = {{32},{7},{24}};
+//                System.out.println(array[0][0]+","+array[1][0]+","+array[2][0]);
+//                System.out.println(array[0][1]+","+array[1][1]+","+array[2][1]);
+//                System.out.println(array2[0][0]+","+array2[1][0]+","+array2[2][0]);
+//                double[] result = Convert2DTo3D.linerFunction3_3(new Matrix(array),new Matrix(array2));
+//
+//                System.out.println("方程的解为：");
+//                System.out.println(result[0]+","+result[1]+","+result[2]);
+                Log.v("Select_points", "Point selecting!");
                 if (isP1) {
                     if (img1 == null) {
                         Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
@@ -947,6 +999,7 @@ public class MainActivity extends AppCompatActivity {
         finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.v("Finished", "Finish point select of the image!");
                 boolean flag = false;
                 if (isP1) {
                     if (img1 == null) {
@@ -1052,26 +1105,37 @@ public class MainActivity extends AppCompatActivity {
         Process.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.v("Process", "Do 2D to 3D reconstruction!");
                 //图一点集为MarkerList1
                 //图二点集为MarkerList2
                 if (!isProcessed) {
                     isProcessed = true;
-                    //计算相机外参矩阵
                     double[][] Po_list1 = MarkerListToArray(MarkerList1);
                     double[][] Po_list2 = MarkerListToArray(MarkerList2);
                     Convert2DTo3D p = new Convert2DTo3D();
-                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-                    p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
+                    //计算基本矩阵
+
+                    //计算内参矩阵
+//                    Matrix e = p.compute_epipole(F);
+//                    double [] paras = p.cameraSelfCalibrate(F,e,OpticalCenter[0],OpticalCenter[1]); //[f1 f2 a]
+//                    System.out.println(paras[0]+","+paras[1]+","+paras[2]);
+//                    p.intrinsic = p.buildIntrinsicMatrix(paras[0],OpticalCenter[0],OpticalCenter[1])
+
+                    //计算相机外参矩阵
+                    p.OpticalCenter[0] = img1.getWidth()/2;
+                    p.OpticalCenter[1] = img1.getHeight()/2;
+
+//                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
+
+                    p.Convert2DTo3D_Fun(Po_list1, Po_list2);
                     p.Point3DTo2D(p.X_3D, p.P1);
                     p.Point3DTo2D(p.X_3D, p.P2_Selected);
                     MarkerList1.addAll(p.Point3Dto2D1);
                     MarkerList2.addAll(p.Point3Dto2D2);
 
-//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);//保存三维坐标
-//                    for(ImageMarker im: Point3D){
-//                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
-//                    }
                     double[] error = p.CalculateError(p.X_3D,Po_list2);
+
 
                     //提示运行完成
                     Toast.makeText(getContext(), "The external parameter matrix of camera is calculated!", Toast.LENGTH_SHORT).show();
@@ -1095,49 +1159,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
-
-    /**
-     * 测试外参矩阵的计算以及恢复三维坐标
-     *
-     */
-
-    private void Convert2Dto3D_Test(){
-        Convert2DTo3D p = new Convert2DTo3D();
-        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
-        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
-        p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
-//        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
-//        System.out.println("==============所得三维点坐标==================");
-//        for(ImageMarker im: Point3D){
-//            Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
-//        }
-//        double[][] Po_list = new double[][]{{326}, {325}, {332}, {334}, {377}, {377}, {388}, {392}, {438}};
-//        Matrix test = matrixReshape(Po_list,3,3);
-//        for (int i=0; i<3; i++){
-//            for (int j=0; j<3; j++){
-//                out.println("第"+i+","+j+"个点的值：" + test.get(i,j));
-//            }
-//        }
-//        Matrix A = new Matrix(new double[][]{{4, -1, 6}, {1, 4, 0}, {5, 6, 1}});
-//        SingularValueDecomposition s = A.svd()
-//        Matrix V = s.getV();
-//        for (int i=0; i<V.getRowDimension(); i++){
-//            for (int j=0; j<V.getRowDimension(); j++){
-//                out.println("第"+i+","+j+"个点的值：" + V.get(i,j));
-//            }
-//        }
-        //double std1 = Objects.requireNonNull(p.getWholeMeanStdValue(new double[][]{{1,2},{3,4}}))[1];
-        //Log.d("Std", String.valueOf(std1));
-        // double[] po1mean = p.AvgValue(new Matrix(new double[][]{{1,2},{3,4}}));
-        // Log.d("Mean", po1mean[0]+","+po1mean[1]);
-        // Matrix a = new Matrix(new double[][]{{1,2},{3,4}}).times(0.5);
-        // Log.d("Times", a.get(0,0)+","+a.get(0,1));
-        double[] error = p.CalculateError(p.X_3D,Po_list2);
-    }
-
-
-
 
     /**
      * function for the Load button
@@ -1212,21 +1233,8 @@ public class MainActivity extends AppCompatActivity {
                                     case "Album":
                                         //相册读取图片
                                         clearSelect_points();
-                                        if (isP1){
-                                            Log.v("loadImage", "load Image1");
-                                            //functionMenu(isFinished1);
-                                            PickPhotoFromGallery();
-                                            MarkerList1.clear();
-                                            ImageOpened = true;
+                                        PickPhotoFromGallery();
 
-                                        } else {
-                                            Log.v("loadImage", "load Image2");
-                                            //functionMenu(isFinished2);
-                                            PickPhotoFromGallery();
-                                            MarkerList2.clear();
-                                            ImageOpened2 = true;
-
-                                        }
                                         break;
 
                                 }
@@ -1264,9 +1272,9 @@ public class MainActivity extends AppCompatActivity {
         int height  = temp.getHeight();
         Bitmap myBitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
         int color;
-        color = Color.argb(1, 121, 134, 203);
-        //GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);
-        //浅紫
+        color = Color.argb(1, 1, 1, 1);
+        //GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);//浅紫
+
         myBitmap.eraseColor(color);
         myrenderer.ResetImage(myBitmap);
         myGLSurfaceView.requestRender();

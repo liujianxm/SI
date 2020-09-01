@@ -27,63 +27,67 @@ public class Convert2DTo3D {
     public ArrayList<ImageMarker> FeaturePoints3D;//特征点对应的三维点坐标
     public ArrayList<ImageMarker> Point3Dto2D1;//特征点对应的三维点坐标
     public ArrayList<ImageMarker> Point3Dto2D2;//特征点对应的三维点坐标
+    public int[] OpticalCenter = new int[2];
+    public Matrix intrinsic;
 
     /**
-     * 2D-3D主函数
+     * 2D-3D主函数, MobileModel mm
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
      */
-    public void Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2, MobileModel mm){
-/*        ////////////////////此处经过修改！！！！！！！！
-        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
-        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
-        Matrix PoListHo_1 = Po1.times(K.inverse());
-        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
-        Matrix PoListHo_2 = ((K.inverse()).times(Po2.transpose())).transpose();//3*n矩阵
+    public void Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
+        ////////////////////此处经过修改！！！！！！！！
+//        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
+//        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
+//        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
+//        Matrix PoListHo_1 = Po1.times(K.inverse());
+//        Matrix PoListHo_2 = ((K.inverse()).times(Po2.transpose())).transpose();//3*n矩阵
+//        Matrix E = compute_fundamental_normalized(PoListHo_1, PoListHo_2);
+//        ArrayList<Matrix> P2 = ComputePFromEssential(E);//计算第二角度可能的投影矩阵
 
- */
-        ////////////////////////////
-        Matrix PoListHo_1 = CalculateKPoList(PoList_1,this.MyMobileModel);
-        Matrix PoListHo_2 = CalculateKPoList(PoList_2,this.MyMobileModel);//inv(K)*x，矩阵格式为n*3
+//////////////////////////////内参自标定///////////////////////////////////
+        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵齐次坐标
+        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
+        Matrix F = compute_fundamental_normalized(Po1, Po2);
+        //计算内参矩阵
+        Matrix e = compute_epipole(F);  //计算外极点
+
+        out.println("==============本质矩阵F的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + F.get(i,j));
+            }
+        }
+
+        double [] paras = cameraSelfCalibrate(F,e,OpticalCenter[0],OpticalCenter[1]); //[f1 f2 a]
+
+        System.out.println(paras[0]+","+paras[1]+","+paras[2]);
+        intrinsic = buildIntrinsicMatrix(paras[0],OpticalCenter[0],OpticalCenter[1]);
+        ArrayList<Matrix> P2 = ComputePFromEssential(F);//计算第二角度可能的投影矩阵
+///////////////////////////////////////////////////////////////////////
+
+//        Matrix PoListHo_1 = CalculateKPoList(PoList_1,this.MyMobileModel);
+//        Matrix PoListHo_2 = CalculateKPoList(PoList_2,this.MyMobileModel);//inv(K)*x，矩阵格式为n*3
 //        Matrix E = ComputeFundamental(PoListHo_1, PoListHo_2);//计算本质矩阵E
-        Matrix E = compute_fundamental_normalized(PoListHo_1, PoListHo_2);
-//        out.println("==============本质矩阵E的值为==================");
-//        for (int i=0; i<3; i++){
-//            for (int j=0; j<3; j++){
-//                out.println("点("+i+","+j+")的值：" + E.get(i,j));
-//            }
-//        }
-        ArrayList<Matrix> P2 = ComputePFromEssential(E);//计算第二角度可能的投影矩阵
+
+
+
         //Matrix P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}});//3*4矩阵
         //齐次坐标
-        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
-        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
+//        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
+//        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
         //////////////////////////////////
-        Matrix F = compute_fundamental_normalized(Po1, Po2);
+   //     Matrix F = compute_fundamental_normalized(Po1, Po2);
 //        out.println("==============本质矩阵F的值为==================");
 //        for (int i=0; i<3; i++){
 //            for (int j=0; j<3; j++){
 //                out.println("点("+i+","+j+")的值：" + F.get(i,j));
 //            }
 //        }
-        Matrix e = Compute_Epipole(F);
-        out.println("e:"+e.get(0,0)+","+e.get(1,0)+","+e.get(2,0));
         SelectPFrom4P(Po1,Po2,P1,P2);//恢复的三位坐标矩阵
     }
 
     /////////////////////////////////////////////
-
-    /**
-     * 计算极点
-     * @param F 基本矩阵
-     * @return 极点坐标
-     */
-    public Matrix Compute_Epipole(Matrix F){
-        SingularValueDecomposition f = F.svd();
-        Matrix V = f.getV();//
-        Matrix e =  f.getV().getMatrix(0,2,2,2);
-        return e.times(1/e.get(2,0));
-    }
 
 
     /**
@@ -313,10 +317,11 @@ public class Convert2DTo3D {
 
     /**
      * 利用本质矩阵求解投影矩阵，共有四种可能，需要后续排除
-     * @param E 本质矩阵
+     * @param F 本质矩阵
      * @return 四种可能的 P 矩阵 3*4
      */
-    public ArrayList<Matrix> ComputePFromEssential(Matrix E) {
+    public ArrayList<Matrix> ComputePFromEssential(Matrix F) {
+        Matrix E = (intrinsic.transpose()).times(F.times(intrinsic));
         //进行奇异值分解
         SingularValueDecomposition e = E.svd();
         Matrix VeT = e.getV().transpose();
@@ -485,7 +490,7 @@ public class Convert2DTo3D {
         assert Flag != null;
         for (boolean b : Flag) {
             if (b) {
-                out.println(b);
+                //out.println(b);
                 count++;
             }
         }
@@ -505,7 +510,7 @@ public class Convert2DTo3D {
         System.out.println("Flag.length:"+Flag.length);
         System.out.println("count:"+count);
 //        double[][] XSelected = new double[count][4];
-        double[][] XSelected = new double[9][4];//暂改
+        double[][] XSelected = new double[PoList_1.getRowDimension()][4];//暂改
         int pos=0;
         for(int k = 0; k<Flag.length; k++){
 //            if(!Flag[k]){
@@ -623,6 +628,179 @@ public class Convert2DTo3D {
 //    Matrix F_set = (K.inverse().transpose()).times(E_set.times(K.inverse()));
 //    Matrix Po = Point2DToHomogeneous(polist1);//n*3矩阵
 
+    /**
+     * 计算外极点
+     * @param F 基本矩阵
+     * @return 返回外极点坐标，行向量
+     */
+    public Matrix compute_epipole(Matrix F) {
+        SingularValueDecomposition svd = F.svd();
+        Matrix vt = svd.getV();
+        Matrix e = vt.getMatrix(2,2,0,2);
+        e = e.times(1/e.get(0,2));
+        return e;
+    }
+
+    /**
+     * 获取三维向量的叉积矩阵
+     * @param point 三维向量坐标
+     * @return 叉积矩阵
+     */
+    private Matrix getPointCrossMatrix(Matrix point) {
+        int col = point.getColumnDimension();
+        int row = point.getRowDimension();
+        if (col < row) {
+            point = point.transpose();
+        }
+        if (row > 1) {
+            throw new IllegalArgumentException("Input is not a vector!");
+        }
+        double[][] array = new double[3][3];
+        array[0][1] = -point.get(0,2);
+        array[0][2] = point.get(0,1);
+        array[1][0] = point.get(0,2);
+        array[1][2] = -point.get(0,0);
+        array[2][0] = -point.get(0,1);
+        array[2][1] = point.get(0,0);
+        Matrix crossMatrix = new Matrix(array);
+        return crossMatrix;
+    }
+
+    /**
+     * 相机自标定
+     * @param F 相机基本矩阵
+     * @param e 外极点
+     * @param wh 光轴中心宽（图像宽度的一半）
+     * @param hh 光轴中心高（图像高度的一半）
+     * @return  [f1,f2,a]
+     */
+    public double[] cameraSelfCalibrate(Matrix F, Matrix e,int wh, int hh) {
+        double[] result;
+
+        Matrix A = new Matrix(9,3);
+
+        A.set(0,0,(pow(F.get(0,0),2)+pow(F.get(0,1),2)));
+        A.set(0,1,-pow(e.get(0,2),2));
+        A.set(0,2,-e.get(0,1)*(e.get(0,1)-e.get(0,2)*hh));
+
+        A.set(1,0,(F.get(0,0)*F.get(1,0)+F.get(0,1)*F.get(1,1)));
+        A.set(1,2,e.get(0,1)*(e.get(0,0)-e.get(0,2)*wh));
+
+        A.set(2,0,F.get(0,0)*F.get(2,0)+F.get(0,1)*F.get(2,1));
+        A.set(2,1,e.get(0,0)*e.get(0,1));
+        A.set(2,2,-e.get(0,1)*(e.get(0,0)*hh-e.get(0,1)*wh));
+
+        A.set(3,0,F.get(0,0)*F.get(1,0)+F.get(0,1)*F.get(1,1));
+        A.set(3,2,e.get(0,0)*(e.get(0,1)-e.get(0,2)*hh));
+
+        A.set(4,0,pow(F.get(1,0),2)+pow(F.get(1,1),2));
+        A.set(4,1,-pow(e.get(0,2),2));
+        A.set(4,2,-e.get(0,0)*(e.get(0,0)-e.get(0,2)*wh));
+
+        A.set(5,0,F.get(1,0)*F.get(2,0)+F.get(1,1)*F.get(2,1));
+        A.set(5,1,e.get(0,1)*e.get(0,2));
+        A.set(5,2,e.get(0,0)*(e.get(0,0)*hh-e.get(0,1)*wh));
+
+        A.set(6,0,F.get(0,0)*F.get(2,0)+F.get(0,1)*F.get(2,1));
+        A.set(6,1,e.get(0,0)*e.get(0,2));
+
+        A.set(7,0,F.get(1,0)*F.get(2,0)+F.get(1,1)*F.get(2,1));
+        A.set(7,1,e.get(0,1)*e.get(0,2));
+
+        A.set(8,0,pow(F.get(2,0),2)+pow(F.get(2,1),2));
+        A.set(8,1,-pow(e.get(0,0),2)-pow(e.get(0,1),2));
+
+        Matrix b = new Matrix(9,1);
+
+        b.set(0,0,-F.get(0,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
+        b.set(0,0,-F.get(0,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
+        b.set(0,0,-F.get(0,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
+
+        b.set(0,0,-F.get(1,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
+        b.set(0,0,-F.get(1,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
+        b.set(0,0,-F.get(1,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
+
+        b.set(0,0,-F.get(2,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
+        b.set(0,0,-F.get(2,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
+        b.set(0,0,-F.get(2,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
+
+        Matrix ATA = A.transpose().times(A);
+        Matrix ATb = A.transpose().times(b);
+
+        //3*3非齐次线性方程组求解
+        result = linerFunction3_3(ATA,ATb);
+
+        //换算为f1,f2,a
+        result[2] = sqrt(result[2]);
+        result[1] = sqrt(result[1]) / result[2];
+        result[0] = sqrt(result[0]);
+
+        return result;
+    }
+
+    /**
+     * 求解3*3线性方程组
+     * @param ATA 系数矩阵
+     * @param ATb 常量矩阵
+     * @return [x1 x2 x3]
+     */
+    private double [] linerFunction3_3(Matrix ATA, Matrix ATb) {
+        double [] result = new double[3];
+        //3*3非齐次线性方程组求解，列主元法
+        double k;
+        int index;
+        Matrix row;
+        double brow;
+        //化为上三角矩阵
+        for (int i = 0; i < 3; i++) {
+            //找主元
+            k = 0;
+            index = i;
+            for (int j = i; j < 3; j++) {
+                if (abs(k) < abs(ATA.get(j,i))) {
+                    k = ATA.get(j,i);
+                    index = j;
+                }
+            }
+            if (k == 0) {
+                continue;
+            }
+            out.println("k = "+k);
+
+            row = ATA.getMatrix(index,index,0,2).times(1/k);
+            brow = ATb.get(index,0) / k;
+            //主元行交换
+            if (index != i) {
+                ATA.setMatrix(index,index,0,2,ATA.getMatrix(i,i,0,2));
+                ATb.set(index,0,ATb.get(i,0));
+                ATA.setMatrix(i,i,0,2,row);
+                ATb.set(i,0,brow);
+            } else {
+                ATA.setMatrix(index,index,0,2,row);
+                ATb.set(index,0,brow);
+            }
+            //行运算
+            for (int j = i+1; j < 3; j++) {
+                ATb.set(j,0,(ATb.get(j,0)-brow*ATA.get(j,i)));
+                ATA.setMatrix(j,j,0,2,ATA.getMatrix(j,j,0,2).minus(row.times(ATA.get(j,i))));
+            }
+        }
+
+        //解上三角矩阵
+        result[2] = ATb.get(2,0);
+        result[1] = ATb.get(1,0) - ATA.get(1,2) * result[2];
+        result[0] = ATb.get(0,0) - ATA.get(0,2) * result[2] - ATA.get(0,1) * result[1];
+
+        out.println("result[0] = "+result[0]);
+        out.println("result[1] = "+result[1]);
+        out.println("result[2] = "+result[2]);
+        return result;
+    }
+
+    public Matrix buildIntrinsicMatrix(double f, double wh, double hh) {
+        double[][] array = {{f,0,wh},{0,f,hh},{0,0,1}};
+        return new Matrix(array);
+    }
 
 
 
