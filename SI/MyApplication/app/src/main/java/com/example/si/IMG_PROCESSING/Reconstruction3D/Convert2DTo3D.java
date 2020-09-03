@@ -48,7 +48,7 @@ public class Convert2DTo3D {
 //        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
 //        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
 //        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
-//        Matrix PoListHo_1 = Po1.times(K.inverse());
+//        Matrix PoListHo_1 = K.inverse().times(Po1.transpose()).transpose();
 //        Matrix PoListHo_2 = ((K.inverse()).times(Po2.transpose())).transpose();//3*n矩阵
 //        Matrix E = compute_fundamental_normalized(PoListHo_1, PoListHo_2);
 //        ArrayList<Matrix> P2 = ComputePFromEssential(E);//计算第二角度可能的投影矩阵

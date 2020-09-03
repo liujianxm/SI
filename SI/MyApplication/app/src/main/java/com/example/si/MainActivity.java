@@ -123,10 +123,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean isFinished2 = false;
     private boolean isProcessed = false;
     private boolean isProcessed2 = false;
+
+    private Bitmap showimg1 = null;
+    private Bitmap showimg2 = null;
     private Bitmap img1 = null;
     private Bitmap img2 = null;
-    private Bitmap textimg1 = null;
-    private Bitmap textimg2 = null;
     private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
     private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
 
@@ -699,12 +700,12 @@ public class MainActivity extends AppCompatActivity {
                         myGLSurfaceView.requestRender();
                         if (isMutiImg) {
                             if (isP1) {
-                                img1 = myrenderer.GetBitmap();
-                                textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
+                                showimg1 = myrenderer.GetBitmap();
+                                img1 = showimg1.copy(Bitmap.Config.ARGB_8888, true);
                                 //System.out.println(img1 == null);
                             } else {
-                                img2 = myrenderer.GetBitmap();
-                                textimg2 = Bitmap.createBitmap(img2.getWidth(),img2.getHeight(),Bitmap.Config.ARGB_8888);
+                                showimg2 = myrenderer.GetBitmap();
+                                img2 = showimg2.copy(Bitmap.Config.ARGB_8888, true);
                                 //System.out.println(img2 == null);
                             }
                         }
@@ -759,8 +760,7 @@ public class MainActivity extends AppCompatActivity {
                                 Toast.makeText(getContext(), "Please load images token by the same camera!", Toast.LENGTH_LONG).show();
                                 if (isP1) {
                                     if (ImageOpened) {
-                                        myrenderer.ResetImage(img1);
-                                        myrenderer.ResetText_Bitmap(textimg1);
+                                        myrenderer.ResetImage(showimg1,img1);
                                         myrenderer.ResetMarkerlist(MarkerList1);
                                         myGLSurfaceView.requestRender();
                                     } else {
@@ -769,8 +769,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 } else {
                                     if (ImageOpened2) {
-                                        myrenderer.ResetImage(img2);
-                                        myrenderer.ResetText_Bitmap(textimg2);
+                                        myrenderer.ResetImage(showimg2,img2);
                                         myrenderer.ResetMarkerlist(MarkerList2);
                                         myGLSurfaceView.requestRender();
                                     } else {
@@ -786,14 +785,14 @@ public class MainActivity extends AppCompatActivity {
 
                         if (isP1) {
                             Log.v("loadImage", "load Image1");
-                            img1 = myrenderer.GetBitmap();
-                            textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
+                            showimg1 = myrenderer.GetBitmap();
+                            img1 = showimg1.copy(Bitmap.Config.ARGB_8888, true);
                             MarkerList1.clear();
                             ImageOpened = true;
                         } else {
                             Log.v("loadImage", "load Image2");
-                            img2 = myrenderer.GetBitmap();
-                            textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
+                            showimg2 = myrenderer.GetBitmap();
+                            img1 = showimg2.copy(Bitmap.Config.ARGB_8888, true);
                             MarkerList2.clear();
                             ImageOpened2 = true;
                         }
@@ -917,7 +916,8 @@ public class MainActivity extends AppCompatActivity {
                 clearSelect_points();
                 if (isP1){
                     MarkerList1 = myrenderer.getMarkerList();
-                    textimg1 = myrenderer.getText_Bitmap();
+                    img1 = myrenderer.GetBackupBitmap();
+                    showimg1 = myrenderer.GetBitmap();
                     Log.v("img_switch", "Change to P2");
                     isP1 = !isP1;
                     img_switch.setText("P2");
@@ -925,11 +925,10 @@ public class MainActivity extends AppCompatActivity {
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList2);
-                    myrenderer.ResetText_Bitmap(textimg2);
                     //System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
 
                     if (ImageOpened2) {
-                        myrenderer.ResetImage(img2);
+                        myrenderer.ResetImage(showimg2,img2);
 
 
                         myGLSurfaceView.requestRender();
@@ -942,7 +941,8 @@ public class MainActivity extends AppCompatActivity {
 
                 } else {
                     MarkerList2 = myrenderer.getMarkerList();
-                    textimg2 = myrenderer.getText_Bitmap();
+                    img2 = myrenderer.GetBackupBitmap();
+                    showimg2 = myrenderer.GetBitmap();
                     Log.v("img_switch", "Change to P1");
                     isP1 = !isP1;
                     img_switch.setText("P1");
@@ -950,10 +950,9 @@ public class MainActivity extends AppCompatActivity {
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList1);
-                    myrenderer.ResetText_Bitmap(textimg1);
 
                     if (ImageOpened) {
-                        myrenderer.ResetImage(img1);
+                        myrenderer.ResetImage(showimg1,img1);
 
                         myGLSurfaceView.requestRender();
                     } else {

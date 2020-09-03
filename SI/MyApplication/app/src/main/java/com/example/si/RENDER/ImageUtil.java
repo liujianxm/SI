@@ -123,9 +123,23 @@ public class ImageUtil {
         paint.setTextSize(dp2px(context, size));
         Rect bounds = new Rect();
         paint.getTextBounds(text, 0, text.length(), bounds);
+//        return drawTextToBitmap(context, bitmap, text, paint, bounds,
+//                dp2px(context, paddingLeft),
+//                dp2px(context, paddingTop) + bounds.height());
+        if (paddingLeft + 3*bounds.width() > bitmap.getWidth()) {
+            paddingLeft -= 2*bounds.width();
+        } else {
+            paddingLeft += bounds.width();
+        }
+        if (paddingTop + bounds.height() <= bitmap.getHeight()) {
+            paddingTop += bounds.height()/2;
+        }
+        if (paddingTop - bounds.height() < 0) {
+            paddingTop -= bounds.height()/2;
+        }
         return drawTextToBitmap(context, bitmap, text, paint, bounds,
-                dp2px(context, paddingLeft),
-                dp2px(context, paddingTop) + bounds.height());
+                paddingLeft,
+                paddingTop);
     }
 
     /**
@@ -149,6 +163,7 @@ public class ImageUtil {
         return drawTextToBitmap(context, bitmap, text, paint, bounds,
                 bitmap.getWidth() - bounds.width() - dp2px(context, paddingRight),
                 bitmap.getHeight() - dp2px(context, paddingBottom));
+        //
     }
 
     /**

@@ -86,13 +86,14 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     public static final String Time_out = "Myrender_Timeout";
 
     private MyPattern2D myPattern2D;
-    private MyPattern2D textmyPattern2D;
 
     private ByteBuffer imageBuffer;
     private byte[] image2D;
     private Bitmap bitmap2D;
+    private Bitmap bitmap2D_backup;
     private MyDraw myDraw;
     private int mProgram;
+    private boolean bitmap_reset = false;
 
     //    private boolean ispause = false;
     private float angle = 0f;
@@ -204,8 +205,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     //public void switchImg() { multiImgFlag = !multiImgFlag; }
 
     public Bitmap GetBitmap() { return bitmap2D; }
+    public Bitmap GetBackupBitmap() { return bitmap2D_backup; }
     public int getMarkerNum() { return markernum; }
-    public Bitmap getText_Bitmap() { return text_Bitmap; }
 
     public void setMarkerNum(int num) {
         markernum = num;
@@ -221,6 +222,27 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     public void ResetImage(Bitmap new_image) {
 
         bitmap2D = new_image;
+
+        sz[0] = bitmap2D.getWidth();
+        sz[1] = bitmap2D.getHeight();
+        sz[2] = Math.max(sz[0], sz[1]);
+        Integer[] num = {sz[0], sz[1]};
+        float max_dim = (float) Collections.max(Arrays.asList(num));
+        Log.v("MyRenderer", Float.toString(max_dim));
+
+        mz[0] = (float) sz[0] / max_dim;
+        mz[1] = (float) sz[1] / max_dim;
+        mz[2] = Math.max(mz[0], mz[1]);
+
+        myPattern2D = null;
+        ifFileSupport = true;
+    }
+
+    public void ResetImage(Bitmap show_image, Bitmap backup_image) {
+
+        bitmap2D = show_image;
+        bitmap2D_backup = backup_image;
+
         sz[0] = bitmap2D.getWidth();
         sz[1] = bitmap2D.getHeight();
         sz[2] = Math.max(sz[0], sz[1]);
@@ -239,7 +261,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     public void ResetMarkerlist(ArrayList<ImageMarker> markerlist) {
         MarkerList = markerlist;
     }
-    public void ResetText_Bitmap(Bitmap bitmap) { text_Bitmap = bitmap; }
 
     //初次渲染画面
     @Override
@@ -330,45 +351,33 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        GLES30.glClearColor(0.929f, 0.906f, 0.965f, 1.0f);
 
         if (myPattern2D == null && bitmap2D != null) {
+            bitmap2D_backup = bitmap2D;
             myPattern2D = new MyPattern2D(bitmap2D, sz[0], sz[1], mz);
 
 //            ImageUtil imageUtil = new ImageUtil();
 //            Bitmap text_bitmap = Bitmap.createBitmap(bitmap2D.getWidth(),bitmap2D.getHeight(),Bitmap.Config.ARGB_8888);
 //            int color;
-//            color = Color.argb(100, 0, 255, 255);
+//            color = Color.argb(0, 0, 255, 255);
 //            //GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);//浅紫
 //
 //            text_bitmap.eraseColor(color);
-//            Bitmap text_bitmap_new = imageUtil.drawTextToRightBottom(getContext(),text_bitmap, "1111",60, Color.BLUE,50,50);
-//            myPattern2D.set_Bitmap(text_bitmap);
-
+//            Bitmap text_bitmap_new = imageUtil.drawTextToRightBottom(getContext(),bitmap2D, "1111",60, Color.BLUE,50,50);
+//            myPattern2D.set_Bitmap(text_bitmap_new);
+//
 //            if (text_bitmap_new != null){
 //                Log.i("MyRenderer","text_bitmap_new != null");
 //            }
+
             if (myDraw == null)
                 myDraw = new MyDraw();
         }
 
-//        if (textmyPattern2D == null && bitmap2D != null) {
-//
-//
-//            ImageUtil imageUtil = new ImageUtil();
-//            Bitmap text_bitmap = Bitmap.createBitmap(bitmap2D.getWidth(),bitmap2D.getHeight(),Bitmap.Config.ARGB_8888);
-//            int color;
-//            color = Color.argb(100, 0, 255, 255);
-//            //GLES30.glClearColor(121f / 255f, 134f / 255f, 203f / 255f, 1.0f);//浅紫
-//
-//            text_bitmap.eraseColor(color);
-//            Bitmap text_bitmap_new = imageUtil.drawTextToRightBottom(getContext(),text_bitmap, "1111",60, Color.BLUE,50,50);
-//            //myPattern2D.set_Bitmap(text_bitmap);
-//            textmyPattern2D = new MyPattern2D(text_bitmap_new, sz[0], sz[1], mz);
-//
-//            if (text_bitmap_new != null){
-//                Log.i("MyRenderer","text_bitmap_new != null");
-//            }
-//            if (myDraw == null)
-//                myDraw = new MyDraw();
-//        }
+        Log.v("Myrenderer", "bitmap_reset");
+        if (bitmap_reset){
+            myPattern2D.set_Bitmap(bitmap2D);
+            bitmap_reset = false;
+        }
+
 
         //把颜色缓冲区设置为我们预设的颜色
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
@@ -383,7 +392,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 //        if (fileType == FileType.JPG || fileType == FileType.PNG)
         if (myPattern2D != null){
-            myPattern2D.draw(finalMatrix, 0);
+            myPattern2D.draw(finalMatrix);
 //            myPattern2D.draw(finalMatrix, 1);
 
         }
@@ -420,6 +429,29 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 
 
+
+    }
+
+    private void updateShowBitmap() {
+
+        bitmap_reset = true;
+        Log.v("MyRenderer","updateShowBitmap");
+        ImageMarker imageMarker;
+        ImageUtil imageUtil = new ImageUtil();
+        bitmap2D = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,true);
+
+        Log.v("MyRenderer","MarkerList.size() = " + MarkerList.size());
+        for (int index = 0; index < MarkerList.size(); index++) {
+            imageMarker = MarkerList.get(index);
+
+            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+//            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,100,100);
+        }
+
+//        Bitmap bitmap = Bitmap.createBitmap(bitmap2D.getWidth(),bitmap2D.getHeight(),Bitmap.Config.ARGB_8888);
+//        int color = Color.argb(100,255,100,255);
+//
+//        bitmap.eraseColor(color);
 
     }
 
@@ -956,6 +988,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             //若检测到的坐标为（-1，-1）,则不添加新marker
             if (!(imageMarker_drawed.x == -1 && imageMarker_drawed.y ==-1)) {
                 MarkerList.add(imageMarker_drawed);
+                updateShowBitmap();
             }
 
 
@@ -993,6 +1026,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 for (ImageMarker imagemarker:MarkerList) {
                     if (imagemarker.x == result[0] && imagemarker.y == result[1]) {
                         MarkerList.remove(imagemarker);
+                        updateShowBitmap();
                         Log.v("delete2DMarker", "Delete success!!!");
                         break;
                     }

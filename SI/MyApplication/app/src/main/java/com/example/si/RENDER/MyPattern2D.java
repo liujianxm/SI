@@ -59,14 +59,12 @@ public class MyPattern2D {
     private int height;
 
     private Bitmap mBitmap;
-    private Bitmap text_Bitmap = null;
     private final int mProgram;
 
     private float[] mMVPMatrix = new float[16];
     private float[] mz = new float[3];
 
     private int[] texture=new int[1];
-    private int [] textTexture = new int[1];
 
     private FloatBuffer bPos;
     private FloatBuffer bCoord;
@@ -145,7 +143,6 @@ public class MyPattern2D {
     private void createTexture(){
 
         if(mBitmap!=null&&!mBitmap.isRecycled()){
-
             //生成纹理
             GLES30.glGenTextures(1,texture,0);
 
@@ -174,28 +171,14 @@ public class MyPattern2D {
 
     }
 
-    public void draw(float [] vMatrix, int i){
+    public void draw(float [] vMatrix){
         mMVPMatrix = vMatrix;
 
         GLES20.glUseProgram(mProgram);
 
-        GLES30.glDisable(GLES30.GL_DEPTH_TEST);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0); //设置使用的纹理编号
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture[0]); //绑定指定的纹理id
 
-
-        int texture_id;
-        if (i == 0){
-            texture_id = GLES30.GL_TEXTURE0;
-        }else {
-            texture_id = GLES30.GL_TEXTURE1;
-        }
-//        GLES10.glEnable(GL_ALPHA_TEST);
-
-        GLES30.glActiveTexture(texture_id); //设置使用的纹理编号
-        if (i == 0) {
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture[0]); //绑定指定的纹理id
-        } else {
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textTexture[0]); //绑定指定的纹理id
-        }
         int glHMatrix = GLES30.glGetUniformLocation(mProgram, "vMatrix");
         GLES20.glUniformMatrix4fv(glHMatrix,1,false,mMVPMatrix,0);
 
@@ -205,7 +188,7 @@ public class MyPattern2D {
         int glHCoordinate = GLES30.glGetAttribLocation(mProgram, "vCoordinate");
         GLES20.glEnableVertexAttribArray(glHCoordinate);
 
-        GLES20.glUniform1i(GLES30.glGetUniformLocation(mProgram, "vTexture"), i);
+        GLES20.glUniform1i(GLES30.glGetUniformLocation(mProgram, "vTexture"), 0);
 
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
@@ -220,12 +203,6 @@ public class MyPattern2D {
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
 
-//        if (i==0 && text_Bitmap != null){
-//
-//            Log.i("MyPattermn2D","draw the text");
-//            draw(mMVPMatrix, 1);
-//
-//        }
 
     }
 
@@ -253,35 +230,37 @@ public class MyPattern2D {
         bCoord.position(0);
     }
 
+
     public void set_Bitmap(Bitmap text_Bitmap){
-        this.text_Bitmap = text_Bitmap;
 
-        if(this.text_Bitmap!=null && !this.text_Bitmap.isRecycled()){
+        Log.v("MyPattern","set_Bitmap");
 
-            GLES30.glGenTextures(1,textTexture,0);
+        mBitmap = text_Bitmap;
 
-            //生成纹理
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,textTexture[0]);
+//        //生成纹理
+//        GLES30.glGenTextures(1,texture,0);
 
-            //设置缩小过滤为使用纹理中坐标最接近的一个像素的颜色作为需要绘制的像素颜色
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER,GLES30.GL_NEAREST);
+        //生成纹理
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,texture[0]);
 
-            //设置放大过滤为使用纹理中坐标最接近的若干个颜色，通过加权平均算法得到需要绘制的像素颜色
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,GLES30.GL_TEXTURE_MAG_FILTER,GLES30.GL_LINEAR);
+        //设置缩小过滤为使用纹理中坐标最接近的一个像素的颜色作为需要绘制的像素颜色
+        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER,GLES30.GL_NEAREST);
 
-            //设置环绕方向S，截取纹理坐标到[1/2n,1-1/2n]。将导致永远不会与border融合
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S,GLES30.GL_CLAMP_TO_EDGE);
+        //设置放大过滤为使用纹理中坐标最接近的若干个颜色，通过加权平均算法得到需要绘制的像素颜色
+        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,GLES30.GL_TEXTURE_MAG_FILTER,GLES30.GL_LINEAR);
 
-            //设置环绕方向T，截取纹理坐标到[1/2n,1-1/2n]。将导致永远不会与border融合
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T,GLES30.GL_CLAMP_TO_EDGE);
+        //设置环绕方向S，截取纹理坐标到[1/2n,1-1/2n]。将导致永远不会与border融合
+        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S,GLES30.GL_CLAMP_TO_EDGE);
 
-            //根据以上指定的参数，生成一个2D纹理
-            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, this.text_Bitmap, 0);
+        //设置环绕方向T，截取纹理坐标到[1/2n,1-1/2n]。将导致永远不会与border融合
+        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T,GLES30.GL_CLAMP_TO_EDGE);
 
-            GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+        //根据以上指定的参数，生成一个2D纹理
+        GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, mBitmap, 0);
 
-            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,0);
-        }
+        GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,0);
 
     }
 
