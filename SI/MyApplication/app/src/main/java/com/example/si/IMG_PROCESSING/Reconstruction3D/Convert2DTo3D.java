@@ -2,6 +2,11 @@ package com.example.si.IMG_PROCESSING.Reconstruction3D;
 
 
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 
 import java.util.ArrayList;
@@ -29,6 +34,9 @@ public class Convert2DTo3D {
     public ArrayList<ImageMarker> Point3Dto2D2;//特征点对应的三维点坐标
     public int[] OpticalCenter = new int[2];
     public Matrix intrinsic;
+
+    public double[][] EpiLines1_Para = null;
+    public double[][] EpiLines2_Para = null;
 
     /**
      * 2D-3D主函数, MobileModel mm
@@ -65,6 +73,12 @@ public class Convert2DTo3D {
         intrinsic = buildIntrinsicMatrix(paras[0],OpticalCenter[0],OpticalCenter[1]);
         ArrayList<Matrix> P2 = ComputePFromEssential(F);//计算第二角度可能的投影矩阵
 ///////////////////////////////////////////////////////////////////////
+
+        ////////计算极线参数abc/////////
+        ComputeCorrespondEpiLines(Po1, Po2, F);
+        ///////////////////////////////
+
+
 
 //        Matrix PoListHo_1 = CalculateKPoList(PoList_1,this.MyMobileModel);
 //        Matrix PoListHo_2 = CalculateKPoList(PoList_2,this.MyMobileModel);//inv(K)*x，矩阵格式为n*3
@@ -802,6 +816,37 @@ public class Convert2DTo3D {
         return new Matrix(array);
     }
 
+    /**
+     * 计算极线以及画极线
+     * @param PoListHo1
+     * @param PoListHo2
+     * @param F
+     */
+    public void ComputeCorrespondEpiLines(Matrix PoListHo1, Matrix PoListHo2, Matrix F){
+        //this.EpiLines1_Para = new double[PoListHo1.getRowDimension()][3];
+        //this.EpiLines2_Para = new double[PoListHo2.getRowDimension()][3];
+        this.EpiLines2_Para = F.times(PoListHo1.transpose()).getArray();//3*n
+        this.EpiLines1_Para = (F.transpose()).times(PoListHo2.transpose()).getArray();
+    }
 
+    public Bitmap DrawLine(Bitmap ori_img, double[][] PointParam){ //3*n
+        System.out.println("Starting drawing EpiLines.....");
+        Bitmap bitmap_new = ori_img.copy(Bitmap.Config.ARGB_8888,true);
+        Canvas canvas = new Canvas(bitmap_new);
+        Paint p = new Paint();
+        p.setColor(Color.CYAN);//设置画笔颜色
+        p.setAntiAlias(false);//设置画笔为无锯齿
+        p.setStrokeWidth((float) 1.0);//线宽
+        int PoNum = this.EpiLines1_Para[0].length;
+        double[][] StartEnd = new double[PoNum][2];
+        //获取起点和终点坐标
+        for(int i=0; i<PoNum; i++){
+            StartEnd[i][0] = -PointParam[2][i]/PointParam[1][i];
+            StartEnd[i][1] = -(PointParam[2][i]+(ori_img.getWidth()-1)*PointParam[0][i])/PointParam[1][i];
+            System.out.println("Start:(0,"+StartEnd[i][0]+"),End:("+(ori_img.getWidth()-1)+","+StartEnd[i][1]+")");
+            canvas.drawLine(0, (float) StartEnd[i][0],ori_img.getWidth()-1, (float) StartEnd[i][1], p);
+        }
+        return bitmap_new;
+    }
 
 }

@@ -17,7 +17,7 @@ public class HarrisCornerDetector extends GrayFilter {
 
 
     private double sigma = 1;
-    private double window_radius = 5;
+    private double window_radius = 7;
     public HarrisCornerDetector() {
         filter = new GaussianDerivativeFilter();
         harrisMatrixList = new ArrayList<HarrisMatrix>();
@@ -95,8 +95,8 @@ public class HarrisCornerDetector extends GrayFilter {
         int index = 0;
         int m=0;
         double max =0;
-        double k = 0.17;
-        int min_D = 10;
+        double k = 0.06;
+        int min_D = 8;
         min_D = min_D*min_D;
         Vector vet_xy=new Vector();
 

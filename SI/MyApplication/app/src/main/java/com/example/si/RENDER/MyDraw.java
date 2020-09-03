@@ -1,5 +1,7 @@
 package com.example.si.RENDER;
 
+import android.opengl.GLES10;
+import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.util.Log;
 
@@ -7,6 +9,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+
+import static android.opengl.GLES20.GL_UNSIGNED_BYTE;
 
 public class MyDraw {
 
@@ -295,6 +299,8 @@ public class MyDraw {
     public void drawMarker(float[] mvpMatrix, float[] modelMatrix, float x, float y, float z, int type, float radius){
 //        System.out.println("set marker");
 
+
+
         BufferSet_Marker(x, y, z, type, radius);
 
 //        System.out.println("set marker end");
@@ -358,7 +364,9 @@ public class MyDraw {
 
     }
 
+    ////////////////////////////////////////
 
+    ////////////////////////////////////////
 
     public void drawLine(float [] mvpMatrix, ArrayList<Float> lineDrawed, int type){
         float [] line = new float[lineDrawed.size()];

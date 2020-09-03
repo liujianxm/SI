@@ -118,12 +118,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isMutiImg = false;
     private boolean isP1 = true;
     private boolean ifPoint = false;
+    private boolean ifDelete = false;
     private boolean isFinished1 = false;
     private boolean isFinished2 = false;
     private boolean isProcessed = false;
     private boolean isProcessed2 = false;
     private Bitmap img1 = null;
     private Bitmap img2 = null;
+    private Bitmap textimg1 = null;
+    private Bitmap textimg2 = null;
     private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
     private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
 
@@ -281,11 +284,17 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item){
         switch (item.getItemId()){
             case R.id.openimage:
-                Toast.makeText(this, "open an image..", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Choosing work mode...", Toast.LENGTH_LONG).show();
                 openPictureSelectDialog();
                 break;
             case R.id.function:
-                if(!ImageOpened){
+                boolean flag;
+                if (isP1) {
+                    flag = !ImageOpened;
+                } else {
+                    flag = !ImageOpened2;
+                }
+                if(flag){
                     Toast.makeText(this, "Please load an image first!", Toast.LENGTH_LONG).show();
                 }
                 else {
@@ -395,6 +404,10 @@ public class MainActivity extends AppCompatActivity {
                         ImageOpened = true;
                         break;
                     case 2:
+                        if (ImageOpened == true) {
+                            ImageOpened = false;
+                            clearPreImage();
+                        }
                         Reconstruction3D();
                         isMutiImg = true;
                         //ImageOpened = true;
@@ -687,9 +700,11 @@ public class MainActivity extends AppCompatActivity {
                         if (isMutiImg) {
                             if (isP1) {
                                 img1 = myrenderer.GetBitmap();
+                                textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
                                 //System.out.println(img1 == null);
                             } else {
                                 img2 = myrenderer.GetBitmap();
+                                textimg2 = Bitmap.createBitmap(img2.getWidth(),img2.getHeight(),Bitmap.Config.ARGB_8888);
                                 //System.out.println(img2 == null);
                             }
                         }
@@ -745,6 +760,7 @@ public class MainActivity extends AppCompatActivity {
                                 if (isP1) {
                                     if (ImageOpened) {
                                         myrenderer.ResetImage(img1);
+                                        myrenderer.ResetText_Bitmap(textimg1);
                                         myrenderer.ResetMarkerlist(MarkerList1);
                                         myGLSurfaceView.requestRender();
                                     } else {
@@ -754,6 +770,7 @@ public class MainActivity extends AppCompatActivity {
                                 } else {
                                     if (ImageOpened2) {
                                         myrenderer.ResetImage(img2);
+                                        myrenderer.ResetText_Bitmap(textimg2);
                                         myrenderer.ResetMarkerlist(MarkerList2);
                                         myGLSurfaceView.requestRender();
                                     } else {
@@ -770,11 +787,13 @@ public class MainActivity extends AppCompatActivity {
                         if (isP1) {
                             Log.v("loadImage", "load Image1");
                             img1 = myrenderer.GetBitmap();
+                            textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
                             MarkerList1.clear();
                             ImageOpened = true;
                         } else {
                             Log.v("loadImage", "load Image2");
                             img2 = myrenderer.GetBitmap();
+                            textimg1 = Bitmap.createBitmap(img1.getWidth(),img1.getHeight(),Bitmap.Config.ARGB_8888);
                             MarkerList2.clear();
                             ImageOpened2 = true;
                         }
@@ -898,6 +917,7 @@ public class MainActivity extends AppCompatActivity {
                 clearSelect_points();
                 if (isP1){
                     MarkerList1 = myrenderer.getMarkerList();
+                    textimg1 = myrenderer.getText_Bitmap();
                     Log.v("img_switch", "Change to P2");
                     isP1 = !isP1;
                     img_switch.setText("P2");
@@ -905,6 +925,7 @@ public class MainActivity extends AppCompatActivity {
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList2);
+                    myrenderer.ResetText_Bitmap(textimg2);
                     //System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
 
                     if (ImageOpened2) {
@@ -921,6 +942,7 @@ public class MainActivity extends AppCompatActivity {
 
                 } else {
                     MarkerList2 = myrenderer.getMarkerList();
+                    textimg2 = myrenderer.getText_Bitmap();
                     Log.v("img_switch", "Change to P1");
                     isP1 = !isP1;
                     img_switch.setText("P1");
@@ -928,6 +950,7 @@ public class MainActivity extends AppCompatActivity {
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList1);
+                    myrenderer.ResetText_Bitmap(textimg1);
 
                     if (ImageOpened) {
                         myrenderer.ResetImage(img1);
@@ -979,18 +1002,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                ifPoint = !ifPoint;
-
-                if (ifPoint == true) {
-                    select_points.setTextColor(Color.BLUE);
-                } else {
-                    select_points.setTextColor(Color.BLACK);
-                    if (isP1) {
-                        MarkerList1 = myrenderer.getMarkerList();
-                    } else {
-                        MarkerList2 = myrenderer.getMarkerList();
-                    }
-                }
+                SelectPoint(v);
 
             }
         });
@@ -1136,6 +1148,17 @@ public class MainActivity extends AppCompatActivity {
 
                     double[] error = p.CalculateError(p.X_3D,Po_list2);
 
+                    ///////////////测试极线/////////////////////////
+                    img2 = p.DrawLine(img2, p.EpiLines1_Para);
+                    img1 = p.DrawLine(img1, p.EpiLines2_Para);
+                    if (isP1) {
+                        myrenderer.ResetImage(img1);
+                    } else {
+                        myrenderer.ResetImage(img2);
+                    }
+                    myGLSurfaceView.requestRender();
+                    ///////////////////////////////////////////////
+
 
                     //提示运行完成
                     Toast.makeText(getContext(), "The external parameter matrix of camera is calculated!", Toast.LENGTH_SHORT).show();
@@ -1243,6 +1266,76 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * function for the Load button
+     *
+     * @param v the button: Point
+     */
+    private void SelectPoint(View v) {
+
+        new XPopup.Builder(this)
+                .atView(v)  // 依附于所点击的View，内部会自动判断在上方或者下方显示
+                .asAttachList(new String[]{"Refinement add", "General add", "Delete", "Exit point"},
+//                        new int[]{R.mipmap.ic_launcher, R.mipmap.ic_launcher},
+                        new int[]{},
+                        new OnSelectListener() {
+                            @Override
+                            public void onSelect(int position, String text) {
+//                                if (!(ifPoint || ifPainting || ifDeletingMarker || ifDeletingLine || ifSpliting))
+//                                    ll_top.addView(buttonUndo);033777
+                                switch (text) {
+
+                                    case "Refinement add":
+                                        //Harris角点检测矫正
+                                        ifPoint = true;
+                                        ifDelete = false;
+                                        Pointing(true);
+
+                                        break;
+
+                                    case "General add":
+                                        //无矫正
+                                        ifPoint = true;
+                                        ifDelete = false;
+                                        Pointing(false);
+
+                                        break;
+
+                                    case "Delete":
+                                        //删除点
+                                        ifPoint = false;
+                                        ifDelete = true;
+                                        Pointing(false);
+
+                                        break;
+                                    case "Exit point":
+                                        //退出点操作模式
+                                        clearSelect_points();
+
+                                        break;
+
+                                }
+                            }
+                        })
+                .show();
+    }
+
+    private void Pointing(boolean ifRefine) {
+        myrenderer.setIfRefine(ifRefine);
+        System.out.println("here 111112222");
+        if (ifPoint) {
+            select_points.setTextColor(Color.BLUE);
+            System.out.println("here 111112222");
+        }
+        if (ifDelete) {
+            select_points.setTextColor(Color.RED);
+
+        }
+        if (!ifPoint && !ifDelete) {
+            select_points.setTextColor(Color.BLACK);
+        }
+    }
+
 
     private void functionMenu (boolean isfinished) {
         if (isfinished) {
@@ -1259,6 +1352,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void clearSelect_points () {
         ifPoint = false;
+        ifDelete = false;
+        myrenderer.setIfRefine(false);
         select_points.setTextColor(Color.BLACK);
     }
 
@@ -1823,8 +1918,6 @@ public class MainActivity extends AppCompatActivity {
                                         myrenderer.add2DMarker(normalizedX, normalizedY);
                                     }
 
-
-
 /*                                   if (myrenderer.getFileType() == MyRenderer.FileType.JPG || myrenderer.getFileType() == MyRenderer.FileType.PNG) {
 //                                        System.out.println(myrenderer.getMarkerList().size());
 //                                        System.out.println(myrenderer.getMarkerNum());
@@ -1843,8 +1936,25 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                     */
                                     Log.v("actionPointerDown", "(" + X + "," + Y + ")");
+                                    if (isP1) {
+                                        MarkerList1 = myrenderer.getMarkerList();
+                                    } else {
+                                        MarkerList2 = myrenderer.getMarkerList();
+                                    }
                                     requestRender();
 
+                                }
+
+                                if (ifDelete) {
+                                    Log.v("actionUp", "Deleting point!!!");
+                                    myrenderer.delete2DMarker(normalizedX, normalizedY);
+                                    Log.v("actionPointerDown", "(" + X + "," + Y + ")");
+                                    if (isP1) {
+                                        MarkerList1 = myrenderer.getMarkerList();
+                                    } else {
+                                        MarkerList2 = myrenderer.getMarkerList();
+                                    }
+                                    requestRender();
                                 }
                             }
                         } catch (Exception e) {
