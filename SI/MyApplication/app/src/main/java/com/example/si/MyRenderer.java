@@ -94,8 +94,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private MyDraw myDraw;
     private int mProgram;
     private boolean bitmap_reset = false;
+    private boolean isAddPoint = false;
 
-    //    private boolean ispause = false;
     private float angle = 0f;
     private float angleX = 0.0f;
     private float angleY = 0.0f;
@@ -409,7 +409,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         //现画的marker
         if (MarkerList.size() > 0) {
-            float radius = 0.02f;
+            float radius = 0.015f;
             if (fileType == FileType.JPG || fileType == FileType.PNG)
                 radius = 0.01f;
             for (int i = 0; i < MarkerList.size(); i++) {
@@ -441,12 +441,20 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         bitmap2D = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,true);
 
         Log.v("MyRenderer","MarkerList.size() = " + MarkerList.size());
-        for (int index = 0; index < MarkerList.size(); index++) {
-            imageMarker = MarkerList.get(index);
-
-            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+        if (isAddPoint) {
+            //增加marker直接添加即可
+            imageMarker = MarkerList.get(MarkerList.size()-1);
+            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(MarkerList.size()),14, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+            isAddPoint = false;
+        } else {
+            //删除marker需要重新绘制
+            for (int index = 0; index < MarkerList.size(); index++) {
+                imageMarker = MarkerList.get(index);
+                bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),14, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
 //            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,100,100);
+            }
         }
+
 
 //        Bitmap bitmap = Bitmap.createBitmap(bitmap2D.getWidth(),bitmap2D.getHeight(),Bitmap.Config.ARGB_8888);
 //        int color = Color.argb(100,255,100,255);
@@ -953,6 +961,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 
     public void add2DMarker(float x, float y) throws CloneNotSupportedException {
+        isAddPoint = true;
         float [] new_marker = solve2DMarker(x, y);
 //        System.out.println();
 //        System.out.println("----------------");
