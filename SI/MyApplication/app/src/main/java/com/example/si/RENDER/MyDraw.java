@@ -5,6 +5,8 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.util.Log;
 
+import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -37,8 +39,10 @@ public class MyDraw {
     private FloatBuffer normalizeBuffer_marker;
     private FloatBuffer normalizeBuffer_marker_small;
     private FloatBuffer vertexBuffer_line;
+    private FloatBuffer vertexBuffer_circle;
     private FloatBuffer colorBuffer_marker;
     private FloatBuffer colorBuffer_line;
+    private FloatBuffer colorBuffer_circle;
     private FloatBuffer vertexBuffer_points;
 
     float[] normalMatrix = new float[16];
@@ -366,6 +370,34 @@ public class MyDraw {
 
     ////////////////////////////////////////
 
+    public void drawRing2D(float [] mvpMatrix, int type, float x, float y, float z, float radius) {
+
+        float step1 = (float)(2*Math.PI/360);
+        ArrayList<Float> circle = new ArrayList<Float>();
+//        float step2 = 0.2f*radius/20;
+//        for (float j = 0.8f*radius; j < radius; j += step2) {
+//            for (int i = 0; i < 360; i += 3) {
+//                circle.add ((float)(x + radius*Math.cos(i*step1)));
+//                circle.add((float)(y + radius*Math.sin(i*step1)));
+//                circle.add(z);//z为0
+//            }
+//
+//            //画线的方式画圆
+//            drawLine(mvpMatrix, circle, type);
+//        }
+        for (int i = 0; i < 360; i += 3) {
+            circle.add ((float)(x + radius*Math.cos(i*step1)));
+            circle.add((float)(y + radius*Math.sin(i*step1)));
+            circle.add(z);//z为0
+        }
+
+        //画线的方式画圆
+        drawLine(mvpMatrix, circle, type);
+
+    }
+
+    ////////////////////////////////////////
+
     ////////////////////////////////////////
 
     public void drawLine(float [] mvpMatrix, ArrayList<Float> lineDrawed, int type){
@@ -397,9 +429,9 @@ public class MyDraw {
         // Pass the projection and view transformation to the shader
         GLES30.glUniformMatrix4fv(vPMatrixHandle_marker, 1, false, mvpMatrix, 0);
 
-        GLES30.glLineWidth(3);
+        GLES30.glLineWidth(4);
 
-        GLES30.glDrawArrays(GLES30.GL_LINE_STRIP, 0, line.length/3);
+        GLES30.glDrawArrays(GLES30.GL_LINE_LOOP, 0, line.length/3);
 
         //禁止顶点数组的句柄
         GLES30.glDisableVertexAttribArray(0);

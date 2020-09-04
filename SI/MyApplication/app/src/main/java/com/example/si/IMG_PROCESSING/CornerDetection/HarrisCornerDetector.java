@@ -275,6 +275,30 @@ public class HarrisCornerDetector extends GrayFilter {
         }
     }
 
+    public int[] findMax(int width, int height, Bitmap src) {
+        int[] maxPosition = new int[2];
+        int index = 0;
+        double max =0;
+
+        for(int row=0; row<height; row++) {
+            for (int col = 0; col < width; col++) {
+                index = row * width + col;
+//				System.out.println("index");
+//				System.out.println(index);
+                HarrisMatrix hm = harrisMatrixList.get(index);
+                if (hm.getMax() > 0)   //其实求最大值不应该放到这个循环里面来求，但是如果再来一个循环单独求最大值太费时间了，这样的话 也可以很好的起到最大值卡阈值的效果
+                {
+                    if (hm.getMax() > max) {
+                        max = hm.getMax();
+                        maxPosition[0] = row;
+                        maxPosition[1] = col;
+                    }
+                }
+            }
+        }
+        return maxPosition;
+    }
+
     private void calculateGaussianBlur(int width, int height) {
         int index = 0;
         int radius = (int)window_radius;

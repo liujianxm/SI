@@ -417,9 +417,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 ImageMarker imageMarker = MarkerList.get(i);
                 float[] markerModel = VolumetoModel(new float[]{imageMarker.x, imageMarker.y, imageMarker.z});
                 if (imageMarker.radius == 5) {
-                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
+//                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
+                    myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], markerModel[2], 0.01f);
                 } else {
-                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, radius);
+//                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, radius);
+                    myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], markerModel[2],  radius);
                 }
 //                Log.v("onDrawFrame: ", "(" + markerDrawed.get(i) + ", " + markerDrawed.get(i+1) + ", " + markerDrawed.get(i+2) + ")");
 
@@ -438,7 +440,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         Log.v("MyRenderer","updateShowBitmap");
         ImageMarker imageMarker;
         ImageUtil imageUtil = new ImageUtil();
-        bitmap2D = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,true);
 
         Log.v("MyRenderer","MarkerList.size() = " + MarkerList.size());
         if (isAddPoint) {
@@ -448,6 +449,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             isAddPoint = false;
         } else {
             //删除marker需要重新绘制
+            bitmap2D = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,true);
             for (int index = 0; index < MarkerList.size(); index++) {
                 imageMarker = MarkerList.get(index);
                 bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),14, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
