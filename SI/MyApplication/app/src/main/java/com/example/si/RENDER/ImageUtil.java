@@ -7,6 +7,8 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 
+import static java.lang.Math.round;
+
 public class ImageUtil {
 
     /**
@@ -130,21 +132,21 @@ public class ImageUtil {
         if (Integer.parseInt(text) < 10) {
             if (paddingTop - bounds.height() <= 0) {
                 //靠近上边界显示在marker下方
-                paddingTop += 1.5*bounds.height()+4;
-                paddingLeft -= bounds.width()/2+2;
+                paddingTop += round(1.7f*bounds.height());
+                paddingLeft -= round(0.6f*bounds.width());
             } else {
                 if (paddingTop + bounds.height() >= bitmap.getHeight()) {
                     //靠近下边界显示在marker上方
-                    paddingTop -= bounds.height()/2+4;
-                    paddingLeft -= bounds.width()/2+2;
+                    paddingTop -= round(0.7f*bounds.height());
+                    paddingLeft -= round(0.6f*bounds.width());
                 } else {
                     paddingTop += bounds.height()/2;
                     if (paddingLeft + 2*bounds.width() > bitmap.getWidth()) {
                         //靠近右边界显示在左侧
-                        paddingLeft -= 2*bounds.width();
+                        paddingLeft -= round(2.1f*bounds.width());
                     } else {
                         //其他情况都显示在右侧
-                        paddingLeft += bounds.width();
+                        paddingLeft += round(0.9f*bounds.width());
                     }
                 }
             }
@@ -153,21 +155,21 @@ public class ImageUtil {
             //10<num, 10<num<100间距较合适，num>=100间距较大
             if (paddingTop - bounds.height() < 0) {
                 //靠近上边界显示在marker下方
-                paddingTop += 1.5*bounds.height()+4;
-                paddingLeft -= bounds.width()/2+2;
+                paddingTop += round(1.7f*bounds.height());
+                paddingLeft -= round(0.6f*bounds.width());
             } else {
                 if (paddingTop + bounds.height() >= bitmap.getHeight()) {
                     //靠近下边界显示在marker上方
-                    paddingTop -= bounds.height()/2+4;
-                    paddingLeft -= bounds.width()/2+2;
+                    paddingTop -= round(0.7f*bounds.height());
+                    paddingLeft -= round(0.6f*bounds.width());
                 } else {
                     paddingTop += bounds.height()/2;
                     if (paddingLeft + 2*bounds.width() >= bitmap.getWidth()) {
                         //靠近右边界显示在左侧
-                        paddingLeft -= 2*bounds.width()-10;
+                        paddingLeft -= round(1.6f*bounds.width());
                     } else {
                         //其他情况都显示在右侧
-                        paddingLeft += bounds.width()/2;
+                        paddingLeft += round(0.4f*bounds.width());
                     }
                 }
             }

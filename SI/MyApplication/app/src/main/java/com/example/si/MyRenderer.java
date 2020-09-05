@@ -52,6 +52,7 @@ import javax.microedition.khronos.opengles.GL10;
 import static com.example.si.RENDER.BitmapRotation.getBitmapDegree;
 import static com.example.si.RENDER.BitmapRotation.rotateBitmapByDegree;
 import static com.example.si.MainActivity.getContext;
+import static java.lang.Math.ceil;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.pow;
@@ -212,6 +213,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         markernum = num;
     }
     public void setIfRefine(boolean ifrefine) { ifRefine = ifrefine; }
+    public void setIsAddPoint(boolean isaddpoint) { isAddPoint = isaddpoint; }
 
     //设置marker颜色
     //支持种类为1-8
@@ -440,19 +442,21 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         Log.v("MyRenderer","updateShowBitmap");
         ImageMarker imageMarker;
         ImageUtil imageUtil = new ImageUtil();
+        int fontSize = (int) (Math.ceil(Math.max(bitmap2D.getWidth(), bitmap2D.getHeight()) / 1000f)) * 15;
 
         Log.v("MyRenderer","MarkerList.size() = " + MarkerList.size());
         if (isAddPoint) {
             //增加marker直接添加即可
             imageMarker = MarkerList.get(MarkerList.size()-1);
-            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(MarkerList.size()),14, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(MarkerList.size()),fontSize, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
             isAddPoint = false;
         } else {
             //删除marker需要重新绘制
+            Log.v("MyRenderer","Update bitmap for deleting marker.");
             bitmap2D = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,true);
             for (int index = 0; index < MarkerList.size(); index++) {
                 imageMarker = MarkerList.get(index);
-                bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),14, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+                bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),fontSize, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
 //            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,100,100);
             }
         }
@@ -650,9 +654,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         final BitmapFactory.Options options = new BitmapFactory.Options();
         bitmap2D = BitmapFactory.decodeStream(is, null,options);
         //图片过大压缩
-        if(bitmap2D.getWidth()>2000&&bitmap2D.getHeight()>2000){
-            bitmap2D = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / 4, bitmap2D.getHeight() / 4);
-        }
+//        if(bitmap2D.getWidth()>2000&&bitmap2D.getHeight()>2000){
+//            bitmap2D = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / 4, bitmap2D.getHeight() / 4);
+//        }
         if(file.exists()){
             degree = getBitmapDegree(filepath);
         }else{
@@ -913,10 +917,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
             //-------------------------
             if (ifRefine) {
+                int[] resultint = new int[3];
                 //获取小区域图像
 
-                R[0] = round(bitmap2D.getWidth() / 100f);
-                R[1] = round(bitmap2D.getHeight() / 100f);
+                R[0] = round(bitmap2D.getWidth() / 50f);
+                R[1] = round(bitmap2D.getHeight() / 50f);
 
                 System.out.println("R[0] = "+R[0]);
                 System.out.println("R[1] = "+R[1]);
@@ -930,15 +935,18 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //            System.out.println(MarkerList.isEmpty());
                 MarkerList.clear();
                 if (if2dImageLoaded()){
-                    corner_detection();
+                    //返回最大响应点
+                    resultint = corner_detection();
 //                        myGLSurfaceView.requestRender();
                 } else {
                     Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
                 }
                 //选取最近的角点
                 if (!MarkerList.isEmpty()) {
-                    //附近存在角点则矫正
+                    //附近存在角点则矫正为最大响应
                     result = getMostPossiblePoint(result, MarkerList,R);
+//                    result[0] += (float)resultint[0] - R[0];
+//                    result[1] += (float)resultint[1] - R[1];
                     System.out.println("----------------------");
                     System.out.println("result[0] = "+result[0]);
                     System.out.println("result[1] = "+result[1]);
@@ -1017,6 +1025,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     }
 
     public void delete2DMarker(float x, float y) throws CloneNotSupportedException {
+        isAddPoint = false;
         float [] result = new float[3];
         float [] center = solve2DMarker(x, y);
 //        center[0] = x;
@@ -1031,9 +1040,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             System.out.println("center[1] = "+center[1]);
             System.out.println("result[0] = "+result[0]);
             System.out.println("result[1] = "+result[1]);
+            int offset = (int) ceil(max(bitmap2D.getWidth(),bitmap2D.getHeight())/1000) * 80;
+            offset *= offset;
 
-            //最近marker距离小于40，则认为选中该marker,一次只删除一个
-            if ((pow(result[0]-center[0],2)+pow(result[1]-center[1],2)) < 1600) {
+            //最近marker距离小于offset，则认为选中该marker,一次只删除一个
+            if ((pow(result[0]-center[0],2)+pow(result[1]-center[1],2)) < offset) {
                 for (ImageMarker imagemarker:MarkerList) {
                     if (imagemarker.x == result[0] && imagemarker.y == result[1]) {
                         MarkerList.remove(imagemarker);
@@ -1156,7 +1167,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         for (int w = 0; w < xlen; w++) {
             for (int h = 0; h < ylen; h++) {
 //                    color = image.getPixel(w,h);
-                myBitmap.setPixel(w, h, bitmap2D.getPixel(xfrom+w,yfrom+h));
+                myBitmap.setPixel(w, h, bitmap2D_backup.getPixel(xfrom+w,yfrom+h));
             }
         }
         return myBitmap;
@@ -1641,7 +1652,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         return result;
     }
 
-    public void corner_detection() {
+    public int[] corner_detection() {
 
 //        if (bitmap2D == null)
 //            return;
@@ -1826,6 +1837,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         int[] corner_x_y = filter.corner_xy;
         int[] corner_x = new int[corner_x_y.length/2];
         int[] corner_y = new int[corner_x_y.length/2];
+        int[] maxResponseLocation = filter.globalMaxLocation;
 
         System.out.println("++++++++++");
         System.out.println("corner_x_y.length = "+corner_x_y.length);
@@ -1890,6 +1902,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        temp.release();
 
 //        dst.release();
+//        ImageMarker maxloc = new ImageMarker(maxResponseLocation[0],maxResponseLocation[1],maxResponseLocation[2]);
+//        maxloc.type = lastMarkerType;
+        return maxResponseLocation;
 
     }
 

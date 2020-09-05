@@ -14,6 +14,7 @@ public class HarrisCornerDetector extends GrayFilter {
     private List<HarrisMatrix> harrisMatrixList;
     private double lambda = 0.04; // scope : 0.04 ~ 0.06
     public int[] corner_xy;
+    public int[] globalMaxLocation;
 
 
     private double sigma = 1;
@@ -77,6 +78,8 @@ public class HarrisCornerDetector extends GrayFilter {
         // match result to original image and highlight the key points
         corner_xy = matchToImage(width, height, src);
 
+        //search for max response location
+        globalMaxLocation = findMax(width, height, src);
 
         // return result image
 
@@ -96,7 +99,7 @@ public class HarrisCornerDetector extends GrayFilter {
         int m=0;
         double max =0;
         double k = 0.06;
-        int min_D = 8;
+        int min_D = Math.round(Math.max(width,height) / 500f);
         min_D = min_D*min_D;
         Vector vet_xy=new Vector();
 
@@ -202,6 +205,7 @@ public class HarrisCornerDetector extends GrayFilter {
 
         }
 
+        globalMaxLocation = findMax(width, height, src);
         return corner_x_y;
     }
     /***

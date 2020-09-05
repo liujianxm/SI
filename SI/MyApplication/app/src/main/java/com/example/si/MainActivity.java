@@ -697,6 +697,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                         //System.out.println(showPic.getAbsolutePath());
+                        myrenderer.corner_detection();
                         myGLSurfaceView.requestRender();
                         if (isMutiImg) {
                             if (isP1) {
@@ -792,7 +793,7 @@ public class MainActivity extends AppCompatActivity {
                         } else {
                             Log.v("loadImage", "load Image2");
                             showimg2 = myrenderer.GetBitmap();
-                            img1 = showimg2.copy(Bitmap.Config.ARGB_8888, true);
+                            img2 = showimg2.copy(Bitmap.Config.ARGB_8888, true);
                             MarkerList2.clear();
                             ImageOpened2 = true;
                         }
@@ -1123,6 +1124,13 @@ public class MainActivity extends AppCompatActivity {
                     isProcessed = true;
                     double[][] Po_list1 = MarkerListToArray(MarkerList1);
                     double[][] Po_list2 = MarkerListToArray(MarkerList2);
+                    //原点调整为图像中心
+                    for (int i = 0; i < Po_list1.length;i++) {
+                        Po_list1[i][0] -= img1.getWidth()/2f;
+                        Po_list1[i][1] -= img1.getHeight()/2f;
+                        Po_list2[i][0] -= img2.getWidth()/2f;
+                        Po_list2[i][1] -= img2.getHeight()/2f;
+                    }
                     Convert2DTo3D p = new Convert2DTo3D();
                     //计算基本矩阵
 
@@ -1139,7 +1147,13 @@ public class MainActivity extends AppCompatActivity {
 //                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
 //                    p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
 
-                    p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+                    boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+                    if (!flag) {
+                        clear3D_Reconstruction();
+                        clearPreImage();
+                        Reconstruction3D();
+                        return;
+                    }
                     p.Point3DTo2D(p.X_3D, p.P1);
                     p.Point3DTo2D(p.X_3D, p.P2_Selected);
                     MarkerList1.addAll(p.Point3Dto2D1);
@@ -1148,12 +1162,12 @@ public class MainActivity extends AppCompatActivity {
                     double[] error = p.CalculateError(p.X_3D,Po_list2);
 
                     ///////////////测试极线/////////////////////////
-                    img2 = p.DrawLine(img2, p.EpiLines1_Para);
-                    img1 = p.DrawLine(img1, p.EpiLines2_Para);
+                    showimg2 = p.DrawLine(showimg2, p.EpiLines1_Para);
+                    showimg1 = p.DrawLine(showimg1, p.EpiLines2_Para);
                     if (isP1) {
-                        myrenderer.ResetImage(img1);
+                        myrenderer.ResetImage(showimg1);
                     } else {
-                        myrenderer.ResetImage(img2);
+                        myrenderer.ResetImage(showimg2);
                     }
                     myGLSurfaceView.requestRender();
                     ///////////////////////////////////////////////
@@ -1908,12 +1922,14 @@ public class MainActivity extends AppCompatActivity {
 //                                    Log.v("actionUping", "Pointinggggggggggg");
                                     if (isFinished1 || isFinished2) {
                                         if (myrenderer.getMarkerList().size() < myrenderer.getMarkerNum()) {
+                                            myrenderer.setIsAddPoint(true);
                                             myrenderer.add2DMarker(normalizedX, normalizedY);
                                         } else {
                                             clearSelect_points();
                                             Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
                                         }
                                     } else {
+                                        myrenderer.setIsAddPoint(true);
                                         myrenderer.add2DMarker(normalizedX, normalizedY);
                                     }
 
@@ -1946,6 +1962,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 if (ifDelete) {
                                     Log.v("actionUp", "Deleting point!!!");
+                                    myrenderer.setIsAddPoint(false);
                                     myrenderer.delete2DMarker(normalizedX, normalizedY);
                                     Log.v("actionPointerDown", "(" + X + "," + Y + ")");
                                     if (isP1) {

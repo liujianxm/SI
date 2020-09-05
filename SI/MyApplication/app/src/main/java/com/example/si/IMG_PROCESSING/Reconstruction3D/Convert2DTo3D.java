@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.util.Log;
 
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 
@@ -43,7 +44,7 @@ public class Convert2DTo3D {
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
      */
-    public void Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
+    public boolean Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
         ////////////////////此处经过修改！！！！！！！！
 //        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
 //        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
@@ -67,10 +68,14 @@ public class Convert2DTo3D {
             }
         }
 
-        double [] paras = cameraSelfCalibrate(F,e,OpticalCenter[0],OpticalCenter[1]); //[f1 f2 a]
+        double [] paras = cameraSelfCalibrate(F,e); //[f1 f2 a]
+        if (paras == null) {
+            Log.v("Convert2DTo3D", "Given points can not get initiate matrix!");
+            return false;
+        }
 
         System.out.println(paras[0]+","+paras[1]+","+paras[2]);
-        intrinsic = buildIntrinsicMatrix(paras[0],OpticalCenter[0],OpticalCenter[1]);
+        intrinsic = buildIntrinsicMatrix(paras[0]);
         ArrayList<Matrix> P2 = ComputePFromEssential(F);//计算第二角度可能的投影矩阵
 ///////////////////////////////////////////////////////////////////////
 
@@ -99,6 +104,7 @@ public class Convert2DTo3D {
 //            }
 //        }
         SelectPFrom4P(Po1,Po2,P1,P2);//恢复的三位坐标矩阵
+        return true;
     }
 
     /////////////////////////////////////////////
@@ -546,7 +552,7 @@ public class Convert2DTo3D {
         Matrix PoList_1 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_1));//n*3矩阵
         Matrix PoList_2 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_2));//n*3矩阵
         Matrix X = TriangulateMultiPoints(PoList_1,PoList_2,P1,this.P2_Selected);//4*n
-        FeaturePoints3D = ArrayToMarkerList(X.transpose());
+        FeaturePoints3D = ArrayToMarkerList(X.transpose(),OpticalCenter[0],OpticalCenter[1]);
         return FeaturePoints3D;
     }
 
@@ -601,9 +607,9 @@ public class Convert2DTo3D {
 
     public void Point3DTo2D(Matrix Point3D, Matrix P){
         Matrix Point2DComputed1 = P1.times(Point3D.transpose()).transpose();//n*3
-        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1);
+        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1, OpticalCenter[0], OpticalCenter[1]);
         Matrix Point2DComputed2 = P2_Selected.times(Point3D.transpose()).transpose();//n*3
-        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2);
+        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2, OpticalCenter[0], OpticalCenter[1]);
     }
 
 
@@ -626,10 +632,10 @@ public class Convert2DTo3D {
      * @param X
      * @return
      */
-    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X) {
+    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int offset_x, int offset_y) {
         ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
         for (int i = 0; i < X.getRowDimension(); i++) {
-            ImageMarker temp = new ImageMarker((float) X.get(i,0),(float) X.get(i,1),(float) X.get(i,2));
+            ImageMarker temp = new ImageMarker((float) X.get(i,0)+offset_x,(float) X.get(i,1)+offset_y,(float) X.get(i,2));
             temp.type = 2;
             MarkerList.add(temp);
         }
@@ -684,65 +690,66 @@ public class Convert2DTo3D {
      * 相机自标定
      * @param F 相机基本矩阵
      * @param e 外极点
-     * @param wh 光轴中心宽（图像宽度的一半）
-     * @param hh 光轴中心高（图像高度的一半）
      * @return  [f1,f2,a]
      */
-    public double[] cameraSelfCalibrate(Matrix F, Matrix e,int wh, int hh) {
+    public double[] cameraSelfCalibrate(Matrix F, Matrix e) {
         double[] result;
 
-        Matrix A = new Matrix(9,3);
+        Matrix A = new Matrix(6,3);
 
         A.set(0,0,(pow(F.get(0,0),2)+pow(F.get(0,1),2)));
         A.set(0,1,-pow(e.get(0,2),2));
-        A.set(0,2,-e.get(0,1)*(e.get(0,1)-e.get(0,2)*hh));
+        A.set(0,2,-pow(e.get(0,1),2));
 
         A.set(1,0,(F.get(0,0)*F.get(1,0)+F.get(0,1)*F.get(1,1)));
-        A.set(1,2,e.get(0,1)*(e.get(0,0)-e.get(0,2)*wh));
+        A.set(1,2,e.get(0,0)*e.get(0,1));
 
         A.set(2,0,F.get(0,0)*F.get(2,0)+F.get(0,1)*F.get(2,1));
-        A.set(2,1,e.get(0,0)*e.get(0,1));
-        A.set(2,2,-e.get(0,1)*(e.get(0,0)*hh-e.get(0,1)*wh));
+        A.set(2,1,e.get(0,0)*e.get(0,2));
 
-        A.set(3,0,F.get(0,0)*F.get(1,0)+F.get(0,1)*F.get(1,1));
-        A.set(3,2,e.get(0,0)*(e.get(0,1)-e.get(0,2)*hh));
+        A.set(3,0,pow(F.get(1,0),2)+pow(F.get(1,1),2));
+        A.set(3,1,-pow(e.get(0,2),2));
+        A.set(3,2,-pow(e.get(0,0),2));
 
-        A.set(4,0,pow(F.get(1,0),2)+pow(F.get(1,1),2));
-        A.set(4,1,-pow(e.get(0,2),2));
-        A.set(4,2,-e.get(0,0)*(e.get(0,0)-e.get(0,2)*wh));
+        A.set(4,0,F.get(1,0)*F.get(2,0)+F.get(1,1)*F.get(2,1));
+        A.set(4,1,e.get(0,1)*e.get(0,2));
 
-        A.set(5,0,F.get(1,0)*F.get(2,0)+F.get(1,1)*F.get(2,1));
-        A.set(5,1,e.get(0,1)*e.get(0,2));
-        A.set(5,2,e.get(0,0)*(e.get(0,0)*hh-e.get(0,1)*wh));
+        A.set(5,0,pow(F.get(2,0),2)+pow(F.get(2,1),2));
+        A.set(5,1,-pow(e.get(0,0),2)-pow(e.get(0,1),2));
 
-        A.set(6,0,F.get(0,0)*F.get(2,0)+F.get(0,1)*F.get(2,1));
-        A.set(6,1,e.get(0,0)*e.get(0,2));
+        Matrix b = new Matrix(6,1);
 
-        A.set(7,0,F.get(1,0)*F.get(2,0)+F.get(1,1)*F.get(2,1));
-        A.set(7,1,e.get(0,1)*e.get(0,2));
+        b.set(0,0,-pow(F.get(0,2),2));
+        b.set(1,0,-F.get(0,2)*F.get(1,2));
+        b.set(2,0,-F.get(0,2)*F.get(2,2));
 
-        A.set(8,0,pow(F.get(2,0),2)+pow(F.get(2,1),2));
-        A.set(8,1,-pow(e.get(0,0),2)-pow(e.get(0,1),2));
+        b.set(3,0,-pow(F.get(1,2),2));
+        b.set(4,0,-F.get(1,2)*F.get(2,2));
+        b.set(5,0,-pow(F.get(2,2),2));
 
-        Matrix b = new Matrix(9,1);
+        //SVD解方程组
+//        Matrix Ab = new Matrix(6,4);
+//        Ab.setMatrix(0,5,0,2,A);
+//        Ab.setMatrix(0,5,3,3,b);
+//
+//        SingularValueDecomposition q = Ab.svd();
+//        Matrix VT = q.getV();
+//        result = VT.getMatrix(0,2,3,3).times(1/VT.get(3,3)).getColumnPackedCopy();
+//        out.println("SVD解方程");
+//        out.println("result[0] = "+result[0]);
+//        out.println("result[1] = "+result[1]);
+//        out.println("result[2] = "+result[2]);
 
-        b.set(0,0,-F.get(0,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
-        b.set(0,0,-F.get(0,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
-        b.set(0,0,-F.get(0,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
-
-        b.set(0,0,-F.get(1,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
-        b.set(0,0,-F.get(1,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
-        b.set(0,0,-F.get(1,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
-
-        b.set(0,0,-F.get(2,2)*(F.get(0,2)+F.get(0,1)*hh+F.get(0,0)*wh));
-        b.set(0,0,-F.get(2,2)*(F.get(1,2)+F.get(1,1)*hh+F.get(1,0)*wh));
-        b.set(0,0,-F.get(2,2)*(F.get(2,2)+F.get(2,1)*hh+F.get(2,0)*wh));
 
         Matrix ATA = A.transpose().times(A);
         Matrix ATb = A.transpose().times(b);
 
         //3*3非齐次线性方程组求解
         result = linerFunction3_3(ATA,ATb);
+
+        if (result[0] < 0 || result[1] < 0 || result[2] <0) {
+            return null;
+        }
 
         //换算为f1,f2,a
         result[2] = sqrt(result[2]);
@@ -811,8 +818,8 @@ public class Convert2DTo3D {
         return result;
     }
 
-    public Matrix buildIntrinsicMatrix(double f, double wh, double hh) {
-        double[][] array = {{f,0,wh},{0,f,hh},{0,0,1}};
+    public Matrix buildIntrinsicMatrix(double f) {
+        double[][] array = {{f,0,0},{0,f,0},{0,0,1}};
         return new Matrix(array);
     }
 
@@ -836,15 +843,23 @@ public class Convert2DTo3D {
         Paint p = new Paint();
         p.setColor(Color.CYAN);//设置画笔颜色
         p.setAntiAlias(false);//设置画笔为无锯齿
-        p.setStrokeWidth((float) 1.0);//线宽
+        p.setStrokeWidth((float) 5.0);//线宽
         int PoNum = this.EpiLines1_Para[0].length;
         double[][] StartEnd = new double[PoNum][2];
         //获取起点和终点坐标
         for(int i=0; i<PoNum; i++){
-            StartEnd[i][0] = -PointParam[2][i]/PointParam[1][i];
+//            double left = -0.5*ori_img.getWidth();
+//            double right = 0.5*ori_img.getWidth();
+//            StartEnd[i][0] = -(PointParam[2][i]+left*PointParam[0][i])/PointParam[1][i];
+//            StartEnd[i][1] = -(PointParam[2][i]+right*PointParam[0][i])/PointParam[1][i];
+//            System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
+//            canvas.drawLine((float) (-0.5*ori_img.getWidth()), (float) StartEnd[i][0], (float) (0.5*ori_img.getWidth()), (float) StartEnd[i][1], p);
+           // double left = -0.5*ori_img.getWidth();
+          //  double right = 0.5*ori_img.getWidth();
+            StartEnd[i][0] = -(PointParam[2][i])/PointParam[1][i];
             StartEnd[i][1] = -(PointParam[2][i]+(ori_img.getWidth()-1)*PointParam[0][i])/PointParam[1][i];
-            System.out.println("Start:(0,"+StartEnd[i][0]+"),End:("+(ori_img.getWidth()-1)+","+StartEnd[i][1]+")");
-            canvas.drawLine(0, (float) StartEnd[i][0],ori_img.getWidth()-1, (float) StartEnd[i][1], p);
+            //System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
+            canvas.drawLine((float) 0, (float) StartEnd[i][0], (float) (ori_img.getWidth()-1), (float) StartEnd[i][1], p);
         }
         return bitmap_new;
     }
