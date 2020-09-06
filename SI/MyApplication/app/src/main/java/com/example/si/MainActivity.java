@@ -63,6 +63,7 @@ import com.example.si.IMG_PROCESSING.HessianMatrixLine;
 import com.example.si.IMG_PROCESSING.CircleDetect.ImageFilter;
 import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.CircleDetect.Point;
+import com.example.si.IMG_PROCESSING.Reconstruction3D.BundleAdjustment_LM;
 import com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
@@ -1132,20 +1133,21 @@ public class MainActivity extends AppCompatActivity {
                         Po_list2[i][1] -= img2.getHeight()/2f;
                     }
                     Convert2DTo3D p = new Convert2DTo3D();
-                    //计算基本矩阵
+                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+ //                   p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
+                    p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+                    p.Point3DTo2D(p.X_3D);
+                    MarkerList1.addAll(p.Point3Dto2D1);
+                    MarkerList2.addAll(p.Point3Dto2D2);
+                    myGLSurfaceView.requestRender();
 
-                    //计算内参矩阵
-//                    Matrix e = p.compute_epipole(F);
-//                    double [] paras = p.cameraSelfCalibrate(F,e,OpticalCenter[0],OpticalCenter[1]); //[f1 f2 a]
-//                    System.out.println(paras[0]+","+paras[1]+","+paras[2]);
-//                    p.intrinsic = p.buildIntrinsicMatrix(paras[0],OpticalCenter[0],OpticalCenter[1])
+//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);//保存三维坐标
+//                    for(ImageMarker im: Point3D){
+//                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//                    }
+                    p.CalculateError(p.X_3D, Po_list1, Po_list2);
 
-                    //计算相机外参矩阵
-                    p.OpticalCenter[0] = img1.getWidth()/2;
-                    p.OpticalCenter[1] = img1.getHeight()/2;
 
-//                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
 
                     boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2);
                     if (!flag) {
@@ -1154,16 +1156,21 @@ public class MainActivity extends AppCompatActivity {
                         Reconstruction3D();
                         return;
                     }
-                    p.Point3DTo2D(p.X_3D, p.P1);
-                    p.Point3DTo2D(p.X_3D, p.P2_Selected);
-                    MarkerList1.addAll(p.Point3Dto2D1);
-                    MarkerList2.addAll(p.Point3Dto2D2);
+//                    p.Point3DTo2D(p.X_3D);
+//                    p.Point3DTo2D(p.X_3D);
+//                    MarkerList1.addAll(p.Point3Dto2D1);
+//                    MarkerList2.addAll(p.Point3Dto2D2);
 
-                    double[] error = p.CalculateError(p.X_3D,Po_list2);
+                    //测试LM算法/////////////////////////////
+//                    Matrix Po1 = p.Point2DToHomogeneous(Po_list1);//n*3矩阵
+//                    Matrix Po2 = p.Point2DToHomogeneous(Po_list2);//n*3矩阵
+//                    BundleAdjustment_LM.LM(Po1, Po2, p.P1, p.P2_Selected, p.X_3D);
 
                     ///////////////测试极线/////////////////////////
-                    showimg2 = p.DrawLine(showimg2, p.EpiLines1_Para);
-                    showimg1 = p.DrawLine(showimg1, p.EpiLines2_Para);
+
+                    showimg2 = p.DrawLine(showimg2, p.EpiLines2_Para);
+                    showimg1 = p.DrawLine(showimg1, p.EpiLines1_Para);
+
                     if (isP1) {
                         myrenderer.ResetImage(showimg1);
                     } else {
@@ -1197,6 +1204,52 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+<<<<<<< Updated upstream
+=======
+     * 测试外参矩阵的计算以及恢复三维坐标
+     *
+     */
+
+    private void Convert2Dto3D_Test(){
+        Convert2DTo3D p = new Convert2DTo3D();
+        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
+        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
+//        p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+//        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
+//        System.out.println("==============所得三维点坐标==================");
+//        for(ImageMarker im: Point3D){
+//            Log.d("TestConvert3DFun","x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//        }
+//        double[][] Po_list = new double[][]{{326}, {325}, {332}, {334}, {377}, {377}, {388}, {392}, {438}};
+//        Matrix test = matrixReshape(Po_list,3,3);
+//        for (int i=0; i<3; i++){
+//            for (int j=0; j<3; j++){
+//                out.println("第"+i+","+j+"个点的值：" + test.get(i,j));
+//            }
+//        }
+//        Matrix A = new Matrix(new double[][]{{4, -1, 6}, {1, 4, 0}, {5, 6, 1}});
+//        SingularValueDecomposition s = A.svd()
+//        Matrix V = s.getV();
+//        for (int i=0; i<V.getRowDimension(); i++){
+//            for (int j=0; j<V.getRowDimension(); j++){
+//                out.println("第"+i+","+j+"个点的值：" + V.get(i,j));
+//            }
+//        }
+        //double std1 = Objects.requireNonNull(p.getWholeMeanStdValue(new double[][]{{1,2},{3,4}}))[1];
+        //Log.d("Std", String.valueOf(std1));
+        // double[] po1mean = p.AvgValue(new Matrix(new double[][]{{1,2},{3,4}}));
+        // Log.d("Mean", po1mean[0]+","+po1mean[1]);
+        // Matrix a = new Matrix(new double[][]{{1,2},{3,4}}).times(0.5);
+        // Log.d("Times", a.get(0,0)+","+a.get(0,1));
+        //double[] error = p.CalculateError(p.X_3D,Po_list2);
+    }
+
+
+
+
+    /**
+>>>>>>> Stashed changes
      * function for the Load button
      *
      * @param v the button: Laod

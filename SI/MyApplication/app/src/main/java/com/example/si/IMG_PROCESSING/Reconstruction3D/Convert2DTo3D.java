@@ -35,15 +35,18 @@ public class Convert2DTo3D {
     public ArrayList<ImageMarker> Point3Dto2D2;//特征点对应的三维点坐标
     public int[] OpticalCenter = new int[2];
     public Matrix intrinsic;
-
     public double[][] EpiLines1_Para = null;
     public double[][] EpiLines2_Para = null;
+    ArrayList<Double> distance1;
+    ArrayList<Double> distance2;
+
 
     /**
      * 2D-3D主函数, MobileModel mm
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
      */
+
     public boolean Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
         ////////////////////此处经过修改！！！！！！！！
 //        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
@@ -57,6 +60,10 @@ public class Convert2DTo3D {
 //////////////////////////////内参自标定///////////////////////////////////
         Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵齐次坐标
         Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
+//        Matrix PoListHo_1 = K.inverse().times(Po1.transpose()).transpose();
+//        Matrix PoListHo_2 = ((K.inverse()).times(Po2.transpose())).transpose();//3*n矩阵
+//        Matrix E = compute_fundamental_normalized(PoListHo_1, PoListHo_2);
+//        ArrayList<Matrix> P2 = ComputePFromEssential(E);//计算第二角度可能的投影矩阵
         Matrix F = compute_fundamental_normalized(Po1, Po2);
         //计算内参矩阵
         Matrix e = compute_epipole(F);  //计算外极点
@@ -96,13 +103,22 @@ public class Convert2DTo3D {
 //        Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
 //        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
         //////////////////////////////////
-   //     Matrix F = compute_fundamental_normalized(Po1, Po2);
-//        out.println("==============本质矩阵F的值为==================");
-//        for (int i=0; i<3; i++){
-//            for (int j=0; j<3; j++){
-//                out.println("点("+i+","+j+")的值：" + F.get(i,j));
-//            }
-//        }
+
+/*        Matrix F = ComputeFundamental(Po1, Po2);//没有归一化的F
+        out.println("==============无归一化F的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + F.get(i,j));
+            }
+        }*/
+/*        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵**************************
+        Matrix F1 = K.transpose().inverse().times(E.times(K.inverse()));
+        out.println("==============测试矩阵F的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + F1.get(i,j)/F1.get(2,2));
+            }
+        }*/
         SelectPFrom4P(Po1,Po2,P1,P2);//恢复的三位坐标矩阵
         return true;
     }
@@ -120,6 +136,7 @@ public class Convert2DTo3D {
         switch (mm){
             case MIX2:
                 Intrinsic_matrix = new Matrix(new double[][] {{3053.5,0.0,0.0},{0.0,3063.3,0.0},{1513.5,2018.1,1.0}});
+                //Intrinsic_matrix = new Matrix(new double[][] {{1500.5,0.0,0.0},{0.0,1500.3,0.0},{750.5,1009.1,1.0}});
                 break;
             case HUAWEI:
                 Intrinsic_matrix = new Matrix(new double[][] {{3305.4,0.0,0.0},{0.0,3298.8,0.0},{1473.6,1923.7,1.0}});
@@ -206,7 +223,7 @@ public class Convert2DTo3D {
      * @param PoList_2 第二张图的匹配点坐标
      * @return 基础矩阵 F//也可用来算 E
      */
-    public Matrix ComputeFundamental(Matrix PoList_1, Matrix PoList_2){
+    public static Matrix ComputeFundamental(Matrix PoList_1, Matrix PoList_2){
         int Po_num = PoList_1.getRowDimension();//获取匹配点对数
         if(PoList_2.getRowDimension() != Po_num || Po_num <= 8){
             throw new IllegalArgumentException("Number of points don't match OR Need more than 8 matched points.");
@@ -228,6 +245,7 @@ public class Convert2DTo3D {
         Matrix Uf = f.getU();
         Matrix Sf = f.getS();//
         Matrix Vf = f.getV();//非转置
+        out.println("S22:"+Sf.get(2,2));
         Sf.set(2,0,0);//最后一行置零
         Sf.set(2,1,0);
         Sf.set(2,2,0);
@@ -238,7 +256,7 @@ public class Convert2DTo3D {
     /**
      * 计算E
      */
-    public Matrix compute_fundamental_normalized(Matrix PoList_1, Matrix PoList_2){//n*3
+    public static Matrix compute_fundamental_normalized(Matrix PoList_1, Matrix PoList_2){//n*3
         int Po_num = PoList_1.getRowDimension();//获取匹配点对数
         if(PoList_2.getRowDimension() != Po_num){
             throw new IllegalArgumentException("Number of points don't match.");
@@ -267,7 +285,7 @@ public class Convert2DTo3D {
      * @param Po_list 匹配点
      * @return 维度均值
      */
-    public double[] AvgValue(Matrix Po_list){
+    public static double[] AvgValue(Matrix Po_list){
         double[] avg = new double[3];
         int Total_len = Po_list.getRowDimension();
         double sum_x = 0.0f;
@@ -337,11 +355,11 @@ public class Convert2DTo3D {
 
     /**
      * 利用本质矩阵求解投影矩阵，共有四种可能，需要后续排除
-     * @param F 本质矩阵
+     * @param E 本质矩阵
      * @return 四种可能的 P 矩阵 3*4
      */
-    public ArrayList<Matrix> ComputePFromEssential(Matrix F) {
-        Matrix E = (intrinsic.transpose()).times(F.times(intrinsic));
+    public ArrayList<Matrix> ComputePFromEssential(Matrix E) {
+//        Matrix E = (intrinsic.transpose()).times(F.times(intrinsic));
         //进行奇异值分解
         SingularValueDecomposition e = E.svd();
         Matrix VeT = e.getV().transpose();
@@ -484,7 +502,7 @@ public class Convert2DTo3D {
         int ind = 0;
         double maxres = 0;
         Matrix X;
-        boolean[] Flag = null;//用来标记深度均为正的点
+        boolean[] Flag = new boolean[PoList_1.getRowDimension()];//用来标记深度均为正的点
         for(int i=0; i<4; i++){
             X = TriangulateMultiPoints(PoList_1,PoList_2,P1,P2List.get(i));//4*n
             double[] d1 = P1.times(X).getArray()[2];
@@ -506,8 +524,7 @@ public class Convert2DTo3D {
                 Flag = f;
             }
         }
-        int count = 0;
-        assert Flag != null;
+        int count = 0;//可改成 maxres
         for (boolean b : Flag) {
             if (b) {
                 //out.println(b);
@@ -529,9 +546,9 @@ public class Convert2DTo3D {
         System.out.println(X.getRowDimension()+","+X.getColumnDimension());
         System.out.println("Flag.length:"+Flag.length);
         System.out.println("count:"+count);
-//        double[][] XSelected = new double[count][4];
-        double[][] XSelected = new double[PoList_1.getRowDimension()][4];//暂改
-        int pos=0;
+        double[][] XSelected = new double[X.getColumnDimension()][4];
+ //       double[][] XSelected = new double[9][4];//暂改
+ //       int pos=0;
         for(int k = 0; k<Flag.length; k++){
 //            if(!Flag[k]){
             XSelected[k] = X.getMatrix(0,3,k,k).getColumnPackedCopy();//此处有问题
@@ -539,7 +556,7 @@ public class Convert2DTo3D {
 //                pos++;
 //            }
         }
-        this.X_3D = new Matrix(XSelected);
+        this.X_3D = QiCiTo1(new Matrix(XSelected));
     }
 
     /**
@@ -561,10 +578,11 @@ public class Convert2DTo3D {
     /**
      * 计算投影点和真实投影点的误差
      * @param Point3D 求得的3D坐标点
-     * @param poList 真实匹配点
+     * @param poList1 真实匹配点
+     * @param poList2 真实匹配点
      * @return 各点的误差值
      */
-    public double[] CalculateError(Matrix Point3D, double[][] poList){
+    public void CalculateError(Matrix Point3D, double[][] poList1, double[][] poList2){
 //        out.println("==============投影矩阵P的值为==================");
 //        for(int i=0; i<3; i++){
 //            for(int j=0; j<4; j++){
@@ -574,42 +592,53 @@ public class Convert2DTo3D {
 //        for (int i = 0; i < X_3D.getRowDimension(); i++) {
 //            out.println("****************" + X_3D.get(i, 0) + "," + X_3D.get(i, 1) + "," + X_3D.get(i, 2) + "," + X_3D.get(i, 3));
 //        }
-        Matrix Point2DComputed = P2_Selected.times(Point3D.transpose()).transpose();//(3*4)*(4*n).transpose()
         out.println("==============投影回二维的点坐标==================");
-        Matrix PointOrigin = Point2DToHomogeneous(poList);
+        Matrix PointOrigin1 = Point2DToHomogeneous(poList1);
+        Matrix PointOrigin2 = Point2DToHomogeneous(poList2);
+        Matrix Point2DComputed2 = QiCiTo1(P2_Selected.times(Point3D.transpose()).transpose());//(3*4)*(4*n).transpose()
+        Matrix Point2DComputed1 = QiCiTo1(P1.times(Point3D.transpose()).transpose());
+        Matrix error1 = Point2DComputed1.minus(PointOrigin1);
+        Matrix error2 = Point2DComputed2.minus(PointOrigin2);
+        double[] ErrorVal1 = new double[Point3D.getRowDimension()];
+        double[] ErrorVal2 = new double[Point3D.getRowDimension()];
         for(int p=0; p<Point3D.getRowDimension(); p++){
-            //out.println("第"+p+"个点的齐次坐标为：" + Point2DComputed.get(p,2));
-//            out.println("第"+p+"个点的原始坐标为：====" + Point2DComputed.get(p,0)+","+Point2DComputed.get(p,1)+","+ Point2DComputed.get(p,2));
-//            Point2DComputed.set(p,0,Point2DComputed.get(p,0)/Point2DComputed.get(p,2));
-//            Point2DComputed.set(p,1,Point2DComputed.get(p,1)/Point2DComputed.get(p,2));
-//            Point2DComputed.set(p,2,1);
-            out.println("第"+p+"个点的真实坐标为：" + PointOrigin.get(p,0)+","+PointOrigin.get(p,1)+","+ PointOrigin.get(p,2));
-
-            out.println("第"+p+"个点的坐标为：" + Point2DComputed.get(p,0)/Point2DComputed.get(p,2)+","+Point2DComputed.get(p,1)/Point2DComputed.get(p,2)+","+ Point2DComputed.get(p,2)/Point2DComputed.get(p,2));
+            ErrorVal1[p] = (abs(error1.get(p,0)) + abs(error1.get(p,1)) + abs(error1.get(p,2)))/2;
+            out.println("第"+p+"个点的误差值为(Image1)：" + ErrorVal1[p]);
+            out.println("第"+p+"个点的真实坐标为：" + PointOrigin1.get(p,0)+","+PointOrigin1.get(p,1)+","+ PointOrigin1.get(p,2));
+            out.println("第"+p+"个点的坐标为：" + Point2DComputed1.get(p,0)+","+Point2DComputed1.get(p,1)+","+ Point2DComputed1.get(p,2));
+            ErrorVal2[p] = (abs(error2.get(p,0)) + abs(error2.get(p,1)) + abs(error2.get(p,2)))/2;
+            out.println("第"+p+"个点的误差值为(Image2)：" + ErrorVal2[p]);
+            out.println("第"+p+"个点的真实坐标为：" + PointOrigin2.get(p,0)+","+PointOrigin2.get(p,1)+","+ PointOrigin2.get(p,2));
+            out.println("第"+p+"个点的坐标为：" + Point2DComputed2.get(p,0)+","+Point2DComputed2.get(p,1)+","+ Point2DComputed2.get(p,2));
         }
-//        Matrix PointOrigin = Point2DToHomogeneous(poList);
-        Matrix error = Point2DComputed.minus(PointOrigin);
-//        for(int p=0; p<Point3D.getRowDimension(); p++){
-//            //out.println("第"+p+"个点的齐次坐标为：" + Point2DComputed.get(p,2));
-//            out.println("第"+p+"个点的误差：====" + error.get(p,0)+","+error.get(p,1)+","+ error.get(p,2));
-//         }
-
-        double[] ErrorVal = new double[Point3D.getRowDimension()];
-        for(int i=0; i<error.getRowDimension(); i++){
-            for(int j=0; j<error.getColumnDimension(); j++){
-                ErrorVal[i] += abs(error.get(i,j));
-            }
-            ErrorVal[i] /= 3.0f;
-            out.println("第"+i+"个点的误差值为：" + ErrorVal[i]);
-        }
-        return ErrorVal;
     }
 
-    public void Point3DTo2D(Matrix Point3D, Matrix P){
-        Matrix Point2DComputed1 = P1.times(Point3D.transpose()).transpose();//n*3
-        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1, OpticalCenter[0], OpticalCenter[1]);
-        Matrix Point2DComputed2 = P2_Selected.times(Point3D.transpose()).transpose();//n*3
-        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2, OpticalCenter[0], OpticalCenter[1]);
+    public Matrix QiCiTo1(Matrix PointList){
+        for(int p=0; p<PointList.getRowDimension(); p++){
+            for(int i=0; i<PointList.getColumnDimension(); i++){
+                PointList.set(p,i,PointList.get(p,i)/PointList.get(p,PointList.getColumnDimension()-1));
+            }
+        }
+        return PointList;
+    }
+
+
+//    public void Point3DTo2D(Matrix Point3D, Matrix P){
+//        Matrix Point2DComputed1 = P1.times(Point3D.transpose()).transpose();//n*3
+//        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1, OpticalCenter[0], OpticalCenter[1]);
+//        Matrix Point2DComputed2 = P2_Selected.times(Point3D.transpose()).transpose();//n*3
+//        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2, OpticalCenter[0], OpticalCenter[1]);
+
+    /**
+     * 三维坐标反投影
+     * @param Point3D
+     */
+    public void Point3DTo2D(Matrix Point3D){
+        Matrix Point2DComputed1 = QiCiTo1(P1.times(Point3D.transpose()).transpose());//n*3
+        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1,OpticalCenter[0], OpticalCenter[1]);
+        Matrix Point2DComputed2 = QiCiTo1(P2_Selected.times(Point3D.transpose()).transpose());//n*3
+        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2,OpticalCenter[0], OpticalCenter[1]);
+
     }
 
 
@@ -632,11 +661,20 @@ public class Convert2DTo3D {
      * @param X
      * @return
      */
+
     public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int offset_x, int offset_y) {
         ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
         for (int i = 0; i < X.getRowDimension(); i++) {
             ImageMarker temp = new ImageMarker((float) X.get(i,0)+offset_x,(float) X.get(i,1)+offset_y,(float) X.get(i,2));
             temp.type = 2;
+
+//    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int MarkerColor) {
+//        ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
+//        for (int i = 0; i < X.getRowDimension(); i++) {
+//           // ImageMarker temp = new ImageMarker((float) X.get(i,0),(float) X.get(i,1),(float) X.get(i,2));
+//            ImageMarker temp = new ImageMarker((float) X.get(i,0),(float) X.get(i,1),0);
+//            temp.type = MarkerColor;
+
             MarkerList.add(temp);
         }
         return MarkerList;
@@ -829,11 +867,12 @@ public class Convert2DTo3D {
      * @param PoListHo2
      * @param F
      */
-    public void ComputeCorrespondEpiLines(Matrix PoListHo1, Matrix PoListHo2, Matrix F){
-        //this.EpiLines1_Para = new double[PoListHo1.getRowDimension()][3];
-        //this.EpiLines2_Para = new double[PoListHo2.getRowDimension()][3];
+    public void ComputeCorrespondEpiLines(Matrix PoListHo1, Matrix PoListHo2, Matrix F){ ;
         this.EpiLines2_Para = F.times(PoListHo1.transpose()).getArray();//3*n
         this.EpiLines1_Para = (F.transpose()).times(PoListHo2.transpose()).getArray();
+        out.println("==============点到极线的距离==================");
+        distance1 = DistancePointToLine(EpiLines1_Para, PoListHo1.getArray());
+        distance2 = DistancePointToLine(EpiLines2_Para, PoListHo2.getArray());
     }
 
     public Bitmap DrawLine(Bitmap ori_img, double[][] PointParam){ //3*n
@@ -862,6 +901,17 @@ public class Convert2DTo3D {
             canvas.drawLine((float) 0, (float) StartEnd[i][0], (float) (ori_img.getWidth()-1), (float) StartEnd[i][1], p);
         }
         return bitmap_new;
+    }
+
+    public ArrayList<Double> DistancePointToLine(double[][] EpiLines_Para, double[][] PoList){
+        int num = PoList.length;
+        ArrayList<Double> distance = new ArrayList<>(num);
+        for(int i=0; i<num; i++){
+            double dis = (EpiLines_Para[0][i]*PoList[i][0] + EpiLines_Para[1][i]*PoList[i][1] + EpiLines_Para[2][i]) / sqrt(pow(EpiLines_Para[0][i],2)+pow(EpiLines_Para[1][i],2));
+            distance.add(dis);
+            System.out.println("*************第"+i+"处点和极线的距离为***************："+dis);
+        }
+        return distance;
     }
 
 }
