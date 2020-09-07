@@ -351,8 +351,9 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this,"Test Function..",Toast.LENGTH_LONG).show();
                         Log.d("TAG", "Click Test Button");
                         try {
-                            Circle_Fun();
+//                            Circle_Fun();
                          //  Test_Fun();
+                            testforcorner();
 
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -1151,9 +1152,10 @@ public class MainActivity extends AppCompatActivity {
                     if (!flag) {
                         clear3D_Reconstruction();
                         clearPreImage();
-                        Reconstruction3D();
+                        //Reconstruction3D();
                         return;
                     }
+
                     p.Point3DTo2D(p.X_3D, p.P1);
                     p.Point3DTo2D(p.X_3D, p.P2_Selected);
                     MarkerList1.addAll(p.Point3Dto2D1);
@@ -1195,6 +1197,20 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+
+    ///////////////////////////////
+    private void testforcorner() {
+        ArrayList<ImageMarker> temp = new ArrayList<>();
+        temp = myrenderer.globalImageCornerDetect();
+//        System.out.println("temp.size() = "+temp.size());
+//        for (ImageMarker imageMarker:temp) {
+//            System.out.println("imageMarker.x = "+imageMarker.x);
+//            System.out.println("imageMarker.y = "+imageMarker.y);
+//        }
+        myrenderer.ResetMarkerlist(temp);
+        myGLSurfaceView.requestRender();
+    }
+    ///////////////////////////////
 
     /**
      * function for the Load button

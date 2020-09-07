@@ -35,6 +35,8 @@ public class Convert2DTo3D {
     public ArrayList<ImageMarker> Point3Dto2D2;//特征点对应的三维点坐标
     public int[] OpticalCenter = new int[2];
     public Matrix intrinsic;
+    ArrayList<Double> distance1;
+    ArrayList<Double> distance2;
 
     public double[][] EpiLines1_Para = null;
     public double[][] EpiLines2_Para = null;
@@ -75,7 +77,7 @@ public class Convert2DTo3D {
         }
 
         System.out.println(paras[0]+","+paras[1]+","+paras[2]);
-        intrinsic = buildIntrinsicMatrix(paras[0]);
+        intrinsic = buildIntrinsicMatrix((paras[0]+paras[1])/2);
         ArrayList<Matrix> P2 = ComputePFromEssential(F);//计算第二角度可能的投影矩阵
 ///////////////////////////////////////////////////////////////////////
 
@@ -834,7 +836,39 @@ public class Convert2DTo3D {
         //this.EpiLines2_Para = new double[PoListHo2.getRowDimension()][3];
         this.EpiLines2_Para = F.times(PoListHo1.transpose()).getArray();//3*n
         this.EpiLines1_Para = (F.transpose()).times(PoListHo2.transpose()).getArray();
+        out.println("==============点到极线的距离P1==================");
+        distance1 = DistancePointToLine(EpiLines1_Para, PoListHo1.getArray());
+        out.println("==============点到极线的距离P2==================");
+        distance2 = DistancePointToLine(EpiLines2_Para, PoListHo2.getArray());
     }
+
+//    public Bitmap DrawLine(Bitmap ori_img, double[][] PointParam){ //3*n
+//        System.out.println("Starting drawing EpiLines.....");
+//        Bitmap bitmap_new = ori_img.copy(Bitmap.Config.ARGB_8888,true);
+//        Canvas canvas = new Canvas(bitmap_new);
+//        Paint p = new Paint();
+//        p.setColor(Color.CYAN);//设置画笔颜色
+//        p.setAntiAlias(false);//设置画笔为无锯齿
+//        p.setStrokeWidth((float) 5.0);//线宽
+//        int PoNum = this.EpiLines1_Para[0].length;
+//        double[][] StartEnd = new double[PoNum][2];
+//        //获取起点和终点坐标
+//        for(int i=0; i<PoNum; i++){
+////            double left = -0.5*ori_img.getWidth();
+////            double right = 0.5*ori_img.getWidth();
+////            StartEnd[i][0] = -(PointParam[2][i]+left*PointParam[0][i])/PointParam[1][i];
+////            StartEnd[i][1] = -(PointParam[2][i]+right*PointParam[0][i])/PointParam[1][i];
+////            System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
+////            canvas.drawLine((float) (-0.5*ori_img.getWidth()), (float) StartEnd[i][0], (float) (0.5*ori_img.getWidth()), (float) StartEnd[i][1], p);
+//           // double left = -0.5*ori_img.getWidth();
+//          //  double right = 0.5*ori_img.getWidth();
+//            StartEnd[i][0] = -(PointParam[2][i])/PointParam[1][i];
+//            StartEnd[i][1] = -(PointParam[2][i]+(ori_img.getWidth()-1)*PointParam[0][i])/PointParam[1][i];
+//            //System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
+//            canvas.drawLine((float) 0, (float) StartEnd[i][0], (float) (ori_img.getWidth()-1), (float) StartEnd[i][1], p);
+//        }
+//        return bitmap_new;
+//    }
 
     public Bitmap DrawLine(Bitmap ori_img, double[][] PointParam){ //3*n
         System.out.println("Starting drawing EpiLines.....");
@@ -854,14 +888,30 @@ public class Convert2DTo3D {
 //            StartEnd[i][1] = -(PointParam[2][i]+right*PointParam[0][i])/PointParam[1][i];
 //            System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
 //            canvas.drawLine((float) (-0.5*ori_img.getWidth()), (float) StartEnd[i][0], (float) (0.5*ori_img.getWidth()), (float) StartEnd[i][1], p);
-           // double left = -0.5*ori_img.getWidth();
-          //  double right = 0.5*ori_img.getWidth();
-            StartEnd[i][0] = -(PointParam[2][i])/PointParam[1][i];
-            StartEnd[i][1] = -(PointParam[2][i]+(ori_img.getWidth()-1)*PointParam[0][i])/PointParam[1][i];
+            // double left = -0.5*ori_img.getWidth();
+            //  double right = 0.5*ori_img.getWidth();
+            //直线发生平移
+            StartEnd[i][0] = (-PointParam[2][i]+OpticalCenter[0]*PointParam[0][i]+OpticalCenter[1]*PointParam[1][i])/PointParam[1][i];
+            StartEnd[i][1] = (-PointParam[2][i]+(OpticalCenter[0]-(ori_img.getWidth()-1))*PointParam[0][i]+OpticalCenter[1]*PointParam[1][i])/PointParam[1][i];
+
+//            StartEnd[i][0] = -(PointParam[2][i]-OpticalCenter[0]*PointParam[0][i]-OpticalCenter[1]*PointParam[1][i])/PointParam[1][i];
+//            StartEnd[i][1] = -(PointParam[2][i]-(OpticalCenter[0]+ori_img.getWidth()-1)*PointParam[0][i]-OpticalCenter[1]*PointParam[1][i])/PointParam[1][i];
             //System.out.println("Start:("+left+","+StartEnd[i][0]+"),End:("+right+","+StartEnd[i][1]+")");
-            canvas.drawLine((float) 0, (float) StartEnd[i][0], (float) (ori_img.getWidth()-1), (float) StartEnd[i][1], p);
+            canvas.drawLine(0, (float) StartEnd[i][0], (float) (ori_img.getWidth()-1), (float) StartEnd[i][1], p);
         }
         return bitmap_new;
+    }
+
+    public ArrayList<Double> DistancePointToLine(double[][] EpiLines_Para, double[][] PoList){
+        int num = PoList.length;
+        ArrayList<Double> distance = new ArrayList<>(num);
+        for(int i=0; i<num; i++){
+//            double dis = abs(EpiLines_Para[0][i]*PoList[i][0] + EpiLines_Para[1][i]*PoList[i][1] + (EpiLines_Para[2][i]-(OpticalCenter[0]*EpiLines_Para[0][i]+OpticalCenter[1]*EpiLines_Para[1][i]))) / sqrt(pow(EpiLines_Para[0][i],2)+pow(EpiLines_Para[1][i],2));
+            double dis = abs(EpiLines_Para[0][i]*PoList[i][0] + EpiLines_Para[1][i]*PoList[i][1] + EpiLines_Para[2][i]) / sqrt(pow(EpiLines_Para[0][i],2)+pow(EpiLines_Para[1][i],2));
+            distance.add(dis);
+            System.out.println("*************第"+i+"处点和极线的距离为***************："+dis);
+        }
+        return distance;
     }
 
 }

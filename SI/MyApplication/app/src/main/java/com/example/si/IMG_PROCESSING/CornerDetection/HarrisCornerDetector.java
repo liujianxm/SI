@@ -294,8 +294,8 @@ public class HarrisCornerDetector extends GrayFilter {
                 {
                     if (hm.getMax() > max) {
                         max = hm.getMax();
-                        maxPosition[0] = row;
-                        maxPosition[1] = col;
+                        maxPosition[0] = col;
+                        maxPosition[1] = row;
                     }
                 }
             }
