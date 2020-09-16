@@ -15,7 +15,7 @@ import static javax.microedition.khronos.opengles.GL10.GL_ALPHA_TEST;
 
 public class MyPattern2D {
 
-    private final String vertexShaderCode =
+    private static final String vertexShaderCode =
             "#version 300 es\n" +
                     "layout (location = 0) in vec4 vPosition;" +
                     "layout (location = 1) in vec2 vCoordinate;" +
@@ -28,7 +28,7 @@ public class MyPattern2D {
                     "  aCoordinate = vCoordinate;" +
                     "}";
 
-    private final String fragmentShaderCode =
+    private static final String fragmentShaderCode =
             "#version 300 es\n" +
                     "precision mediump float;" +
 
@@ -59,7 +59,7 @@ public class MyPattern2D {
     private int height;
 
     private Bitmap mBitmap;
-    private final int mProgram;
+    private static int mProgram;
 
     private float[] mMVPMatrix = new float[16];
     private float[] mz = new float[3];
@@ -69,20 +69,24 @@ public class MyPattern2D {
     private FloatBuffer bPos;
     private FloatBuffer bCoord;
 
+    private boolean isNeedRelease = false;
+
+    public static void initProgram(){
+        mProgram = initProgram(vertexShaderCode, fragmentShaderCode);
+    }
+
     public MyPattern2D(Bitmap bitmap, int w, int h, float [] vmz){
         width = w;
         height = h;
 
         mBitmap = bitmap;
 
-        mProgram = initProgram(vertexShaderCode, fragmentShaderCode);
-
         mz = vmz;
 
         createTexture();
     }
 
-    private int initProgram(String vertShaderCode, String fragmShaderCode){
+    private static int initProgram(String vertShaderCode, String fragmShaderCode){
 
         //加载着色器
         int vertexShader = loadShader(GLES30.GL_VERTEX_SHADER,
@@ -261,6 +265,34 @@ public class MyPattern2D {
         GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
 
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,0);
+
+    }
+
+
+    public boolean getNeedRelease(){
+        return isNeedRelease;
+    }
+
+    public void setNeedRelease(){
+        this.isNeedRelease = true;
+    }
+
+    public void free(){
+
+        GLES30.glDeleteTextures(
+                1,
+                texture,
+                0
+        );
+
+        if (bCoord != null){
+            bCoord.clear();
+            bCoord = null;
+        }
+        if (bPos != null){
+            bPos.clear();
+            bPos = null;
+        }
 
     }
 

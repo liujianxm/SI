@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import com.example.si.IMG_PROCESSING.CornerDetection.HarrisMatrix;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Vector;
 
@@ -99,9 +101,11 @@ public class HarrisCornerDetector extends GrayFilter {
         int m=0;
         double max =0;
         double k = 0.06;
-        int min_D = Math.round(Math.max(width,height) / 500f);
+        int min_D = Math.round(Math.max(width,height) / 400f);
         min_D = min_D*min_D;
         Vector vet_xy=new Vector();
+
+
 
         for(int row=0; row<height; row++) {
             int ta = 0, tr = 0, tg = 0, tb = 0;
@@ -205,7 +209,9 @@ public class HarrisCornerDetector extends GrayFilter {
 
         }
 
-        globalMaxLocation = findMax(width, height, src);
+        corner_x_y = sortHarrisMatrixList(corner_x_y, width);  //排序并返回最大的三个点
+
+//        globalMaxLocation = findMax(width, height, src);
         return corner_x_y;
     }
     /***
@@ -407,5 +413,119 @@ public class HarrisCornerDetector extends GrayFilter {
             }
         }
     }
+
+    /**
+     * harrisMatrixList 降序排序
+     */
+    private int[] sortHarrisMatrixList(int[] corner_x_y, int width) {
+        ArrayList<HarrisMatrix> temp = new ArrayList<HarrisMatrix>();
+        int[] corner_x = new int[corner_x_y.length/2];
+        int[] corner_y = new int[corner_x_y.length/2];
+        for (int n=0;n<corner_x_y.length/2;n++)
+        {
+            corner_x[n]=corner_x_y[2*n+1];
+            corner_y[n]=corner_x_y[2*n];
+            HarrisMatrix hm = new HarrisMatrix();
+            hm = harrisMatrixList.get(corner_y[n]*width+corner_x[n]);
+            hm.setX(corner_x[n]);
+            hm.setY(corner_y[n]);
+            temp.add(hm);
+            //System.out.println(corner_x[n]);
+            //System.out.println(corner_y[n]);
+        }
+
+
+//
+//        int indextemp;
+//        System.out.println("-------------------------------------------------------");
+//        for (int index = 0; index < harrisMatrixList.size(); index++) {
+//            HarrisMatrix hm = harrisMatrixList.get(0);
+//            System.out.println("hm.R = "+hm.getR());
+//            //hm = new HarrisMatrix();
+//            indextemp = 0;
+//            for (int index2 = 1; index2 < harrisMatrixList.size()-index; index2++) {
+//                if (hm.getR() < harrisMatrixList.get(index2).getR()) {
+//                    hm = harrisMatrixList.get(index2).copy();
+//                    indextemp = index2;
+//                }
+//            }
+//            temp.add(hm);
+//            harrisMatrixList.remove(indextemp);
+//
+//        }
+//
+//        for (HarrisMatrix harrisMatrix:temp) {
+//            System.out.println(harrisMatrix.getR());
+//        }
+        System.out.println("-------------------------------------------------------");
+
+        Collections.sort(temp, new Comparator<HarrisMatrix>() {
+
+            @Override
+            public int compare(HarrisMatrix h1, HarrisMatrix h2) {
+                //降序
+                if (h1.getR()-h2.getR() > 0) {
+                    return -1;
+                } else if (h1.getR()-h2.getR() < 0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+
+                //return h1.compareTo(h2);
+            }
+
+        });
+
+        int c = 0;
+        for (int index = 0; index < temp.size(); index++) {
+            HarrisMatrix harrisMatrix = temp.get(index);
+//            System.out.println("R :"+harrisMatrix.getR());
+//            System.out.println("x :"+harrisMatrix.getX());
+//            System.out.println("y :"+harrisMatrix.getY());
+
+            if (Double.isNaN(harrisMatrix.getR())) {
+                temp.remove(index);
+                index--;
+                c++;
+            }
+//            if (harrisMatrix.getY() == 0 || harrisMatrix.getX() == 0) {
+//                temp.remove(index);
+//                c++;
+//            }
+        }
+//        System.out.println("++++++++++++++++++");
+//        System.out.println("c :"+c);
+//        System.out.println("++++++++++++++++++");
+
+//        int a = 0;
+//        for (HarrisMatrix harrisMatrix:temp) {
+//            System.out.println(a+" "+harrisMatrix.getR());
+//            a++;
+//        }
+
+        if (temp.size() > 3) {
+            int[] new_corner_x_y = new int[6];
+            for (int i = 0; i < 3; i++) {
+                new_corner_x_y[2*i + 1] = temp.get(i).getX();
+                new_corner_x_y[2*i] = temp.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+
+            return new_corner_x_y;
+        } else {
+            int[] new_corner_x_y = new int[2*temp.size()];
+            for (int i = 0; i < temp.size(); i++) {
+                new_corner_x_y[2*i + 1] = temp.get(i).getX();
+                new_corner_x_y[2*i] = temp.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+            return new_corner_x_y;
+        }
+
+
+
+    }
+
 
 }

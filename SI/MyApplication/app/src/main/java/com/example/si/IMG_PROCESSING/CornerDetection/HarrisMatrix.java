@@ -6,6 +6,16 @@ public class HarrisMatrix {
     private double IxIy;
     private double r;
     private double max;
+    private int x;
+    private int y;
+
+    public int getX() { return x; }
+
+    public void setX(int inx) { x = inx; }
+
+    public int getY() { return y; }
+
+    public void setY(int iny) { y = iny; }
 
     public double getMax() {
         return max;
@@ -47,5 +57,28 @@ public class HarrisMatrix {
 
     public void setR(double r) {
         this.r = r;
+    }
+
+    public HarrisMatrix copy() {
+        HarrisMatrix newHarrisMatrix = new HarrisMatrix();
+        newHarrisMatrix.setXGradient(this.Ix);
+        newHarrisMatrix.setYGradient(this.Iy);
+        newHarrisMatrix.setIxIy(this.IxIy);
+        newHarrisMatrix.setR(this.r);
+        newHarrisMatrix.setMax(this.max);
+        newHarrisMatrix.setX(this.x);
+        newHarrisMatrix.setY(this.y);
+        return newHarrisMatrix;
+    }
+
+    public int compareTo(HarrisMatrix h) {
+        if (this.getR()-h.getR() > 0) {
+            return 1;
+        } else if (this.getR()-h.getR() < 0) {
+            return -1;
+        } else {
+            return 0;
+        }
+
     }
 }
