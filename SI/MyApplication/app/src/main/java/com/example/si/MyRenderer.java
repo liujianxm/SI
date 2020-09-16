@@ -1106,7 +1106,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 } else {
                     Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
                 }
-                //选取最近的角点
+
                 if (!MarkerList.isEmpty()) {
                     //附近存在角点则矫正为最大响应
 //                    result = getMostPossiblePoint(result, MarkerList,R);
@@ -1115,6 +1115,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //                    System.out.println("----------------------");
 //                    System.out.println("result[0] = "+result[0]);
 //                    System.out.println("result[1] = "+result[1]);
+
 
                 } else {
 //                附近无角点则返回坐标（-1，-1）

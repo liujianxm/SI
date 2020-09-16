@@ -237,7 +237,7 @@ public class MyPattern2D {
 
     public void set_Bitmap(Bitmap text_Bitmap){
 
-        Log.v("MyPattern","set_Bitmap");
+//        Log.v("MyPattern","set_Bitmap");
 
         mBitmap = text_Bitmap;
 

@@ -1,2 +1,3 @@
 rootProject.name='SI'
 include ':app'
+include ':openCVLibrary340'

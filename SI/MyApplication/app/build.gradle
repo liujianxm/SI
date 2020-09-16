@@ -30,6 +30,16 @@ android {
         }
     }
 
+    sourceSets {
+
+        main {
+
+            jniLibs.srcDirs = ['src/main/jniLibs']
+
+        }
+
+    }
+
 }
 
 dependencies {
@@ -42,6 +52,7 @@ dependencies {
     implementation files('libs\\Jama-1.0.3.jar')
     implementation 'org.apache.commons.io:commonsIO:2.5.0'
     implementation fileTree(dir: 'gradle\\wrapper', include: ['*.aar', '*.jar'], exclude: [])
+    implementation project(path: ':openCVLibrary340')
 //    implementation fileTree(dir: 'gradle\\wrapper', include: ['*.aar', '*.jar'], exclude: [])
 //    implementation fileTree(dir: 'gradle\\wrapper', include: ['*.aar', '*.jar'], exclude: [])
     //implementation files('libs\\nineoldandroids-2.4.0.jar')

@@ -22,6 +22,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 //import android.media.ExifInterface;
 import android.opengl.GLES30;
@@ -33,6 +34,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.ContactsContract;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -65,10 +67,23 @@ import com.example.si.IMG_PROCESSING.ImgObj_Para;
 import com.example.si.IMG_PROCESSING.CircleDetect.Point;
 import com.example.si.IMG_PROCESSING.Reconstruction3D.BundleAdjustment_LM;
 import com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D;
+import com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
 import com.lxj.xpopup.interfaces.OnSelectListener;
 
+
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.DMatch;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfDMatch;
+import org.opencv.core.MatOfKeyPoint;
+import org.opencv.features2d.DescriptorExtractor;
+import org.opencv.features2d.DescriptorMatcher;
+import org.opencv.features2d.FeatureDetector;
+import org.opencv.features2d.Features2d;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.IOException;
@@ -92,6 +107,7 @@ import static java.lang.Math.round;
 import static java.lang.Math.sqrt;
 
 import static com.example.si.IMG_PROCESSING.CircleDetect.CircleDetect_new.CircleDetect_Fun;
+import static java.lang.System.out;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -183,8 +199,9 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
-/*
+    /**
+     * 动态加载 openCV4Android 的库
+     */
     @Override
     public void onResume()
     {
@@ -196,7 +213,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
- */
 
 
     @Override
@@ -390,6 +406,8 @@ public class MainActivity extends AppCompatActivity {
 //                            Circle_Fun();
                          //  Test_Fun();
                             testforcorner();
+                           // Convert2Dto3D_Test();
+
 
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -737,12 +755,14 @@ public class MainActivity extends AppCompatActivity {
                         }
                         //System.out.println(showPic.getAbsolutePath());
 
+
                         //清空工作区marker
                         ArrayList<ImageMarker> temp = myrenderer.getMarkerList();
                         if (temp.size() != 0) {
                             temp.clear();
                             myrenderer.ResetMarkerlist(temp);
                         }
+
 
                         myGLSurfaceView.requestRender();
                         if (isMutiImg) {
@@ -1085,6 +1105,7 @@ public class MainActivity extends AppCompatActivity {
 //
 //                System.out.println("方程的解为：");
 //                System.out.println(result[0]+","+result[1]+","+result[2]);
+               // ORBTest(MarkerList1, MarkerList2);//ORB提取匹配点
                 Log.v("Select_points", "Point selecting!");
                 if (isP1) {
                     if (img1 == null) {
@@ -1100,6 +1121,7 @@ public class MainActivity extends AppCompatActivity {
 
                 SelectPoint(v);
 
+
             }
         });
 
@@ -1107,6 +1129,7 @@ public class MainActivity extends AppCompatActivity {
         finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 Log.v("Finished", "Finish point select of the image!");
                 boolean flag = false;
                 if (isP1) {
@@ -1122,6 +1145,8 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 clearSelect_points();
+             //   Mat m = new Mat();
+//                ORBTest(MarkerList1, MarkerList2);//ORB提取匹配点
 
                 if (isP1){
                     MarkerList1 = myrenderer.getMarkerList();
@@ -1223,23 +1248,29 @@ public class MainActivity extends AppCompatActivity {
 
                     ///////////////////2Dto3D/////////////////////
                     //原点调整为图像中心
-                    for (int i = 0; i < Po_list1.length;i++) {
+/*                    for (int i = 0; i < Po_list1.length;i++) {
                         Po_list1[i][0] -= img1.getWidth()/2f;
                         Po_list1[i][1] -= img1.getHeight()/2f;
                         Po_list2[i][0] -= img2.getWidth()/2f;
                         Po_list2[i][1] -= img2.getHeight()/2f;
-                    }
-                    Convert2DTo3D p = new Convert2DTo3D();
-                    p.OpticalCenter[0] = img1.getWidth()/2;
-                    p.OpticalCenter[1] = img1.getHeight()/2;
 
-//                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+                    }*/
+//                    Convert2DTo3D_new p = new Convert2DTo3D_new();
+                    Convert2DTo3D p = new Convert2DTo3D();
+//                    p.MyMobileModel = Convert2DTo3D_new.MobileModel.MIX2;
+                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
  //                   p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
-                    boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
+                    //计算相机外参矩阵
+//                    p.OpticalCenter[0] = img1.getWidth()/2;
+//                    p.OpticalCenter[1] = img1.getHeight()/2;
+                    p.OpticalCenter[0] = 0;
+                    p.OpticalCenter[1] = 0;
+//                    boolean flag = p.Convert2DTo3D_Fun_new(Po_list1, Po_list2,p.MyMobileModel);//非自标定
+                    boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);//自标定
                     if (!flag) {
                         clear3D_Reconstruction();
                         clearPreImage();
-                        //Reconstruction3D();
                         return;
                     }
 
@@ -1255,11 +1286,6 @@ public class MainActivity extends AppCompatActivity {
 //                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
 //                    }
  //                   p.CalculateError(p.X_3D, Po_list1, Po_list2);
-
-
-
-
-
 
 
                     //测试LM算法/////////////////////////////
@@ -1311,6 +1337,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
     }
+
 
     ///////////////////////////////
     private void testforcorner() {
@@ -1364,17 +1391,167 @@ public class MainActivity extends AppCompatActivity {
 
     ///////////////////////////////
 
+    private void ORBTest(ArrayList<ImageMarker> MarkerList1, ArrayList<ImageMarker> MarkerList2){
+        Mat srcr = new Mat();
+        Mat tempr = new Mat();
+        Mat srcl = new Mat();
+        Mat templ = new Mat();
+        Mat MatdescriptorR = new Mat();
+        Mat MatdescriptorL = new Mat();
+        MatOfKeyPoint keypointsR = new MatOfKeyPoint();
+        MatOfKeyPoint keypointsL = new MatOfKeyPoint();
+        MatOfDMatch matches = new MatOfDMatch();
+//        Bitmap imageR = BitmapFactory.decodeResource(this.getResources(),R.drawable.rr);
+//        Bitmap imageL = BitmapFactory.decodeResource(this.getResources(),R.drawable.ll);
+
+        Bitmap imageL = img1;
+        Bitmap imageR = img2;
+        Utils.bitmapToMat(imageR, srcr);//把image转化为Mat
+        Utils.bitmapToMat(imageL, srcl);//把image转化为Mat
+        Imgproc.cvtColor(srcr,tempr, Imgproc.COLOR_RGBA2RGB);
+        Imgproc.cvtColor(srcl,templ, Imgproc.COLOR_RGBA2RGB);
+        FeatureDetector detectorR = FeatureDetector.create(FeatureDetector.GRID_ORB);
+        FeatureDetector detectorL = FeatureDetector.create(FeatureDetector.GRID_ORB);
+        //检测特征点
+        detectorR.detect(tempr, keypointsR);
+        detectorL.detect(templ, keypointsL);
+        /*Features2d.drawKeypoints(tempr,keypointsR,out,new Scalar(255, 0, 0), Features2d.DRAW_RICH_KEYPOINTS);
+        Utils.matToBitmap(out, imageR);//把mat转化为bitmap
+
+        imageView.setImageBitmap(imageR);*/
+
+        //计算描述子
+        DescriptorExtractor descriptorR = DescriptorExtractor.create(DescriptorExtractor.ORB);
+        DescriptorExtractor descriptorL = DescriptorExtractor.create(DescriptorExtractor.ORB);
+        descriptorR.compute(srcr,keypointsR,MatdescriptorR);
+        descriptorL.compute(srcl,keypointsL,MatdescriptorL);
+        // FlannBasedMatcher descriptormatcher = FlannBasedMatcher.create();
+        DescriptorMatcher descriptormatcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+        descriptormatcher.match(MatdescriptorL,MatdescriptorR,matches);
+        System.out.println("............."+matches.cols()+","+matches.rows());
+        //-- Quick calculation of max and min distances between keypoints
+        double max_dist = 0; double min_dist = 100;
+        for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
+            double dist = matches.toArray()[i].distance;
+            if( dist < min_dist ) min_dist = dist;
+            if( dist > max_dist ) max_dist = dist;
+        }
+
+        System.out.println("-- Max dist : "+ max_dist );
+        System.out.println("-- Min dist : "+ min_dist );
+        MatOfDMatch good_matches = new MatOfDMatch();
+        for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
+            if( matches.toArray()[i].distance <= StrictMath.max(2*min_dist, 20) ) {
+                good_matches.push_back( matches.row(i));
+            }
+        }
+        System.out.println("............."+good_matches.cols()+","+good_matches.rows());
+        DMatch[] matchItem = good_matches.toArray();
+        System.out.println("....@@@@@@@@@@...."+MarkerList1.isEmpty());
+        System.out.println("%%!!!!!!!!!!!!!!!!!!%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
+        for(int i=0; i<good_matches.rows(); i++){
+//            System.out.println("....@@@@@@@@@@...."+matchItem.length);
+            MarkerList1.add(new ImageMarker((float) keypointsL.toList().get(matchItem[i].queryIdx).pt.x, (float)keypointsL.toList().get(matchItem[i].queryIdx).pt.y, 0, 3));
+            MarkerList2.add(new ImageMarker((float) keypointsR.toList().get(matchItem[i].trainIdx).pt.x, (float)keypointsR.toList().get(matchItem[i].trainIdx).pt.y, 0,3));
+            Log.d("Mainactivity",i+":"+good_matches.toList().get(i));
+            Log.d("LImage",i+":("+keypointsL.toList().get(matchItem[i].queryIdx).pt.x+","+keypointsL.toList().get(matchItem[i].queryIdx).pt.y);
+            Log.d("RImage",i+":("+keypointsR.toList().get(matchItem[i].trainIdx).pt.x+","+keypointsR.toList().get(matchItem[i].trainIdx).pt.y);
+            Log.d("RImage",MarkerList1.get(i).x+","+MarkerList1.get(i).y);
+        }
+        System.out.println("%%%%%%%%%%%%%%%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
+        myGLSurfaceView.requestRender();
+
+
+
+//        Bitmap outbmp = drawMatches(srcl,keypointsL,srcr,keypointsR,good_matches,false);
+
+        //Features2d.drawMatches(srcl,keypointsL,srcr,keypointsR,matches,out);
+        //  Utils.matToBitmap(out, imageR);//把mat转化为bitmap
+        // Bitmap matchbitmap=Bitmap.createScaledBitmap(imageR, imageL.getWidth(),  imageR.getHeight(), false);
+//        imageView.setImageBitmap(outbmp);
+        srcr.release();
+        srcl.release();
+        templ.release();
+        tempr.release();
+        MatdescriptorR.release();
+        MatdescriptorL.release();
+    }
+
+
+    /**
+     * 可以画出匹配点
+     * @param img1
+     * @param key1
+     * @param img2
+     * @param key2
+     * @param matches
+     * @param imageOnly
+     * @return
+     */
+    static Bitmap drawMatches(Mat img1, MatOfKeyPoint key1, Mat img2, MatOfKeyPoint key2, MatOfDMatch matches, boolean imageOnly) {
+        Mat out = new Mat();
+        Mat im1 = new Mat();
+        Mat im2 = new Mat();
+        Imgproc.cvtColor(img1, im1, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(img2, im2, Imgproc.COLOR_BGR2RGB);
+        if (imageOnly) {
+            MatOfDMatch emptyMatch = new MatOfDMatch();
+            MatOfKeyPoint emptyKey1 = new MatOfKeyPoint();
+            MatOfKeyPoint emptyKey2 = new MatOfKeyPoint();
+            Features2d.drawMatches(im1, emptyKey1, im2, emptyKey2, emptyMatch, out);
+        } else {
+            Features2d.drawMatches(im1, key1, im2, key2, matches, out);
+        }
+        System.out.println(out.cols()+","+out.rows());
+        Bitmap bmp = Bitmap.createBitmap(out.cols(), out.rows(), Bitmap.Config.ARGB_8888);
+        Imgproc.cvtColor(out, out, Imgproc.COLOR_BGR2RGB);
+        Utils.matToBitmap(out, bmp);//把mat转化为bitmap
+        return bmp;
+    }
+
+
     /**
      * 测试外参矩阵的计算以及恢复三维坐标
      *
      */
 
     private void Convert2Dto3D_Test(){
+        Mat m = new Mat();
         Convert2DTo3D p = new Convert2DTo3D();
         p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
-        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
-        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
-//        p.Convert2DTo3D_Fun(Po_list1, Po_list2);
+//        p.MyMobileModel = Convert2DTo3D.MobileModel.HUAWEI;
+//        double[][] Po_list1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
+//        double[][] Po_list2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
+//        double[][] polist1 = new double[][]{{1052,758,1},{1851,2190,1},{3900,1356,1},{3138,1886,1},{787,2938,1},{1703,1799,1},{3027,1798,1},{2673,642,1},{3023,2381,1},{775,1985,1},{195,1601,1},{1294,2205,1},{3515,1543,1},{3882,896,1},{751,344,1},{2161,1428,1},{2458,64,1},{3060,2765,1},{3014,2123,1},{2556,2961,1},{1767,570,1},{706,2732,1},{519,1925,1},{573,567,1},{753,319,1},{1593,2379,1},{1864,2509,1},{2971,541,1},{3313,2610,1},{491,2456,1},{802,408,1},{1932,485,1},{3505,1101,1},{3636,2540,1},{1458,930,1},{3869,1111,1},{2777,2428,1},{405,2572,1},{901,1930,1},{978,1573,1},{3055,2967,1},{841,1566,1},{3214,1343,1},{2794,1116,1},{858,922,1},{2387,1063,1},{1989,2693,1},{3230,632,1},{332,1348,1},{1959,1850,1}};
+//        double[][] polist2 = new double[][]{{1017.2,742.7,1},{1746.9,2183,1},{3825.9,1426.6,1},{3059,1799.4,1},{627.8,3078.1,1},{1597,1948.8,1},{2910.2,2032.8,1},{2604.4,929.9,1},{2880.9,2596.3,1},{665.9,2089.1,1},{122.3,1566.7,1},{1195.9,2145.5,1},{3444.4,1517.8,1},{3794.3,1238.7,1},{712,511,1},{2057,1699.1,1},{2425.3,288.3,1},{2928.5,2758.8,1},{2910.8,2135.1,1},{2410.2,2991.7,1},{1713.1,771,1},{558,2860.8,1},{394.9,2165.6,1},{535,645,1},{724.4,416.3,1},{1471.4,2436,1},{1743.6,2509.7,1},{2910.5,804.4,1},{3181.7,2658.9,1},{395.7,2282,1},{771.6,486.2,1},{1897.8,565.9,1},{3441.1,1186.1,1},{3484.6,2768.9,1},{1374.4,1225.8,1},{3789.9,1309.2,1},{2659.3,2438.6,1},{283.9,2553.2,1},{791.8,2055.6,1},{905,1551.4,1},{2900.1,3065.9,1},{747,1707.8,1},{3114,1615.6,1},{2736.6,1144.7,1},{791.8,1086.7,1},{2302.9,1315.1,1},{1843.7,2817.3,1},{3176,812.8,1},{243.8,1524.9,1},{1837.5,2100,1}};
+//        double[][] X = new double[][]{{1052,758,90,1},{1851,2190,389,1},{3900,1356,343,1},{3138,1886,89,1},{787,2938,943,1},{1703,1799,699,1},{3027,1798,869,1},{2673,642,767,1},{3023,2381,944,1},{775,1985,653,1},{195,1601,247,1},{1294,2205,279,1},{3515,1543,157,1},{3882,896,920,1},{751,344,463,1},{2161,1428,907,1},{2458,64,494,1},{3060,2765,476,1},{3014,2123,387,1},{2556,2961,624,1},{1767,570,564,1},{706,2732,874,1},{519,1925,986,1},{573,567,295,1},{753,319,285,1},{1593,2379,595,1},{1864,2509,475,1},{2971,541,676,1},{3313,2610,572,1},{491,2456,73,1},{802,408,255,1},{1932,485,244,1},{3505,1101,337,1},{3636,2540,993,1},{1458,930,884,1},{3869,1111,608,1},{2777,2428,455,1},{405,2572,484,1},{901,1930,691,1},{978,1573,249,1},{3055,2967,779,1},{841,1566,656,1},{3214,1343,861,1},{2794,1116,222,1},{858,922,576,1},{2387,1063,776,1},{1989,2693,816,1},{3230,632,483,1},{332,1348,712,1},{1959,1850,950,1}};
+
+//        double[][] polist1 = new double[][]{{1274,415,1},{1537,1007,1},{354,2652,1},{2276,1344,1},{1029,2173,1},{2356,1119,1},{2999,960,1},{317,827,1},{2100,3982,1},{1179,704,1},{1476,1255,1},{1112,2470,1},{2827,357,1},{2570,3346,1},{1725,2966,1},{100,3985,1},{1302,1010,1},{1561,1677,1},{785,2355,1},{268,3941,1},{637,154,1},{435,724,1},{1909,1438,1},{2267,1451,1},{2001,2358,1},{185,1901,1},{1492,3856,1},{1792,2626,1},{1779,1117,1},{114,2567,1},{2520,2034,1},{2140,1985,1},{514,3112,1},{377,1094,1},{676,3874,1},{2554,1692,1},{2870,797,1},{1643,3447,1},{904,2698,1},{511,532,1},{276,3822,1},{1876,3750,1},{2131,304,1},{348,3235,1},{772,2021,1},{2341,1881,1},{1639,2777,1},{2658,1626,1},{293,2333,1},{2357,2986,1}};
+
+//        double[][] polist2 = new double[][]{{1.23076104E3,5.90092851E2,1},{1.47187979E3,1.13355665E3,1},{2.33181897E2,2.60191686E3,1},{2.19760944E3,1.44998958E3,1},{8.97328699E2,2.38214152E3,1},{2.27887361E3,1.29769766E3,1},{2.93354165E3,1.10838301E3,1},{2.70210802E2,8.77281067E2,1},{1.92740782E3,3.84452219E3,1},{1.12452499E3,8.59329398E2,1},{1.42383670E3,1.19155330E3,1},{1.00490169E3,2.38246083E3,1},{2.78227287E3,5.66876808E2,1},{2.41912890E3,3.27540264E3,1},{1.57139467E3,3.05411534E3,1},{-6.11803886e+01,3.75622434E3,1},{1.25794155E3,9.73829896E2,1},{1.48176842E3,1.66665726E3,1},{6.82888070E2,2.27086740E3,1},{1.04816899E2,3.74388737E3,1},{6.24524517E2,1.88041404E2,1},{3.59050081E2,1.03543694E3,1},{1.80367908E3,1.71534575E3,1},{2.19942593E3,1.43501200E3,1},{1.88424515E3,2.38661728E3,1},{6.44204259e+01,2.12347716E3,1},{1.31005001E3,3.83541132E3,1},{1.67992247E3,2.52050159E3,1},{1.69674445E3,1.33490133E3,1},{-1.48708416e+01,2.60933437E3,1},{2.42930534E3,1.98224418E3,1},{2.05532724E3,1.90451125E3,1},{3.46414454E2,3.25209504E3,1}
+//                ,{3.15868498E2,1.15656889E3,1},{4.97283656E2,3.82092025E3,1},{2.45446031E3,1.83309283E3,1},{2.80984547E3,9.64188685E2,1},{1.47506955E3,3.46881744E3,1},{8.01933758E2,2.48825687E3,1},{4.87662170E2,5.10827155E2,1},{9.87477712e+01,3.77616180E3,1},{1.73432217E3,3.46028967E3,1},{2.07616079E3,6.09724564E2,1},{2.02895909E2,3.15771106E3,1},{6.95163950E2,1.86541176E3,1},{2.23167649E3,2.02760987E3,1},{1.51169166E3,2.73271394E3,1},{2.54928051E3,1.86167629E3,1},{1.87057196E2,2.28556097E3,1},{2.20055924E3,3.08940293E3,1}};
+
+//        double[][] polist1 = new double[][]{{143,530,1},{426,274,1},{789,60,1},{149,395,1},{392,115,1},{866,866,1},{831,146,1},{265,751,1},{1286,68,1},{788,44,1},{495,1352,1},{619,69,1},{709,971,1},{819,433,1},{137,1160,1},{302,741,1},{448,543,1},{123,742,1},{183,806,1},{1312,714,1},{87,1259,1},{276,112,1},{307,353,1},{675,410,1},{669,143,1},{1334,279,1},{125,1244,1},{729,1046,1},{533,946,1},{952,416,1},{46,797,1},{382,116,1},{1020,98,1},{290,590,1},{162,718,1},{881,401,1},{552,91,1},{299,207,1},{643,203,1},{255,520,1},{311,72,1},{1252,540,1},{289,651,1},{285,75,1},{740,805,1},{1243,1249,1},{730,717,1},{757,381,1},{334,259,1},{255,448,1}};
+
+//        double[][] polist2 = new double[][]{{-1.66508060E3,5.97800394E2,1},{-1.32380770E3,2.94874798E2,1},{-9.30737018E2,6.10165344E1,1},{-1.65711652E3,4.44969031E2,1},{-1.36165324E3,1.24859736E2,1},{-8.52900159E2,8.66352064E2,1},{-8.86667684E2,1.46872615E2,1},{-1.51509981E3,8.29946153E2,1},{-4.58097396E2,6.44699006E1,1},{-9.30294127E2,4.50162070E1,1},{-1.24599630E3,1.43558404E3,1},{-1.10839056E3,7.27723654E1,1},{-1.01277341E3,9.95588520E2,1},{-8.99828827E2,4.36325600E2,1},{-1.67554186E3,1.31008596E3,1},{-1.46802492E3,8.12461810E2,1},{-1.29860737E3,5.81024679E2,1},{-1.69083533E3,8.39393083E2,1},{-1.61503002E3,9.02651956E2,1},{-4.35462800E2,6.67784369E2,1},{-1.73967171E3,1.43397899E3,1},{-1.50046367E3,1.23642203E2,1},{-1.46399478E3,3.87553392E2,1},{-1.04850928E3,4.22744155E2,1},{-1.05464107E3,1.48198053E2,1},{-4.16862242E2,2.60692250E2,1},{-1.68908683E3,1.40710160E3,1},{-9.92500282E2,1.06913628E3,1},{-1.20254565E3,9.97917583E2,1},{-7.66666798E2,4.10433984E2,1},{-1.79043594E3,9.13690051E2,1},{-1.37468115E3,1.25984164E2,1},{-7.01679368E2,9.57705821E1,1},{-1.48276952E3,6.48824925E2,1},{-1.64074997E3,8.07257093E2,1},{-8.36408259E2,4.00679106E2,1},{-1.18110403E3,9.57673583E1,1},{-1.47252930E3,2.27980029E2,1},{-1.08130906E3,2.10504396E2,1},{-1.52579268E3,5.75155246E2,1},{-1.45746587E3,7.90201450E1,1},{-4.88515656E2,5.10147595E2,1},{-1.48418003E3,7.16230678E2,1},{-1.49000220E3,8.27360563E1,1},{-9.79882237E2,8.20978191E2,1},{-4.96663830E2,1.18004740E3,1},{-9.89346634E2,7.32323510E2,1},{-9.62442239E2,3.88326475E2,1},{-1.43045481E3,2.83168219E2,1},{-1.52686250E3,4.96340551E2,1}};
+
+//        double[][] polist1 = new double[][]{{143,530,1},{426,274,1},{789,60,1},{149,395,1},{392,115,1},{866,866,1},{831,146,1},{265,751,1},{1286,68,1},{788,44,1},{495,1352,1},{619,69,1},{709,971,1},{819,433,1},{137,1160,1},{302,741,1},{448,543,1},{123,742,1},{183,806,1},{1312,714,1},{87,1259,1},{276,112,1},{307,353,1},{675,410,1},{669,143,1},{1334,279,1},{125,1244,1},{729,1046,1},{533,946,1},{952,416,1},{46,797,1},{382,116,1},{1020,98,1},{290,590,1},{162,718,1},{881,401,1},{552,91,1},{299,207,1},{643,203,1},{255,520,1},{311,72,1},{1252,540,1},{289,651,1},{285,75,1},{740,805,1},{1243,1249,1},{730,717,1},{757,381,1}
+//                ,{334,259,1},{255,448,1}};
+
+//        double[][] polist2 = new double[][]{{-1.66508060E3,5.97800394E2,1},{-1.32380770E3,2.94874798E2,1},{-9.30737018E2,6.10165344E1,1},{-1.65711652E3,4.44969031E2,1},{-1.36165324E3,1.24859736E2,1},{-8.52900159E2,8.66352064E2,1},{-8.86667684E2,1.46872615E2,1},{-1.51509981E3,8.29946153E2,1},{-4.58097396E2,6.44699006E1,1},{-9.30294127E2,4.50162070E1,1},{-1.24599630E3,1.43558404E3,1},{-1.10839056E3,7.27723654E1,1},{-1.01277341E3,9.95588520E2,1},{-8.99828827E2,4.36325600E2,1},{-1.67554186E3,1.31008596E3,1},{-1.46802492E3,8.12461810E2,1},{-1.29860737E3,5.81024679E2,1},{-1.69083533E3,8.39393083E2,1},{-1.61503002E3,9.02651956E2,1},{-4.35462800E2,6.67784369E2,1},{-1.73967171E3,1.43397899E3,1},{-1.50046367E3,1.23642203E2,1},{-1.46399478E3,3.87553392E2,1},{-1.04850928E3,4.22744155E2,1},{-1.05464107E3,1.48198053E2,1},{-4.16862242E2,2.60692250E2,1},{-1.68908683E3,1.40710160E3,1},{-9.92500282E2,1.06913628E3,1},{-1.20254565E3,9.97917583E2,1},{-7.66666798E2,4.10433984E2,1},{-1.79043594E3,9.13690051E2,1},{-1.37468115E3,1.25984164E2,1},{-7.01679368E2,9.57705821E1,1},{-1.48276952E3,6.48824925E2,1},{-1.64074997E3,8.07257093E2,1},{-8.36408259E2,4.00679106E2,1},{-1.18110403E3,9.57673583E1,1},{-1.47252930E3,2.27980029E2,1},{-1.08130906E3,2.10504396E2,1},{-1.52579268E3,5.75155246E2,1},{-1.45746587E3,7.90201450E1,1},{-4.88515656E2,5.10147595E2,1},{-1.48418003E3,7.16230678E2,1},{-1.49000220E3,8.27360563E1,1},{-9.79882237E2,8.20978191E2,1},{-4.96663830E2,1.18004740E3,1},{-9.89346634E2,7.32323510E2,1},{-9.62442239E2,3.88326475E2,1},{-1.43045481E3,2.83168219E2,1},{-1.52686250E3,4.96340551E2,1}};
+        double[][] polist1 = new double[][]{{414,26,1},{291,176,1},{313,331,1},{333,166,1},{326,77,1},{113,86,1},{27,376,1},{156,253,1},{145,501,1},{367,255,1},{128,118,1},{167,280,1},{516,212,1},{187,281,1},{44,409,1},{172,128,1},{216,109,1},{95,58,1},{437,554,1},{70,61,1},{536,407,1},{145,36,1},{150,135,1},{227,244,1},{224,355,1},{99,264,1},{35,173,1},{122,252,1},{93,228,1},{315,188,1},{311,323,1},{426,396,1},{86,460,1},{212,207,1},{156,115,1},{80,451,1},{434,403,1}
+                ,{211,342,1},{465,24,1},{15,284,1},{59,192,1},{198,83,1},{265,174,1},{270,61,1},{370,242,1},{378,132,1},{381,361,1},{87,38,1},{132,241,1},{101,190,1}};
+
+        double[][] polist2 = new double[][]{{-1.33779634E3,2.79879007E1,1},{-1.48352742E3,1.94448985E2,1},{-1.45483107E3,3.62460413E2,1},{-1.43328292E3,1.81719148E2,1},{-1.43960597E3,8.43534916E1,1},{-1.70478330E3,9.83061236E1,1},{-1.81545924E3,4.33694521E2,1},{-1.64854639E3,2.84774872E2,1},{-1.66428341E3,5.65636917E2,1},{-1.39155324E3,2.76861249E2,1},{-1.68569933E3,1.33417468E2,1},{-1.63408949E3,3.14729116E2,1},{-1.22300693E3,2.24507688E2,1},{-1.61034738E3,3.15094302E2,1},{-1.79463278E3,4.70188651E2,1},{-1.62810391E3,1.43566468E2,1},{-1.57394321E3,1.21479770E2,1},{-1.72580536E3,6.60407563E1,1},{-1.31193666E3,5.94785347E2,1},{-1.75881539E3,6.97028924E1,1},{-1.20063089E3,4.29387208E2,1},{-1.66263228E3,4.09631067E1,1},{-1.65539471E3,1.52368335E2,1},{-1.55979184E3,2.71971996E2,1},{-1.56446282E3,3.95109126E2,1},{-1.72059603E3,3.00840889E2,1},{-1.80567006E3,1.99413005E2,1},{-1.69339287E3,2.86017799E2,1},{-1.72919413E3,2.59705597E2,1},{-1.45380169E3,2.06230340E2,1},{-1.45775345E3,3.53719673E2,1},{-1.32538168E3,4.26090292E2,1},{-1.73968032E3,5.24321489E2,1},{-1.57814876E3,2.30782057E2,1},{-1.64789226E3,1.30261863E2,1},{-1.74761143E3,5.14391840E2,1},{-1.31458524E3,4.32686969E2,1},{-1.58048763E3,3.81591976E2,1},{-1.27887877E3,2.62969983E1,1},{-1.83170388E3,3.27629610E2,1},{-1.77278190E3,2.20231144E2,1},{-1.59811556E3,9.35460019E1,1},{-1.51412345E3,1.92105790E2,1},{-1.50721054E3,6.78950862E1,1},{-1.38823903E3,2.62689570E2,1},{-1.37968557E3,1.43615107E2,1},{-1.37545463E3,3.90674830E2,1},{-1.73727989E3,4.33323957E1,1},{-1.68047676E3,2.72737170E2,1},{-1.71789902E3,2.16062993E2,1}};
+//        Matrix F0 = new Matrix(new double[][]{{0.0,9.765625E-8,0,0},{2.70548366E-4,0.0,1.50015625},{0.0,-1.73205081,0.0}});
+
+
+        p.Convert2DTo3D_Fun(polist1, polist2,p.MyMobileModel);
+        p.Point3DTo2D(p.X_3D);
+        System.out.println("==============MainActivity所得三维点坐标==================");
+        for (int j=0; j<p.X_3D.getRowDimension(); j++){
+            out.println(j+"点的值：" + p.X_3D.get(j,0)+","+p.X_3D.get(j,1)+ ","+p.X_3D.get(j,2)+ ","+p.X_3D.get(j,3));
+        }
 //        ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);
 //        System.out.println("==============所得三维点坐标==================");
 //        for(ImageMarker im: Point3D){
@@ -1467,7 +1644,9 @@ public class MainActivity extends AppCompatActivity {
 
         new XPopup.Builder(this)
                 .atView(v)  // 依附于所点击的View，内部会自动判断在上方或者下方显示
-                .asAttachList(new String[]{"Refinement add", "General add", "Delete", "Exit point"},
+
+                .asAttachList(new String[]{"Refinement add", "General add", "Auto ORB","Delete", "Exit point"},
+
 
                         new int[]{},
                         new OnSelectListener() {
@@ -1489,6 +1668,15 @@ public class MainActivity extends AppCompatActivity {
                                         ifPoint = true;
                                         ifDelete = false;
                                         Pointing(false);
+
+                                        break;
+
+                                    case "Auto ORB":
+                                        ORBTest(MarkerList1, MarkerList2);//ORB提取匹配点
+                                        Toast.makeText(getContext(), "Feature Points have been obtained!", Toast.LENGTH_SHORT).show();
+                                        ifPoint = true;
+                                        ifDelete = false;
+                                        Pointing(true);
 
                                         break;
 

@@ -13,6 +13,7 @@ public class ImageMarker extends BasicSurfObj {
 
     public ImageMarker() {type=shape=0; radius=x=y=z=0;}
     public ImageMarker(float x0, float y0, float z0) {type=shape=0; x=x0; y=y0; z=z0; radius=0;}
+    public ImageMarker(float x0, float y0, float z0, int type) {this.type = type;  shape=0; x=x0; y=y0; z=z0; radius=0;}
     public ImageMarker(int t0, int s0, float x0, float y0, float z0, float r0) {type=t0; shape=s0; x=x0; y=y0; z=z0; radius=r0;}
 
     public XYZ getXYZ(){

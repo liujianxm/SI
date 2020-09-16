@@ -46,6 +46,7 @@ public class RANSAC {
         for (int i = 0; i < distance.size(); i++) {
             double dist = distance.get(i);
             //     Log.d(TAG, "dist"+i+"为："+dist);
+
             if (Math.abs(dist) <= threshDist) {
                 res.add(i);
             }
@@ -131,6 +132,7 @@ public class RANSAC {
             c++;
         }
         //  Log.d(TAG, "KKKKKKKKKKKKKKKKKKKKKK："+c);
+
         return bestF;
     }
 
