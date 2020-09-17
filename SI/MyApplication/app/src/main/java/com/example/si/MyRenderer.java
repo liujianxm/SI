@@ -50,6 +50,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static com.example.si.RENDER.BitmapRotation.getBitmapDegree;
+import static com.example.si.RENDER.BitmapRotation.getOrientation;
 import static com.example.si.RENDER.BitmapRotation.rotateBitmapByDegree;
 import static com.example.si.MainActivity.getContext;
 import static java.lang.Math.ceil;
@@ -798,15 +799,20 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
         } else {
             Uri uri = Uri.parse(filepath);
+            Uri uri_degree = Uri.parse(filepath);
+
 
             try {
                 ParcelFileDescriptor parcelFileDescriptor =
                         getContext().getContentResolver().openFileDescriptor(uri, "r");
 
+                ParcelFileDescriptor parcelFileDescriptor_degree =
+                        getContext().getContentResolver().openFileDescriptor(uri, "r");
+
+                fd = parcelFileDescriptor_degree.getFileDescriptor();
                 is = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
 
                 length = (int) parcelFileDescriptor.getStatSize();
-                fd = parcelFileDescriptor.getFileDescriptor();
 
                 Log.v("MyPattern", "Successfully load intensity");
 
@@ -815,19 +821,24 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
         }
 
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        bitmap2D = BitmapFactory.decodeStream(is, null,options);
-        bitmap2D_backup = bitmap2D.copy(Bitmap.Config.ARGB_8888,false);
+
+
         //图片过大压缩
 //        if(bitmap2D.getWidth()>2000&&bitmap2D.getHeight()>2000){
 //            bitmap2D = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / 4, bitmap2D.getHeight() / 4);
 //        }
         if(file.exists()){
             degree = getBitmapDegree(filepath);
+            System.out.println("filepath:"+degree);
         }else{
+            Log.i("MyRenderer",fd.toString());
             degree = getBitmapDegree(fd);
+            System.out.println("fd:"+degree);
         }
 //        ByteArrayOutputStream st = new ByteArrayOutputStream();
+
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        bitmap2D = BitmapFactory.decodeStream(is, null,options);
 
         System.out.println("Myrenderer bitmap");
 
@@ -847,6 +858,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //            ByteArrayOutputStream outputStream = new ByteArrayOutputStream(bitmap.getByteCount());
             sz[0] = bitmap2D.getWidth();
             sz[1] = bitmap2D.getHeight();
+            System.out.println("width:" + sz[0]);
+            System.out.println("height:" + sz[1]);
             sz[2] = Math.max(sz[0], sz[1]);
             Integer[] num = {sz[0], sz[1]};
             float max_dim = (float) Collections.max(Arrays.asList(num));
@@ -857,6 +870,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             mz[2] = Math.max(mz[0], mz[1]);
 
         }
+        bitmap2D_backup = bitmap2D.copy(Bitmap.Config.ARGB_8888,false);
         is.close();
     }
 
