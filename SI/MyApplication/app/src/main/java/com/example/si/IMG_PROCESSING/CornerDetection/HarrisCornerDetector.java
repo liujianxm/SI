@@ -513,7 +513,7 @@ public class HarrisCornerDetector extends GrayFilter {
             }
 
             return new_corner_x_y;
-        } else {
+        } else if (temp.size() > 0) {
             int[] new_corner_x_y = new int[2*temp.size()];
             for (int i = 0; i < temp.size(); i++) {
                 new_corner_x_y[2*i + 1] = temp.get(i).getX();
@@ -521,6 +521,8 @@ public class HarrisCornerDetector extends GrayFilter {
 //                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
             }
             return new_corner_x_y;
+        } else {
+            return new int[2];
         }
 
 

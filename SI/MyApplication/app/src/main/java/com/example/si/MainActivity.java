@@ -76,6 +76,7 @@ import com.lxj.xpopup.interfaces.OnSelectListener;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.DMatch;
+import org.opencv.core.KeyPoint;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
@@ -147,14 +148,15 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap img1 = null;
     private Bitmap img2 = null;
     ///////////////////////////////////
-    double[][] polist1 = new double[][]{{1052,758,1},{1851,2190,1},{3900,1356,1},{3138,1886,1},{787,2938,1},{1703,1799,1},{3027,1798,1},{2673,642,1},{3023,2381,1},{775,1985,1},{195,1601,1},{1294,2205,1},{3515,1543,1},{3882,896,1},{751,344,1},{2161,1428,1},{2458,64,1},{3060,2765,1},{3014,2123,1},{2556,2961,1},{1767,570,1},{706,2732,1},{519,1925,1},{573,567,1},{753,319,1},{1593,2379,1},{1864,2509,1},{2971,541,1},{3313,2610,1},{491,2456,1},{802,408,1},{1932,485,1},{3505,1101,1},{3636,2540,1},{1458,930,1},{3869,1111,1},{2777,2428,1},{405,2572,1},{901,1930,1},{978,1573,1},{3055,2967,1},{841,1566,1},{3214,1343,1},{2794,1116,1},{858,922,1},{2387,1063,1},{1989,2693,1},{3230,632,1},{332,1348,1},{1959,1850,1}};
-    double[][] polist2 = new double[][]{{1017.2,742.7,1},{1746.9,2183,1},{3825.9,1426.6,1},{3059,1799.4,1},{627.8,3078.1,1},{1597,1948.8,1},{2910.2,2032.8,1},{2604.4,929.9,1},{2880.9,2596.3,1},{665.9,2089.1,1},{122.3,1566.7,1},{1195.9,2145.5,1},{3444.4,1517.8,1},{3794.3,1238.7,1},{712,511,1},{2057,1699.1,1},{2425.3,288.3,1},{2928.5,2758.8,1},{2910.8,2135.1,1},{2410.2,2991.7,1},{1713.1,771,1},{558,2860.8,1},{394.9,2165.6,1},{535,645,1},{724.4,416.3,1},{1471.4,2436,1},{1743.6,2509.7,1},{2910.5,804.4,1},{3181.7,2658.9,1},{395.7,2282,1},{771.6,486.2,1},{1897.8,565.9,1},{3441.1,1186.1,1},{3484.6,2768.9,1},{1374.4,1225.8,1},{3789.9,1309.2,1},{2659.3,2438.6,1},{283.9,2553.2,1},{791.8,2055.6,1},{905,1551.4,1},{2900.1,3065.9,1},{747,1707.8,1},{3114,1615.6,1},{2736.6,1144.7,1},{791.8,1086.7,1},{2302.9,1315.1,1},{1843.7,2817.3,1},{3176,812.8,1},{243.8,1524.9,1},{1837.5,2100,1}};
-//    double[][] polist1 = new double[][]{{758,1052,1},{2190,1851,1},{1356,3900,1},{1886,3138,1},{2938,787,1},{1799,1703,1},{1798,3027,1},{642,2673,1},{2381,3023,1},{1985,775,1},{1601,195,1},{2205,1294,1},{1543,3515,1},{896,3882,1},{344,751,1},{1428,2161,1},{64,2458,1},{2765,3060,1},{2123,3014,1},{2961,2556,1},{570,1767,1},{2732,706,1},{1925,519,1},{567,573,1},{319,753,1},{2379,1593,1},{2509,1864,1},{541,2971,1},{2610,3313,1},{2456,491,1},{408,802,1},{485,1932,1},{1101,3505,1},{2540,3636,1},{930,1458,1},{1111,3869,1},{2428,2777,1},{2572,405,1},{1930,901,1},{1573,978,1},{2967,3055,1},{1566,841,1},{1343,3214,1},{1116,2794,1},{922,858,1},{1063,2387,1},{2693,1989,1},{632,3230,1},{1348,332,1},{1850,1959,1}};
+//    double[][] polist1 = new double[][]{{1052,758,1},{1851,2190,1},{3900,1356,1},{3138,1886,1},{787,2938,1},{1703,1799,1},{3027,1798,1},{2673,642,1},{3023,2381,1},{775,1985,1},{195,1601,1},{1294,2205,1},{3515,1543,1},{3882,896,1},{751,344,1},{2161,1428,1},{2458,64,1},{3060,2765,1},{3014,2123,1},{2556,2961,1},{1767,570,1},{706,2732,1},{519,1925,1},{573,567,1},{753,319,1},{1593,2379,1},{1864,2509,1},{2971,541,1},{3313,2610,1},{491,2456,1},{802,408,1},{1932,485,1},{3505,1101,1},{3636,2540,1},{1458,930,1},{3869,1111,1},{2777,2428,1},{405,2572,1},{901,1930,1},{978,1573,1},{3055,2967,1},{841,1566,1},{3214,1343,1},{2794,1116,1},{858,922,1},{2387,1063,1},{1989,2693,1},{3230,632,1},{332,1348,1},{1959,1850,1}};
+//    double[][] polist2 = new double[][]{{1017.2,742.7,1},{1746.9,2183,1},{3825.9,1426.6,1},{3059,1799.4,1},{627.8,3078.1,1},{1597,1948.8,1},{2910.2,2032.8,1},{2604.4,929.9,1},{2880.9,2596.3,1},{665.9,2089.1,1},{122.3,1566.7,1},{1195.9,2145.5,1},{3444.4,1517.8,1},{3794.3,1238.7,1},{712,511,1},{2057,1699.1,1},{2425.3,288.3,1},{2928.5,2758.8,1},{2910.8,2135.1,1},{2410.2,2991.7,1},{1713.1,771,1},{558,2860.8,1},{394.9,2165.6,1},{535,645,1},{724.4,416.3,1},{1471.4,2436,1},{1743.6,2509.7,1},{2910.5,804.4,1},{3181.7,2658.9,1},{395.7,2282,1},{771.6,486.2,1},{1897.8,565.9,1},{3441.1,1186.1,1},{3484.6,2768.9,1},{1374.4,1225.8,1},{3789.9,1309.2,1},{2659.3,2438.6,1},{283.9,2553.2,1},{791.8,2055.6,1},{905,1551.4,1},{2900.1,3065.9,1},{747,1707.8,1},{3114,1615.6,1},{2736.6,1144.7,1},{791.8,1086.7,1},{2302.9,1315.1,1},{1843.7,2817.3,1},{3176,812.8,1},{243.8,1524.9,1},{1837.5,2100,1}};
+
 
 //    double[][] polist1 = new double[][]{{1274,415,1},{1537,1007,1},{354,2652,1},{2276,1344,1},{1029,2173,1},{2356,1119,1},{2999,960,1},{317,827,1},{2100,3982,1},{1179,704,1},{1476,1255,1},{1112,2470,1},{2827,357,1},{2570,3346,1},{1725,2966,1},{100,3985,1},{1302,1010,1},{1561,1677,1},{785,2355,1},{268,3941,1},{637,154,1},{435,724,1},{1909,1438,1},{2267,1451,1},{2001,2358,1},{185,1901,1},{1492,3856,1},{1792,2626,1},{1779,1117,1},{114,2567,1},{2520,2034,1},{2140,1985,1},{514,3112,1},{377,1094,1},{676,3874,1},{2554,1692,1},{2870,797,1},{1643,3447,1},{904,2698,1},{511,532,1},{276,3822,1},{1876,3750,1},{2131,304,1},{348,3235,1},{772,2021,1},{2341,1881,1},{1639,2777,1},{2658,1626,1},{293,2333,1},{2357,2986,1}};
 //
 //    double[][] polist2 = new double[][]{{1.23076104E3,5.90092851E2,1},{1.47187979E3,1.13355665E3,1},{2.33181897E2,2.60191686E3,1},{2.19760944E3,1.44998958E3,1},{8.97328699E2,2.38214152E3,1},{2.27887361E3,1.29769766E3,1},{2.93354165E3,1.10838301E3,1},{2.70210802E2,8.77281067E2,1},{1.92740782E3,3.84452219E3,1},{1.12452499E3,8.59329398E2,1},{1.42383670E3,1.19155330E3,1},{1.00490169E3,2.38246083E3,1},{2.78227287E3,5.66876808E2,1},{2.41912890E3,3.27540264E3,1},{1.57139467E3,3.05411534E3,1},{-6.11803886e+01,3.75622434E3,1},{1.25794155E3,9.73829896E2,1},{1.48176842E3,1.66665726E3,1},{6.82888070E2,2.27086740E3,1},{1.04816899E2,3.74388737E3,1},{6.24524517E2,1.88041404E2,1},{3.59050081E2,1.03543694E3,1},{1.80367908E3,1.71534575E3,1},{2.19942593E3,1.43501200E3,1},{1.88424515E3,2.38661728E3,1},{6.44204259e+01,2.12347716E3,1},{1.31005001E3,3.83541132E3,1},{1.67992247E3,2.52050159E3,1},{1.69674445E3,1.33490133E3,1},{-1.48708416e+01,2.60933437E3,1},{2.42930534E3,1.98224418E3,1},{2.05532724E3,1.90451125E3,1},{3.46414454E2,3.25209504E3,1}
 //            ,{3.15868498E2,1.15656889E3,1},{4.97283656E2,3.82092025E3,1},{2.45446031E3,1.83309283E3,1},{2.80984547E3,9.64188685E2,1},{1.47506955E3,3.46881744E3,1},{8.01933758E2,2.48825687E3,1},{4.87662170E2,5.10827155E2,1},{9.87477712e+01,3.77616180E3,1},{1.73432217E3,3.46028967E3,1},{2.07616079E3,6.09724564E2,1},{2.02895909E2,3.15771106E3,1},{6.95163950E2,1.86541176E3,1},{2.23167649E3,2.02760987E3,1},{1.51169166E3,2.73271394E3,1},{2.54928051E3,1.86167629E3,1},{1.87057196E2,2.28556097E3,1},{2.20055924E3,3.08940293E3,1}};
+
 
 //    double[][] polist1 = new double[][]{{414,26,1},{291,176,1},{313,331,1},{333,166,1},{326,77,1},{113,86,1},{27,376,1},{156,253,1},{145,501,1},{367,255,1},{128,118,1},{167,280,1},{516,212,1},{187,281,1},{44,409,1},{172,128,1},{216,109,1},{95,58,1},{437,554,1},{70,61,1},{536,407,1},{145,36,1},{150,135,1},{227,244,1},{224,355,1},{99,264,1},{35,173,1},{122,252,1},{93,228,1},{315,188,1},{311,323,1},{426,396,1},{86,460,1},{212,207,1},{156,115,1},{80,451,1},{434,403,1}
 //            ,{211,342,1},{465,24,1},{15,284,1},{59,192,1},{198,83,1},{265,174,1},{270,61,1},{370,242,1},{378,132,1},{381,361,1},{87,38,1},{132,241,1},{101,190,1}};
@@ -166,6 +168,12 @@ public class MainActivity extends AppCompatActivity {
 //
 //    double[][] polist2 = new double[][]{{-1.66508060E3,5.97800394E2,1},{-1.32380770E3,2.94874798E2,1},{-9.30737018E2,6.10165344E1,1},{-1.65711652E3,4.44969031E2,1},{-1.36165324E3,1.24859736E2,1},{-8.52900159E2,8.66352064E2,1},{-8.86667684E2,1.46872615E2,1},{-1.51509981E3,8.29946153E2,1},{-4.58097396E2,6.44699006E1,1},{-9.30294127E2,4.50162070E1,1},{-1.24599630E3,1.43558404E3,1},{-1.10839056E3,7.27723654E1,1},{-1.01277341E3,9.95588520E2,1},{-8.99828827E2,4.36325600E2,1},{-1.67554186E3,1.31008596E3,1},{-1.46802492E3,8.12461810E2,1},{-1.29860737E3,5.81024679E2,1},{-1.69083533E3,8.39393083E2,1},{-1.61503002E3,9.02651956E2,1},{-4.35462800E2,6.67784369E2,1},{-1.73967171E3,1.43397899E3,1},{-1.50046367E3,1.23642203E2,1},{-1.46399478E3,3.87553392E2,1},{-1.04850928E3,4.22744155E2,1},{-1.05464107E3,1.48198053E2,1},{-4.16862242E2,2.60692250E2,1},{-1.68908683E3,1.40710160E3,1},{-9.92500282E2,1.06913628E3,1},{-1.20254565E3,9.97917583E2,1},{-7.66666798E2,4.10433984E2,1},{-1.79043594E3,9.13690051E2,1},{-1.37468115E3,1.25984164E2,1},{-7.01679368E2,9.57705821E1,1},{-1.48276952E3,6.48824925E2,1},{-1.64074997E3,8.07257093E2,1},{-8.36408259E2,4.00679106E2,1},{-1.18110403E3,9.57673583E1,1},{-1.47252930E3,2.27980029E2,1},{-1.08130906E3,2.10504396E2,1},{-1.52579268E3,5.75155246E2,1},{-1.45746587E3,7.90201450E1,1},{-4.88515656E2,5.10147595E2,1},{-1.48418003E3,7.16230678E2,1},{-1.49000220E3,8.27360563E1,1},{-9.79882237E2,8.20978191E2,1},{-4.96663830E2,1.18004740E3,1},{-9.89346634E2,7.32323510E2,1},{-9.62442239E2,3.88326475E2,1},{-1.43045481E3,2.83168219E2,1},{-1.52686250E3,4.96340551E2,1}};
 
+
+    //0916
+//    double[][] polist1 = new double[][]{{873,70,1},{1137,213,1},{196,303,1},{113,868,1},{142,716,1},{29,616,1},{814,801,1},{270,472,1},{330,912,1},{1097,918,1},{62,256,1},{798,699,1},{286,481,1},{819,117,1},{125,778,1},{519,676,1},{501,140,1},{475,1299,1}
+//            ,{575,46,1},{625,54,1},{318,660,1},{576,367,1},{635,305,1},{461,517,1},{307,93,1},{733,595,1},{1027,579,1},{896,787,1},{353,372,1},{1128,605,1},{1113,1053,1},{444,492,1},{720,446,1},{62,318,1},{79,442,1},{531,109,1},{688,1253,1},{38,1217,1},{553,445,1},{212,487,1},{299,1071,1},{256,418,1},{786,707,1},{653,414,1},{483,468,1},{207,1304,1},{628,560,1},{615,1119,1},{711,891,1},{1057,350,1}};
+//    double[][] polist2 = new double[][]{{-8.44149417E02,-7.01243716E01,1.00000000E00},{-5.92102316E02,-2.04821874E02,1.00000000E00},{-1.59848844E03,-3.39181688E02,1.00000000E00},{-1.70279784E03,-9.83655419E02,1.00000000E00},{-1.66813960E03,-8.08492588E02,1.00000000E00},{-1.81199751E03,-7.09261686E02,1.00000000E00},{-9.04794917E02,-8.07880563E02,1.00000000E00},{-1.50803293E03,-5.20834314E02,1.00000000E00},{-1.43617096E03,-9.95336895E02,1.00000000E00},{-6.29134719E02,-8.86470760E02,1.00000000E00},{-1.77018217E03,-2.93223726E02,1.00000000E00},{-9.19294712E02,-7.06440991E02,1.00000000E00},{-1.48819709E03,-5.29095734E02,1.00000000E00},{-8.98749267E02,-1.18135906E02,1.00000000E00},{-1.68825220E03,-8.80435997E02,1.00000000E00},{-1.21782479E03,-7.14497160E02,1.00000000E00},{-1.23792301E03,-1.49369843E02,1.00000000E00},{-1.26810098E03,-1.38421217E03,1.00000000E00},{-1.15559234E03,-4.90521446E01,1.00000000E00},{-1.10060089E03,-5.68823027E01,1.00000000E00},{-1.45151583E03,-7.22214619E02,1.00000000E00},{-1.15437274E03,-3.85116382E02,1.00000000E00},{-1.09083292E03,-3.16708690E02,1.00000000E00},{-1.28207605E03,-5.52121303E02,1.00000000E00},{-1.46448780E03,-1.02709208E02,1.00000000E00},{-9.86490505E02,-6.07864730E02,1.00000000E00},{-6.95043360E02,-5.64985542E02,1.00000000E00},{-8.21441961E02,-7.83381425E02,1.00000000E00},{-1.41000788E03,-4.04491874E02,1.00000000E00},{-6.01312558E02,-5.82226435E02,1.00000000E00},{-6.13874035E02,-1.01415901E03,1.00000000E00},{-1.30262340E03,-5.27113328E02,1.00000000E00},{-1.00072079E03,-4.56328273E02,1.00000000E00},{-1.76970994E03,-3.64600846E02,1.00000000E00},{-1.74734987E03,-5.04008143E02,1.00000000E00},{-1.20543106E03,-1.15298453E02,1.00000000E00},{-1.03584870E03,-1.28920746E03,1.00000000E00},{-1.80367559E03,-1.39848112E03,1.00000000E00},{-1.17936298E03,-4.68375869E02,1.00000000E00},{-1.57898005E03,-5.42735616E02,1.00000000E00},{-1.47289645E03,-1.17519136E03,1.00000000E00},{-1.52446381E03,-4.62410369E02,1.00000000E00},{-9.32013334E02,-7.15958523E02,1.00000000E00},{-1.07089308E03,-4.28351193E02,1.00000000E00},{-1.25792850E03,-4.97683613E02,1.00000000E00},{-1.58638334E03,-1.45427847E03,1.00000000E00},{-1.09740741E03,-5.82286041E02,1.00000000E00},{-1.11377277E03,-1.16500766E03,1.00000000E00},{-1.00964670E03,-9.12979286E02,1.00000000E00},{-6.67312107E02,-3.40453656E02,1.00000000E00}};
+
     //        double[][] X = new double[][]{{1052,758,90,1},{1851,2190,389,1},{3900,1356,343,1},{3138,1886,89,1},{787,2938,943,1},{1703,1799,699,1},{3027,1798,869,1},{2673,642,767,1},{3023,2381,944,1},{775,1985,653,1},{195,1601,247,1},{1294,2205,279,1},{3515,1543,157,1},{3882,896,920,1},{751,344,463,1},{2161,1428,907,1},{2458,64,494,1},{3060,2765,476,1},{3014,2123,387,1},{2556,2961,624,1},{1767,570,564,1},{706,2732,874,1},{519,1925,986,1},{573,567,295,1},{753,319,285,1},{1593,2379,595,1},{1864,2509,475,1},{2971,541,676,1},{3313,2610,572,1},{491,2456,73,1},{802,408,255,1},{1932,485,244,1},{3505,1101,337,1},{3636,2540,993,1},{1458,930,884,1},{3869,1111,608,1},{2777,2428,455,1},{405,2572,484,1},{901,1930,691,1},{978,1573,249,1},{3055,2967,779,1},{841,1566,656,1},{3214,1343,861,1},{2794,1116,222,1},{858,922,576,1},{2387,1063,776,1},{1989,2693,816,1},{3230,632,483,1},{332,1348,712,1},{1959,1850,950,1}};
     private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
     private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
@@ -175,6 +183,62 @@ public class MainActivity extends AppCompatActivity {
 //    boolean tag1 = true;
     boolean tag2 = false;
     boolean tag1 = false;
+
+    //////////////testdata for NCC
+
+    //输入点对
+    double[][] polist1 = new double[][]{{1714.7351,481.94458,1},{1702.8799,746.5856,1},{1697.2687,1180.755,1},{1685.4966,1283.7231,1},{1256.0372,1053.771,1},{2323.0845,1890.9382,1},{2351.079,2971.8403,1},{496.78162,2928.3013,1},{454.94238,1908.7051,1}};
+
+    double[][] polist2 = new double[][]{{1654.4371,474.12903,1},{1628.8568,732.10114,1},{1592.3121,1169.2343,1},{1582.4728,1266.1536,1},{1166.2509,1052.7257,1},{2571.4243,1859.9949,1},{2613.3745,2912.9946,1},{767.12244,2928.8904,1},{709.17194,1907.3645,1}};
+
+    //角点undownsample
+    /*double[][] plist1 = new double[][]{{0.0,205.0,1},{1.0,205.0,1},{551.0,782.0,1},{248.0,1282.0,1},{53.0,1284.0,1},{96.0,1281.0,1},{455.0,1909.0,1},{454.0,1909.0,1},{456.0,1909.0,1},{497.0,2928.0,1},
+            {469.0,2903.0,1},{497.0,2929.0,1},{76.0,3554.0,1},{269.0,3511.0,1},{80.0,3552.0,1},{626.0,89.0,1},{626.0,90.0,1},{627.0,89.0,1},{728.0,1305.0,1},{727.0,1305.0,1},
+            {719.0,1300.0,1},{869.0,2117.0,1},{855.0,2045.0,1},{922.0,2315.0,1},{843.0,2507.0,1},{998.0,2741.0,1},{959.0,2740.0,1},{641.0,3563.0,1},{826.0,3515.0,1},{988.0,3536.0,1},
+            {1190.0,676.0,1},{1191.0,676.0,1},{1190.0,675.0,1},{1697.0,1181.0,1},{1635.0,1180.0,1},{1697.0,1182.0,1},{1220.0,2118.0,1},{1205.0,2235.0,1},{1322.0,2245.0,1},{1220.0,2724.0,1},
+            {1193.0,2726.0,1},{1204.0,2617.0,1},{1730.0,3557.0,1},{1676.0,3507.0,1},{1677.0,3507.0,1},{1924.0,251.0,1},{2339.0,465.0,1},{2313.0,25.0,1},{2311.0,1562.0,1},{2341.0,1563.0,1},
+            {2311.0,1563.0,1},{1926.0,2047.0,1},{2323.0,1891.0,1},{2324.0,1891.0,1},{2105.0,2938.0,1},{2105.0,2949.0,1},{2107.0,2947.0,1},{1794.0,3493.0,1},{1793.0,3493.0,1},{1794.0,3494.0,1},
+            {2529.0,172.0,1},{2528.0,172.0,1},{2529.0,171.0,1},{2739.0,1256.0,1},{2647.0,1559.0,1},{2647.0,1558.0,1},{2767.0,2268.0,1},{2757.0,2263.0,1},{2767.0,2269.0,1},{2622.0,3164.0,1},
+            {2622.0,3163.0,1},{2623.0,3164.0,1},{2974.0,3368.0,1},{2457.0,3734.0,1},{2523.0,3768.0,1}};
+
+    double[][] plist2 = new double[][]{{253.0,768.0,1},{253.0,767.0,1},{139.0,778.0,1},{248.0,1290.0,1},{249.0,1290.0,1},{231.0,1271.0,1},{596.0,2310.0,1},{596.0,2309.0,1},{596.0,2313.0,1},{189.0,2936.0,1},
+            {188.0,2937.0,1},{185.0,2938.0,1},{129.0,3846.0,1},{129.0,3847.0,1},{313.0,3539.0,1},{1144.0,744.0,1},{720.0,389.0,1},{1143.0,744.0,1},{613.0,1282.0,1},{763.0,1297.0,1},
+            {764.0,1297.0,1},{1131.0,2069.0,1},{1155.0,2107.0,1},{1122.0,2110.0,1},{1188.0,2549.0,1},{1167.0,2603.0,1},{1135.0,2548.0,1},{599.0,3522.0,1},{600.0,3522.0,1},{600.0,3521.0,1},
+            {1654.0,474.0,1},{1654.0,473.0,1},{1330.0,741.0,1},{1255.0,1177.0,1},{1592.0,1169.0,1},{1592.0,1170.0,1},{1272.0,2278.0,1},{1422.0,2156.0,1},{1268.0,2283.0,1},{1400.0,2597.0,1},
+            {1362.0,2688.0,1},{1197.0,2493.0,1},{1731.0,3709.0,1},{1730.0,3709.0,1},{1470.0,3420.0,1},{2115.0,35.0,1},{2210.0,52.0,1},{2114.0,36.0,1},{2116.0,1551.0,1},{2114.0,1551.0,1},
+            {2209.0,1436.0,1},{1926.0,1962.0,1},{2188.0,2004.0,1},{1871.0,1969.0,1},{1909.0,2609.0,1},{1908.0,2609.0,1},{2359.0,2899.0,1},{2095.0,3503.0,1},{2124.0,3437.0,1},{2173.0,3506.0,1},
+            {2751.0,396.0,1},{2751.0,395.0,1},{2735.0,181.0,1},{2975.0,1183.0,1},{2600.0,1237.0,1},{2599.0,1237.0,1},{2571.0,1860.0,1},{2547.0,2002.0,1},{2553.0,2002.0,1},{2403.0,2888.0,1},
+            {2403.0,2899.0,1},{2403.0,2895.0,1},{2388.0,3528.0,1},{2389.0,3528.0,1},{2388.0,3529.0,1}};*/
+
+    //角点downsample
+//    double[][] plist1 = new double[][]{{1142.0,504.0,1},{1950.0,1988.0,1},{454.0,1910.0,1},{1712.0,484.0,1},{1704.0,744.0,1},{1196.0,702.0,1},{1360.0,1190.0,1},{1696.0,1182.0,1},{1692.0,1280.0,1},{2738.0,1256.0,1},{2322.0,1890.0,1}};
+
+    double[][] plist1 = new double[][]{{394.0,708.0,1},{394.0,710.0,1},{392.0,708.0,1},{108.0,1216.0,1},{70.0,1284.0,1},{132.0,1234.0,1},{456.0,1910.0,1},{456.0,1908.0,1},{454.0,1910.0,1},{470.0,2902.0,1},
+            {496.0,2928.0,1},{512.0,2938.0,1},{78.0,3554.0,1},{78.0,3552.0,1},{76.0,3554.0,1},{1142.0,504.0,1},{1194.0,684.0,1},{1194.0,682.0,1},{726.0,1304.0,1},{720.0,1300.0,1},
+            {726.0,1306.0,1},{1012.0,2276.0,1},{862.0,2194.0,1},{1110.0,2312.0,1},{1064.0,2934.0,1},{812.0,2942.0,1},{986.0,2944.0,1},{828.0,3516.0,1},{728.0,3724.0,1},{640.0,3562.0,1},
+            {1712.0,484.0,1},{1704.0,744.0,1},{1196.0,702.0,1},{1360.0,1190.0,1},{1696.0,1182.0,1},{1692.0,1280.0,1},{1316.0,2234.0,1},{1310.0,2290.0,1},{1206.0,2234.0,1},{1252.0,2948.0,1},
+            {1258.0,2948.0,1},{1218.0,2610.0,1},{1678.0,3506.0,1},{1678.0,3508.0,1},{1730.0,3558.0,1},{2142.0,170.0,1},{1858.0,4.0,1},{2116.0,72.0,1},{1830.0,1570.0,1},{2048.0,1454.0,1},
+            {1828.0,1570.0,1},{2322.0,1892.0,1},{1950.0,1988.0,1},{2322.0,1890.0,1},{2330.0,2928.0,1},{2240.0,2934.0,1},{2294.0,2952.0,1},{1794.0,3482.0,1},{1796.0,3482.0,1},{1794.0,3490.0,1},
+            {2934.0,372.0,1},{2932.0,372.0,1},{2908.0,32.0,1},{2736.0,1252.0,1},{2738.0,1256.0,1},{2738.0,1252.0,1},{2766.0,2270.0,1},{2766.0,2268.0,1},{2766.0,2274.0,1},{2638.0,2388.0,1},
+            {2712.0,2934.0,1},{2636.0,2390.0,1},{2974.0,3368.0,1},{2974.0,3366.0,1},{2836.0,3966.0,1}};
+
+    double[][] plist2 = new double[][]{{140.0,778.0,1},{254.0,768.0,1},{138.0,778.0,1},{246.0,1288.0,1},{248.0,1290.0,1},{146.0,1212.0,1},{596.0,2310.0,1},{570.0,1746.0,1},{596.0,1742.0,1},{162.0,3000.0,1},
+        {160.0,3000.0,1},{160.0,2998.0,1},{274.0,3744.0,1},{270.0,3744.0,1},{272.0,3746.0,1},{1084.0,488.0,1},{1084.0,490.0,1},{1144.0,744.0,1},{762.0,1296.0,1},{612.0,1282.0,1},
+        {760.0,1296.0,1},{710.0,1908.0,1},{1154.0,2104.0,1},{606.0,2088.0,1},{766.0,2928.0,1},{1186.0,2580.0,1},{782.0,2938.0,1},{604.0,3522.0,1},{604.0,3520.0,1},{602.0,3522.0,1},
+        {1654.0,474.0,1},{1654.0,476.0,1},{1628.0,732.0,1},{1256.0,1178.0,1},{1592.0,1170.0,1},{1580.0,1266.0,1},{1364.0,2260.0,1},{1276.0,2156.0,1},{1364.0,2262.0,1},{1228.0,2930.0,1},
+        {1394.0,2592.0,1},{1308.0,2504.0,1},{1772.0,3450.0,1},{1760.0,3478.0,1},{1544.0,3544.0,1},{2350.0,0.0,1},{2350.0,2.0,1},{2352.0,0.0,1},{1828.0,1562.0,1},{1828.0,1564.0,1},
+        {1830.0,1570.0,1},{2198.0,1962.0,1},{2042.0,1956.0,1},{2216.0,1918.0,1},{1910.0,2610.0,1},{1912.0,2620.0,1},{1910.0,2620.0,1},{2034.0,3456.0,1},{2172.0,3506.0,1},{2104.0,3506.0,1},
+        {2974.0,54.0,1},{2974.0,116.0,1},{2734.0,182.0,1},{2600.0,1236.0,1},{2600.0,1234.0,1},{2598.0,1234.0,1},{2570.0,1860.0,1},{2494.0,2060.0,1},{2548.0,2002.0,1},{2556.0,2894.0,1},
+        {2556.0,2884.0,1},{2568.0,2884.0,1},{2420.0,3448.0,1},{2392.0,3538.0,1},{2394.0,3538.0,1}};
+
+    boolean flagcorner1 = false;
+    boolean flagcorner2 = false;
+//    boolean flagcorner1 = true;
+//    boolean flagcorner2 = true;
+    Convert2DTo3D p2 = new Convert2DTo3D();
+
+
+
 
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -954,7 +1018,7 @@ public class MainActivity extends AppCompatActivity {
         this.addContentView(loadImage,params_loadImage);//
         loadImage.setVisibility(View.VISIBLE);
 
-        select_points = new Button(this);
+        /*select_points = new Button(this);
         select_points.setText("Point");
         select_points.setAllCaps(false);
         select_points.setTextColor(Color.BLACK);
@@ -962,9 +1026,9 @@ public class MainActivity extends AppCompatActivity {
         params_select_points.gravity = Gravity.TOP | Gravity.LEFT;
         params_select_points.setMargins(550,20,0,0);
         this.addContentView(select_points,params_select_points);//
-        select_points.setVisibility(View.VISIBLE);
+        select_points.setVisibility(View.VISIBLE);*/
 
-        finished = new Button(this);
+        /*finished = new Button(this);
         finished.setText("Finish");
         finished.setAllCaps(false);
         finished.setTextColor(Color.BLACK);
@@ -972,34 +1036,34 @@ public class MainActivity extends AppCompatActivity {
         params_finished.gravity = Gravity.TOP | Gravity.LEFT;
         params_finished.setMargins(800,20,0,0);
         this.addContentView(finished,params_finished);//
-        finished.setVisibility(View.VISIBLE);
+        finished.setVisibility(View.GONE);*/
 
         Process = new Button(this);
         Process.setText("Process");
         Process.setAllCaps(false);
         Process.setTextColor(Color.RED);
         FrameLayout.LayoutParams params_Process = new FrameLayout.LayoutParams(230, 120);
-        params_Process.gravity = Gravity.TOP | Gravity.RIGHT;
-        params_Process.setMargins(0,20,50,00);
+        params_Process.gravity = Gravity.TOP | Gravity.LEFT;
+        params_Process.setMargins(550,20,0,0);
         this.addContentView(Process,params_Process);//
-        Process.setVisibility(View.GONE);
+        Process.setVisibility(View.VISIBLE);
 
         img_switch.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                clearSelect_points();
+                //clearSelect_points();
                 if (isP1){
 //                    MarkerList1 = myrenderer.getMarkerList();
                     ////////////////////////
                     if (tag1) {
-                        for (int i = 0; i < polist1.length; i++) {
-                            double temp = polist1[i][0];
+//                        for (int i = 0; i < polist1.length; i++) {
+                            /*double temp = polist1[i][0];
                             polist1[i][0] = polist1[i][1];
-                            polist1[i][1] = temp;
-                            /*polist1[i][0] += img1.getWidth()/2;
-                            polist1[i][1] += img1.getHeight()/2;*/
-                        }
+                            polist1[i][1] = temp;*/
+//                            polist1[i][0] += img1.getWidth()/2;
+//                            polist1[i][1] += img1.getHeight()/2;
+//                        }
                         MarkerList1 = Convert2DTo3D.ArrayToMarkerList(new Matrix(polist1),0,0,3);
                         int a = 0;
                         for (ImageMarker imageMarker:MarkerList1) {
@@ -1009,7 +1073,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                         tag1 = false;
                     } else {
-                        MarkerList1 = myrenderer.getMarkerList();
+                        if (flagcorner1) {
+                            MarkerList1 = Convert2DTo3D.ArrayToMarkerList(new Matrix(plist1),0,0,3);
+                        } else {
+                            MarkerList1 = myrenderer.getMarkerList();
+                            out.println("*** Markerlist1 = "+MarkerList1.size()+" ***");
+                        }
                     }
                     ////////////////////////
                     //img1 = myrenderer.GetBackupBitmap();
@@ -1017,10 +1086,11 @@ public class MainActivity extends AppCompatActivity {
                     Log.v("img_switch", "Change to P2");
                     isP1 = !isP1;
                     img_switch.setText("P2");
-                    functionMenu(isFinished2);
+                    //functionMenu(isFinished2);
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList2);
+                    out.println("*** Markerlist2 = "+MarkerList2.size()+" ***");
                     //System.out.println("MarkerList2 is empty: "+ MarkerList2.isEmpty());
 
                     if (ImageOpened2) {
@@ -1039,13 +1109,13 @@ public class MainActivity extends AppCompatActivity {
 //                    MarkerList2 = myrenderer.getMarkerList();
                     ////////////////////////
                     if (tag2) {
-                        for (int i = 0; i < polist2.length; i++) {
-                            double temp = polist2[i][0];
+//                        for (int i = 0; i < polist2.length; i++) {
+                            /*double temp = polist2[i][0];
                             polist2[i][0] = polist2[i][1];
-                            polist2[i][1] = temp;
-                            /*polist2[i][0] += img2.getWidth()/2;
-                            polist2[i][1] += img2.getHeight()/2;*/
-                        }
+                            polist2[i][1] = temp;*/
+//                            polist2[i][0] += img2.getWidth()/2;
+//                            polist2[i][1] += img2.getHeight()/2;
+//                        }
                         MarkerList2 = Convert2DTo3D.ArrayToMarkerList(new Matrix(polist2),0,0, 3);
                         int a = 0;
                         for (ImageMarker imageMarker:MarkerList2) {
@@ -1055,7 +1125,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                         tag2 = false;
                     } else {
-                        MarkerList2 = myrenderer.getMarkerList();
+                        if (flagcorner2) {
+                            MarkerList2 = Convert2DTo3D.ArrayToMarkerList(new Matrix(plist2),0,0, 3);
+                        } else {
+                            MarkerList2 = myrenderer.getMarkerList();
+                            out.println("*** Markerlist2 = "+MarkerList2.size()+" ***");
+                        }
+
                     }
                     ////////////////////////
                     //img2 = myrenderer.GetBackupBitmap();
@@ -1063,10 +1139,11 @@ public class MainActivity extends AppCompatActivity {
                     Log.v("img_switch", "Change to P1");
                     isP1 = !isP1;
                     img_switch.setText("P1");
-                    functionMenu(isFinished1);
+                    //functionMenu(isFinished1);
 
                     //display points
                     myrenderer.ResetMarkerlist(MarkerList1);
+                    out.println("*** Markerlist1 = "+MarkerList1.size()+" ***");
 
                     if (ImageOpened) {
                         myrenderer.ResetImage(showimg1,img1);
@@ -1092,7 +1169,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        select_points.setOnClickListener(new Button.OnClickListener() {
+        /*select_points.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //测试解方程函数
@@ -1123,10 +1200,10 @@ public class MainActivity extends AppCompatActivity {
 
 
             }
-        });
+        });*/
 
         //finished
-        finished.setOnClickListener(new Button.OnClickListener() {
+        /*finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
 
@@ -1161,12 +1238,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (flag) {
                         if (isFinished2) {
-                            if (pointnum1 == pointnum2) {
-                                isFinished1 = true;
-                                functionMenu(true);
-                            } else {
-                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
-                            }
+                            isFinished1 = true;
+                            functionMenu(true);
+
+//                            if (pointnum1 == pointnum2) {
+//                                isFinished1 = true;
+//                                functionMenu(true);
+//                            } else {
+//                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+//                            }
                         } else {
                             if (pointnum1 >= pointnum2) {
                                 isFinished1 = true;
@@ -1201,12 +1281,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (flag) {
                         if (isFinished1) {
-                            if (pointnum1 == pointnum2) {
-                                isFinished2 = true;
-                                functionMenu(true);
-                            } else {
-                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
-                            }
+                            isFinished2 = true;
+                            functionMenu(true);
+
+//                            if (pointnum1 == pointnum2) {
+//                                isFinished2 = true;
+//                                functionMenu(true);
+//                            } else {
+//                                Toast.makeText(getContext(), "Point number is insufficient, please add more!", Toast.LENGTH_SHORT).show();
+//                            }
                         } else {
                             if (pointnum1 <= pointnum2) {
                                 isFinished2 = true;
@@ -1232,7 +1315,7 @@ public class MainActivity extends AppCompatActivity {
                     Process.setVisibility(View.VISIBLE);
                 }
             }
-        });
+        });*/
 
         //Process
         Process.setOnClickListener(new Button.OnClickListener() {
@@ -1241,79 +1324,21 @@ public class MainActivity extends AppCompatActivity {
                 Log.v("Process", "Do 2D to 3D reconstruction!");
                 //图一点集为MarkerList1
                 //图二点集为MarkerList2
-                if (!isProcessed) {
+
+                /*if (!isProcessed) {
                     isProcessed = true;
-                    double[][] Po_list1 = MarkerListToArray(MarkerList1);
-                    double[][] Po_list2 = MarkerListToArray(MarkerList2);
 
-                    ///////////////////2Dto3D/////////////////////
-                    //原点调整为图像中心
-/*                    for (int i = 0; i < Po_list1.length;i++) {
-                        Po_list1[i][0] -= img1.getWidth()/2f;
-                        Po_list1[i][1] -= img1.getHeight()/2f;
-                        Po_list2[i][0] -= img2.getWidth()/2f;
-                        Po_list2[i][1] -= img2.getHeight()/2f;
+                    //获取特征点并匹配
+                    pointsGetAndMatch();
 
-                    }*/
-//                    Convert2DTo3D_new p = new Convert2DTo3D_new();
-                    Convert2DTo3D p = new Convert2DTo3D();
-//                    p.MyMobileModel = Convert2DTo3D_new.MobileModel.MIX2;
-                    p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
- //                   p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
-//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
-                    //计算相机外参矩阵
-//                    p.OpticalCenter[0] = img1.getWidth()/2;
-//                    p.OpticalCenter[1] = img1.getHeight()/2;
-                    p.OpticalCenter[0] = 0;
-                    p.OpticalCenter[1] = 0;
-//                    boolean flag = p.Convert2DTo3D_Fun_new(Po_list1, Po_list2,p.MyMobileModel);//非自标定
-                    boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);//自标定
-                    if (!flag) {
-                        clear3D_Reconstruction();
-                        clearPreImage();
+                    //检验是否可以进行三维重建
+                    if (MarkerList1.size() < 9 || MarkerList2.size() < 9) {
+                        Toast.makeText(getContext(), "Point number is insufficient!", Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    p.Point3DTo2D(p.X_3D);
-                    MarkerList1.addAll(p.Point3Dto2D1);
-                    MarkerList2.addAll(p.Point3Dto2D2);
-                    myGLSurfaceView.requestRender();
-                    ///////////////////////////////////
-
-
-//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);//保存三维坐标
-//                    for(ImageMarker im: Point3D){
-//                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
-//                    }
- //                   p.CalculateError(p.X_3D, Po_list1, Po_list2);
-
-
-                    //测试LM算法/////////////////////////////
-//                    Matrix Po1 = p.Point2DToHomogeneous(Po_list1);//n*3矩阵
-//                    Matrix Po2 = p.Point2DToHomogeneous(Po_list2);//n*3矩阵
-//                    BundleAdjustment_LM.LM(Po1, Po2, p.P1, p.P2_Selected, p.X_3D);
-
-                    ///////////////测试极线/////////////////////////
-
-                    showimg2 = p.DrawLine(showimg2, p.EpiLines2_Para);
-                    showimg1 = p.DrawLine(showimg1, p.EpiLines1_Para);
-
-                    if (isP1) {
-                        myrenderer.ResetImage(showimg1);
-                    } else {
-                        myrenderer.ResetImage(showimg2);
-                    }
-                    myGLSurfaceView.requestRender();
-                    ///////////////////////////////////////////////
-
-                    //单应矩阵
-                    /*Convert2DTo3D p2 = new Convert2DTo3D();
-                    p2.Convert2DTo2D_func(Po_list1, Po_list2);
-                    MarkerList1.addAll(p2.Point2Dto2D1);
-                    MarkerList2.addAll(p2.Point2Dto2D2);
-                    myGLSurfaceView.requestRender();*/
-
-
+                    //图像点对的三维重建
+                    convert2DTo3D();
 
                     //提示运行完成
                     Toast.makeText(getContext(), "The external parameter matrix of camera is calculated!", Toast.LENGTH_SHORT).show();
@@ -1321,6 +1346,7 @@ public class MainActivity extends AppCompatActivity {
                     initiateForReconstruction3D();
                 } else {
                     isProcessed2 = !isProcessed2;
+
                     //目标点投射到三维
                     if (isP1) {
                         myrenderer.ResetMarkerlist(MarkerList1);
@@ -1328,10 +1354,15 @@ public class MainActivity extends AppCompatActivity {
                         myrenderer.ResetMarkerlist(MarkerList2);
                     }
                     myGLSurfaceView.requestRender();
+                    initiateForReconstruction3D();
+                }*/
+
+                try {
+                    Processing();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-
-
-
+                initiateForReconstruction3D();
                 //改变marker颜色可以直接对相应ImageMarker对象的type属性进行修改，深蓝色为3号，type支持1-8
             }
         });
@@ -1339,12 +1370,216 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+
+
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    private void Processing() throws Exception {
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        popupView.show();
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                if (!isProcessed) {
+                    isProcessed = true;
+
+                    //获取特征点并匹配
+                    pointsGetAndMatch();
+
+                    //检验是否可以进行三维重建
+                    if (MarkerList1.size() < 9 || MarkerList2.size() < 9) {
+                        Toast.makeText(getContext(), "Point number is insufficient!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    //图像点对的三维重建
+                    convert2DTo3D();
+
+
+                    //提示运行完成
+                    Toast_in_Thread("The external parameter matrix of camera is calculated!!");
+                    //初始化下一阶段界面按钮
+//                    initiateForReconstruction3D();
+                } else {
+                    isProcessed2 = !isProcessed2;
+
+                    //目标点投射到三维
+                    if (isP1) {
+                        myrenderer.ResetMarkerlist(MarkerList1);
+                    } else {
+                        myrenderer.ResetMarkerlist(MarkerList2);
+                    }
+                    myGLSurfaceView.requestRender();
+//                    initiateForReconstruction3D();
+                }
+                uiHandler.sendEmptyMessage(1);
+            }
+        });
+
+        thread.start();
+    }
+
+    private void pointsGetAndMatch() {
+        //ORB提取匹配点
+        ORBTest();
+//        Toast.makeText(getContext(), "Feature Points have been obtained!", Toast.LENGTH_SHORT).show();
+        out.println("markerlist1: "+MarkerList1.size());
+
+        //点对粗略单应矩阵计算
+        double[][] Po_list1 = MarkerListToArray(MarkerList1);
+        double[][] Po_list2 = MarkerListToArray(MarkerList2);
+        out.println("markerlist1: "+MarkerList1.size());
+
+        if (!flagcorner1 && !flagcorner2) {
+            //计算单应矩阵
+            p2.Convert2DTo2D_func(Po_list1, Po_list2);
+            MarkerList1.addAll(p2.Point2Dto2D1);
+            MarkerList2.addAll(p2.Point2Dto2D2);
+            myGLSurfaceView.requestRender();
+
+        }
+
+        //获取角点
+        setCornerPoints();
+        out.println("markerlist1: "+MarkerList1.size());
+
+        //角点匹配
+//                    int[] matchList = p2.Convert2DTo2D_func2(MarkerList1,MarkerList2,img1,img2);
+        int[][] matchList = p2.Convert2DTo2D_func02(MarkerList1,MarkerList2,img1,img2);
+
+        //根据匹配结果重新生成markerlist
+        ArrayList<ImageMarker> newTemp1 = new ArrayList<ImageMarker>();
+        ArrayList<ImageMarker> newTemp2 = new ArrayList<ImageMarker>();
+        for (int i = 0; i < matchList.length; i++) {
+            //单向匹配
+//                            if (matchList[i] == -1) {
+//                                continue;
+//                            } else {
+//                                ImageMarker imageMarker1 = new ImageMarker();
+//                                ImageMarker imageMarker2 = new ImageMarker();
+//                                //1To2
+//                                imageMarker1 = MarkerList1.get(i);
+//                                imageMarker2 = MarkerList2.get(matchList[i]);
+//                                //2To1
+////                                imageMarker1 = MarkerList1.get(matchList[i]);
+////                                imageMarker2 = MarkerList2.get(i);
+//                                imageMarker1.type = 4;
+//                                imageMarker2.type = 4;
+//                                System.out.println("(x1,y1): ("+imageMarker1.x+","+imageMarker1.y+")---(x2,y2): ("+imageMarker2.x+","+imageMarker2.y+")");
+//                                newTemp1.add(imageMarker1);
+//                                newTemp2.add(imageMarker2);
+//                            }
+
+            ImageMarker imageMarker1 = new ImageMarker();
+            ImageMarker imageMarker2 = new ImageMarker();
+            imageMarker1 = MarkerList1.get(matchList[i][0]);
+            imageMarker2 = MarkerList2.get(matchList[i][1]);
+            imageMarker1.type = 3;
+            imageMarker2.type = 3;
+            System.out.println("(x1,y1): ("+imageMarker1.x+","+imageMarker1.y+")---(x2,y2): ("+imageMarker2.x+","+imageMarker2.y+")");
+            newTemp1.add(imageMarker1);
+            newTemp2.add(imageMarker2);
+            out.println("newTemp1.size = "+newTemp1.size()+"---newTemp2.size = "+newTemp2.size());
+
+        }
+        MarkerList1.clear();
+        MarkerList2.clear();
+        MarkerList1.addAll(newTemp1);
+        MarkerList2.addAll(newTemp2);
+    }
+
+    private void convert2DTo3D() {
+        //更新点集数组
+        double[][] Po_list1 = MarkerListToArray(MarkerList1);
+        double[][] Po_list2 = MarkerListToArray(MarkerList2);
+
+        ///////////////////2Dto3D/////////////////////
+        //原点调整为图像中心
+        for (int i = 0; i < Po_list1.length;i++) {
+            Po_list1[i][0] -= img1.getWidth()/2f;
+            Po_list1[i][1] -= img1.getHeight()/2f;
+            Po_list2[i][0] -= img2.getWidth()/2f;
+            Po_list2[i][1] -= img2.getHeight()/2f;
+
+        }
+//                    Convert2DTo3D_new p = new Convert2DTo3D_new();
+        Convert2DTo3D p = new Convert2DTo3D();
+//                    p.MyMobileModel = Convert2DTo3D_new.MobileModel.MIX2;
+        p.MyMobileModel = Convert2DTo3D.MobileModel.MIX2;
+        //                   p.Convert2DTo3D_Fun(Po_list1, Po_list2,p.MyMobileModel);
+//                    p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);
+        //计算相机外参矩阵
+        p.OpticalCenter[0] = img1.getWidth()/2;
+        p.OpticalCenter[1] = img1.getHeight()/2;
+//                    p.OpticalCenter[0] = 0;
+//                    p.OpticalCenter[1] = 0;
+//                    boolean flag = p.Convert2DTo3D_Fun_new(Po_list1, Po_list2,p.MyMobileModel);//非自标定
+        boolean flag = p.Convert2DTo3D_Fun(Po_list1, Po_list2, p.MyMobileModel);//自标定
+        if (!flag) {
+            clear3D_Reconstruction();
+            clearPreImage();
+            return;
+        }
+
+        p.Point3DTo2D(p.X_3D);
+        MarkerList1.addAll(p.Point3Dto2D1);
+        MarkerList2.addAll(p.Point3Dto2D2);
+        myGLSurfaceView.requestRender();
+        ///////////////////////////////////
+
+
+//                    ArrayList<ImageMarker> Point3D = ArrayToMarkerList(p.X_3D);//保存三维坐标
+//                    for(ImageMarker im: Point3D){
+//                        Log.d("TestConvert3DFun","=========x:"+im.x+","+"y:"+im.y+","+"z:"+im.z);
+//                    }
+        //                   p.CalculateError(p.X_3D, Po_list1, Po_list2);
+
+
+        //测试LM算法/////////////////////////////
+//                    Matrix Po1 = p.Point2DToHomogeneous(Po_list1);//n*3矩阵
+//                    Matrix Po2 = p.Point2DToHomogeneous(Po_list2);//n*3矩阵
+//                    BundleAdjustment_LM.LM(Po1, Po2, p.P1, p.P2_Selected, p.X_3D);
+
+        ///////////////测试极线/////////////////////////
+
+        showimg2 = p.DrawLine(showimg2, p.EpiLines2_Para);
+        showimg1 = p.DrawLine(showimg1, p.EpiLines1_Para);
+
+        if (isP1) {
+            myrenderer.ResetImage(showimg1);
+        } else {
+            myrenderer.ResetImage(showimg2);
+        }
+        myGLSurfaceView.requestRender();
+    }
+
     ///////////////////////////////
     private void testforcorner() {
-        ArrayList<ImageMarker> temp = new ArrayList<>();
-        temp = myrenderer.globalImageCornerDetect();
-        System.out.println("temp.size() = "+temp.size());
-        myrenderer.ResetMarkerlist(temp);
+
+        //获取图一角点
+//        myrenderer.ResetImage(img1);
+        ArrayList<ImageMarker> temp1 = myrenderer.getMarkerList();
+        if (temp1.size() == 0) {
+            temp1.clear();
+        }
+        temp1 = myrenderer.globalImageCornerDetect2();
+        System.out.println("temp.size() = "+temp1.size());
+
+        for (ImageMarker imageMarker:temp1) {
+            out.println("{"+imageMarker.x+","+imageMarker.y+","+"1},");
+        }
+
+//        //获取图二角点
+//        myrenderer.ResetImage(img2);
+//        ArrayList<ImageMarker> temp2 = new ArrayList<>();
+//        temp2 = myrenderer.globalImageCornerDetect();
+//        System.out.println("temp.size() = "+temp2.size());
+
+        myrenderer.ResetMarkerlist(temp1);
         myGLSurfaceView.requestRender();
 
         /*double[][] array = new double[][]{{7.5,6.2,3},{6,0,-3},{0,6,-1}};
@@ -1391,7 +1626,7 @@ public class MainActivity extends AppCompatActivity {
 
     ///////////////////////////////
 
-    private void ORBTest(ArrayList<ImageMarker> MarkerList1, ArrayList<ImageMarker> MarkerList2){
+    private void ORBTest(){
         Mat srcr = new Mat();
         Mat tempr = new Mat();
         Mat srcl = new Mat();
@@ -1410,10 +1645,11 @@ public class MainActivity extends AppCompatActivity {
         Utils.bitmapToMat(imageL, srcl);//把image转化为Mat
         Imgproc.cvtColor(srcr,tempr, Imgproc.COLOR_RGBA2RGB);
         Imgproc.cvtColor(srcl,templ, Imgproc.COLOR_RGBA2RGB);
-        FeatureDetector detectorR = FeatureDetector.create(FeatureDetector.GRID_ORB);
-        FeatureDetector detectorL = FeatureDetector.create(FeatureDetector.GRID_ORB);
+        FeatureDetector detectorR = FeatureDetector.create(FeatureDetector.DYNAMIC_ORB);
+        FeatureDetector detectorL = FeatureDetector.create(FeatureDetector.DYNAMIC_ORB);
         //检测特征点
         detectorR.detect(tempr, keypointsR);
+        KeyPoint[] po = keypointsL.toArray();
         detectorL.detect(templ, keypointsL);
         /*Features2d.drawKeypoints(tempr,keypointsR,out,new Scalar(255, 0, 0), Features2d.DRAW_RICH_KEYPOINTS);
         Utils.matToBitmap(out, imageR);//把mat转化为bitmap
@@ -1421,8 +1657,8 @@ public class MainActivity extends AppCompatActivity {
         imageView.setImageBitmap(imageR);*/
 
         //计算描述子
-        DescriptorExtractor descriptorR = DescriptorExtractor.create(DescriptorExtractor.ORB);
-        DescriptorExtractor descriptorL = DescriptorExtractor.create(DescriptorExtractor.ORB);
+        DescriptorExtractor descriptorR = DescriptorExtractor.create(DescriptorExtractor.OPPONENT_ORB);
+        DescriptorExtractor descriptorL = DescriptorExtractor.create(DescriptorExtractor.OPPONENT_ORB);
         descriptorR.compute(srcr,keypointsR,MatdescriptorR);
         descriptorL.compute(srcl,keypointsL,MatdescriptorL);
         // FlannBasedMatcher descriptormatcher = FlannBasedMatcher.create();
@@ -1441,7 +1677,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("-- Min dist : "+ min_dist );
         MatOfDMatch good_matches = new MatOfDMatch();
         for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
-            if( matches.toArray()[i].distance <= StrictMath.max(2*min_dist, 20) ) {
+            if( matches.toArray()[i].distance <= StrictMath.max(1.5f*min_dist, 20) ) {
                 good_matches.push_back( matches.row(i));
             }
         }
@@ -1604,7 +1840,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     case "Camera":
                                         //拍照获取图片
-                                        clearSelect_points();
+                                        //clearSelect_points();
                                         if (isP1){
                                             Log.v("loadImage", "load Image1");
                                             //functionMenu(isFinished1);
@@ -1624,7 +1860,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     case "Album":
                                         //相册读取图片
-                                        clearSelect_points();
+                                        //clearSelect_points();
                                         PickPhotoFromGallery();
 
                                         break;
@@ -1645,7 +1881,7 @@ public class MainActivity extends AppCompatActivity {
         new XPopup.Builder(this)
                 .atView(v)  // 依附于所点击的View，内部会自动判断在上方或者下方显示
 
-                .asAttachList(new String[]{"Refinement add", "General add", "Auto ORB","Delete", "Exit point"},
+                .asAttachList(new String[]{"Refinement add", "General add", "Auto ORB","Delete", "Exit point", "NCC match"},
 
 
                         new int[]{},
@@ -1672,7 +1908,7 @@ public class MainActivity extends AppCompatActivity {
                                         break;
 
                                     case "Auto ORB":
-                                        ORBTest(MarkerList1, MarkerList2);//ORB提取匹配点
+                                        ORBTest(); //ORB提取匹配点
                                         Toast.makeText(getContext(), "Feature Points have been obtained!", Toast.LENGTH_SHORT).show();
                                         ifPoint = true;
                                         ifDelete = false;
@@ -1689,7 +1925,13 @@ public class MainActivity extends AppCompatActivity {
                                         break;
                                     case "Exit point":
                                         //退出点操作模式
-                                        clearSelect_points();
+                                        //clearSelect_points();
+
+                                        break;
+
+                                    case "NCC match":
+                                        //角点获取
+                                        setCornerPoints();
 
                                         break;
 
@@ -1697,6 +1939,50 @@ public class MainActivity extends AppCompatActivity {
                             }
                         })
                 .show();
+    }
+
+    private void setCornerPoints() {
+//        flagcorner1 = true;
+//        flagcorner2 = true;
+
+        //获取图一角点
+        myrenderer.ResetImage(img1,img1);
+//        myrenderer.ResetMarkerlist(MarkerList1);
+        ArrayList<ImageMarker> temp1 = new ArrayList<ImageMarker>();
+        myrenderer.ResetMarkerlist(temp1);
+        temp1 = myrenderer.globalImageCornerDetect2();
+        System.out.println("temp1.size() = "+temp1.size());
+
+//        for (ImageMarker imageMarker:temp1) {
+//            out.println("{"+imageMarker.x+","+imageMarker.y+","+"1},");
+//        }
+        MarkerList1.clear();
+        MarkerList1.addAll(temp1);
+        out.println(MarkerList1.size());
+        out.println(MarkerList2.size());
+
+//        //获取图二角点
+        myrenderer.ResetImage(img2,img2);
+//        myrenderer.ResetMarkerlist(MarkerList2);
+        ArrayList<ImageMarker> temp2 = new ArrayList<ImageMarker>();
+        myrenderer.ResetMarkerlist(temp2);
+        temp2 = myrenderer.globalImageCornerDetect2();
+        System.out.println("temp2.size() = "+temp2.size());
+
+        MarkerList2.clear();
+        MarkerList2.addAll(temp2);
+        out.println("MarkerList1: "+MarkerList1.size());
+        out.println("MarkerList2: "+MarkerList2.size());
+
+        if (isP1) {
+            myrenderer.ResetImage(img1,img1);
+            myrenderer.ResetMarkerlist(MarkerList1);
+        } else {
+            myrenderer.ResetImage(img2,img2);
+            myrenderer.ResetMarkerlist(MarkerList2);
+        }
+        myGLSurfaceView.requestRender();
+
     }
 
     private void Pointing(boolean ifRefine) {
@@ -1720,12 +2006,12 @@ public class MainActivity extends AppCompatActivity {
         if (isfinished) {
 
             loadImage.setVisibility(View.GONE);
-            select_points.setVisibility(View.GONE);
-            finished.setVisibility(View.GONE);
+//            select_points.setVisibility(View.GONE);
+//            finished.setVisibility(View.GONE);
         } else {
             loadImage.setVisibility(View.VISIBLE);
-            select_points.setVisibility(View.VISIBLE);
-            finished.setVisibility(View.VISIBLE);
+//            select_points.setVisibility(View.VISIBLE);
+//            finished.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1771,8 +2057,8 @@ public class MainActivity extends AppCompatActivity {
         isProcessed2 = false;
         img_switch.setVisibility(View.GONE);
         loadImage.setVisibility(View.GONE);
-        select_points.setVisibility(View.GONE);
-        finished.setVisibility(View.GONE);
+//        select_points.setVisibility(View.GONE);
+//        finished.setVisibility(View.GONE);
         Process.setVisibility(View.GONE);
     }
 
@@ -1793,14 +2079,15 @@ public class MainActivity extends AppCompatActivity {
 //        myrenderer.setMarkerNum(0);
 //        myGLSurfaceView.requestRender();
 
-        isFinished1 = false;
-        isFinished2 = false;
+//        isFinished1 = false;
+//        isFinished2 = false;
+        //isProcessed = false;
 
         Process.setVisibility(View.GONE);
         loadImage.setVisibility(View.GONE);
         img_switch.setVisibility(View.VISIBLE);
 
-        FrameLayout.LayoutParams params_select_points = new FrameLayout.LayoutParams(230, 120);
+        /*FrameLayout.LayoutParams params_select_points = new FrameLayout.LayoutParams(230, 120);
         params_select_points.setMargins(300,20,0,0);
         select_points.setLayoutParams(params_select_points);//
         select_points.setVisibility(View.VISIBLE);
@@ -1808,7 +2095,7 @@ public class MainActivity extends AppCompatActivity {
         FrameLayout.LayoutParams params_finished = new FrameLayout.LayoutParams(230, 120);
         params_finished.setMargins(550,20,0,0);
         finished.setLayoutParams(params_finished);//
-        finished.setVisibility(View.VISIBLE);
+        finished.setVisibility(View.VISIBLE);*/
 
     }
 
@@ -2280,7 +2567,7 @@ public class MainActivity extends AppCompatActivity {
                                             myrenderer.setIsAddPoint(true);
                                             myrenderer.add2DMarker(normalizedX, normalizedY);
                                         } else {
-                                            clearSelect_points();
+                                            //clearSelect_points();
                                             Toast.makeText(getContext(), "Point num is enough!", Toast.LENGTH_SHORT).show();
                                         }
                                     } else {

@@ -10,6 +10,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
+import com.example.si.IMG_PROCESSING.ImgObj_Para;
 
 import org.opencv.core.Mat;
 
@@ -24,6 +25,9 @@ import Jama.QRDecomposition;
 import Jama.SingularValueDecomposition;
 
 import static com.example.si.MainActivity.getContext;
+import static java.lang.Math.ceil;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.lang.StrictMath.abs;
 import static java.lang.StrictMath.pow;
 import static java.lang.StrictMath.round;
@@ -320,7 +324,7 @@ public class Convert2DTo3D {
         double[][] A_array = new double[Po_num][9];
         for(int i=0; i<Po_num; i++){
             //此处有改动 0914
-            /*A_array[i] = new double[]{PoList_1.get(i,0)*PoList_2.get(i,0), PoList_1.get(i,0)*PoList_2.get(i,1), PoList_1.get(i,0)*PoList_2.get(i,2),
+/*            A_array[i] = new double[]{PoList_1.get(i,0)*PoList_2.get(i,0), PoList_1.get(i,0)*PoList_2.get(i,1), PoList_1.get(i,0)*PoList_2.get(i,2),
                     PoList_1.get(i,1)*PoList_2.get(i,0), PoList_1.get(i,1)*PoList_2.get(i,1), PoList_1.get(i,1)*PoList_2.get(i,2),
                     PoList_1.get(i,2)*PoList_2.get(i,0), PoList_1.get(i,2)*PoList_2.get(i,1), PoList_1.get(i,2)*PoList_2.get(i,2)};*/
             final double u1 = PoList_1.get(i,0);
@@ -1233,6 +1237,7 @@ public class Convert2DTo3D {
 
     public Matrix computeProjectionMatrix2DTo2D(double[][] PoList1, double[][] PoList2) {
         int pointNum = PoList1.length;
+        out.println("pointNum = " + pointNum);
 
         double[][] array = new double[pointNum][3];
         Matrix b1 = new Matrix(pointNum,1);
@@ -1307,24 +1312,33 @@ public class Convert2DTo3D {
 
     }
 
+    ////////////////////////////////////////////////////
+
     private double[][] pointProjection1To2(double[][] PoList1, Matrix ProjectionMatrix1To2) {
         double[][] PoList1To2 = new double[PoList1.length][PoList1[0].length];
         Matrix temp = new Matrix(3,1);
-        out.println("PoList1.length = "+PoList1.length);
+//        out.println("PoList1.length = "+PoList1.length);
         for (int i = 0; i < PoList1.length; i++) {
             temp.set(0,0,PoList1[i][0]);
             temp.set(1,0,PoList1[i][1]);
             temp.set(2,0,1);
             PoList1To2[i] = ProjectionMatrix1To2.times(temp).transpose().getRowPackedCopy();
-            out.println("PoList1["+i+"] = ("+PoList1[i][0]+","+PoList1[i][1]+")"); //+","+PoList1[i][2]+","+PoList1To2[i][2]
-            out.println("PoList1To2["+i+"] = ("+PoList1To2[i][0]+","+PoList1To2[i][1]+")");
+//            out.println("PoList1["+i+"] = ("+PoList1[i][0]+","+PoList1[i][1]+")"); //+","+PoList1[i][2]+","+PoList1To2[i][2]
+//            out.println("PoList1To2["+i+"] = ("+PoList1To2[i][0]+","+PoList1To2[i][1]+")");
 
         }
         return PoList1To2;
     }
 
+    Matrix PMatrix1To2;
+    double maxdis2;
+    Matrix PMatrix2To1;
+    double maxdis1;
     public void Convert2DTo2D_func(double[][] PoList1, double[][] PoList2) {
-        Matrix PMatrix1To2 = computeProjectionMatrix2DTo2D(PoList1, PoList2);
+        //获取投影矩阵int[], ArrayList<ImageMarker> temp1, ArrayList<ImageMarker> temp2,
+        //Matrix                                    Bitmap image1, Bitmap image2
+        Log.v("Convert20To3D","Convert2DT02D: get projection Matrix.");
+        PMatrix1To2 = computeProjectionMatrix2DTo2D(PoList1, PoList2);
         for (int i = 0; i < PMatrix1To2.getColumnDimension(); i++) {
             for (int j = 0; j < PMatrix1To2.getRowDimension(); j++) {
                 out.println("PMatrix1To2.get("+i+","+j+") = "+PMatrix1To2.get(i,j));
@@ -1335,15 +1349,16 @@ public class Convert2DTo3D {
             Toast.makeText(getContext(), "The input matrix is illegal.", Toast.LENGTH_SHORT).show();
             return;
         }
-        Matrix PMatrix2To1 = PMatrix1To2.inverse();
+        PMatrix2To1 = PMatrix1To2.inverse();
         double[][] PoList1To2 = pointProjection1To2(PoList1,PMatrix1To2);
         double[][] PoList2To1 = pointProjection1To2(PoList2,PMatrix2To1);
         Point2Dto2D1 = ArrayToMarkerList(new Matrix(PoList2To1),0,0,2);
         Point2Dto2D2 = ArrayToMarkerList(new Matrix(PoList1To2),0,0,2);
 
-        //获取匹配检索半径
-        double maxdis1 = 0;
-        double maxdis2 = 0;
+        //获取匹配检索半径 null double
+        Log.v("Convert20To3D","Convert2DT02D: get searching radio.");
+        maxdis1 = 0; //图1检索半径
+        maxdis2 = 0; //图2检索半径
         double temp;
         for (int i = 0; i < PoList1.length; i++) {
             temp = Math.sqrt(pow(PoList1[i][0]-PoList2To1[i][0],2)+pow(PoList1[i][1]-PoList2To1[i][1],2));
@@ -1355,16 +1370,551 @@ public class Convert2DTo3D {
                 maxdis2 = temp;
             }
         }
+        Log.v("Convert20To3D","Convert2DT02D: maxdis1 = "+maxdis1+", maxdis2 = "+maxdis2);
 
-        //角点检测获取角点
+        //角点检测获取角点,主函数中先进行该操作
+        //temp1, temp2 传入
 
-        //区域限制灰度特征匹配
+        /*//获取图一角点
+        myrenderer.ResetImage(img1);
+        ArrayList<ImageMarker> temp1 = new ArrayList<>();
+        temp1 = myrenderer.globalImageCornerDetect();
+        System.out.println("temp.size() = "+temp1.size());
 
-        //RANSIC筛选
+        //获取图二角点
+        myrenderer.ResetImage(img2);
+        ArrayList<ImageMarker> temp2 = new ArrayList<>();
+        temp2 = myrenderer.globalImageCornerDetect();
+        System.out.println("temp.size() = "+temp2.size());*/
 
-        //重新计算修正基本矩阵
+        //计算灰度特征
 
+        //区域限制，获取投影点为中心的待检索区域内的角点（1To2）
+        /*Log.v("Convert20To3D","Convert2DT02D: get the indexes of matching points.");
+        Matrix pOrigin = new Matrix(3,1);
+        pOrigin.set(2,0, 1);
+
+        Matrix pProjection;
+        ImageMarker imageMarker;
+        int [] tempPointIndexList;
+        int[] matchList = new int[temp1.size()];
+
+        for (int i = 0; i < temp1.size(); i++) {
+            imageMarker = temp1.get(i);
+            pOrigin.set(0,0, imageMarker.x);
+            pOrigin.set(1,0, imageMarker.y);
+            pProjection = PMatrix1To2.times(pOrigin);
+            //获取区域内的点(无边界问题)
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2), temp2);
+
+            //进行灰度归一化互相关匹配
+            if (tempPointIndexList.length == 0) {
+                matchList[i] = -1;  //区域内无角点
+                //continue;
+            } if (tempPointIndexList.length == 1) {
+                matchList[i] = tempPointIndexList[0]; //区域内只有一个角点
+            } else {
+                matchList[i] = myNCCMatchOneToSome(image1, image2, imageMarker, temp2, (int) ceil(maxdis2 / 5), tempPointIndexList); //一对多匹配，半径需考虑
+            }
+
+
+        }
+
+
+
+        return matchList;*/
 
     }
+
+    public void projection1To2(double[][] PoList1, double[][] PoList2) {
+        double[][] PoList1To2 = pointProjection1To2(PoList1,PMatrix1To2);
+        double[][] PoList2To1 = pointProjection1To2(PoList2,PMatrix2To1);
+        Point2Dto2D1 = ArrayToMarkerList(new Matrix(PoList2To1),0,0,2);
+        Point2Dto2D2 = ArrayToMarkerList(new Matrix(PoList1To2),0,0,2);
+    }
+
+    public int[][] Convert2DTo2D_func2(ArrayList<ImageMarker> temp1, ArrayList<ImageMarker> temp2,
+                                    Bitmap image1, Bitmap image2) {
+        //区域限制，获取投影点为中心的待检索区域内的角点（1To2）Matrix PMatrix1To2, double maxdis2,[]
+        Log.v("Convert20To3D","Convert2DT02D: get the indexes of matching points.");
+        Matrix pOrigin = new Matrix(3,1); //用于存放原点坐标
+        pOrigin.set(2,0, 1);
+
+        Matrix pProjection; //用于存放投影点坐标
+        ImageMarker imageMarker;
+        int [] tempPointIndexList;
+
+        //1To2 匹配
+        int[] matchList1 = new int[temp1.size()];
+        for (int i = 0; i < temp1.size(); i++) {
+            imageMarker = temp1.get(i);
+            out.println("(x,y) = ("+imageMarker.x+","+imageMarker.y+")");
+            pOrigin.set(0,0, imageMarker.x);
+            pOrigin.set(1,0, imageMarker.y);
+            pProjection = PMatrix1To2.times(pOrigin);
+            //获取区域内的点(无边界问题)
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2), temp2);
+            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            for (int l = 0; l < tempPointIndexList.length; l++) {
+                out.println("(x,y): ("+temp2.get(tempPointIndexList[l]).x+","+temp2.get(tempPointIndexList[l]).y+")");
+            }
+            //进行灰度归一化互相关匹配
+            if (tempPointIndexList.length == 0) {
+                matchList1[i] = -1;  //区域内无角点
+                //continue;
+            } else if (tempPointIndexList.length == 1) {
+                matchList1[i] = tempPointIndexList[0]; //区域内只有一个角点
+            } else {
+                matchList1[i] = myNCCMatchOneToSome(image1, image2, imageMarker, temp2, (int) ceil(maxdis2 / 15), tempPointIndexList); //一对多匹配，半径需考虑
+            }
+
+            out.println("matchList["+i+"] ="+matchList1[i]);
+
+        }
+
+        //2To1 匹配
+        int[] matchList2 = new int[temp2.size()];
+        for (int i = 0; i < temp2.size(); i++) {
+            imageMarker = temp2.get(i);
+            out.println("(x,y) = ("+imageMarker.x+","+imageMarker.y+")");
+            pOrigin.set(0,0, imageMarker.x);
+            pOrigin.set(1,0, imageMarker.y);
+            pProjection = PMatrix2To1.times(pOrigin);
+            //获取区域内的点(无边界问题)
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis1), temp2);
+            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            for (int l = 0; l < tempPointIndexList.length; l++) {
+                out.println(tempPointIndexList[l]);
+            }
+            //进行灰度归一化互相关匹配
+            if (tempPointIndexList.length == 0) {
+                matchList2[i] = -1;  //区域内无角点
+                //continue;
+            } else if (tempPointIndexList.length == 1) {
+                matchList2[i] = tempPointIndexList[0]; //区域内只有一个角点
+            } else {
+                matchList2[i] = myNCCMatchOneToSome(image1, image2, imageMarker, temp2, (int) ceil(maxdis1 / 15), tempPointIndexList); //一对多匹配，半径需考虑
+            }
+            out.println("matchList2["+i+"] ="+matchList2[i]);
+
+
+        }
+
+//        return matchList1;
+
+        return getIntersectionPointIndex(matchList1, matchList2); //matchList;
+    }
+
+    public int[][] Convert2DTo2D_func02(ArrayList<ImageMarker> temp1, ArrayList<ImageMarker> temp2,
+                                     Bitmap image1, Bitmap image2) {
+        //区域限制，获取投影点为中心的待检索区域内的角点（1To2）Matrix PMatrix1To2, double maxdis2,[]
+        Log.v("Convert20To3D","Convert2DT02D: get the indexes of matching points.");
+        Matrix pOrigin = new Matrix(3,1); //用于存放原点坐标
+        pOrigin.set(2,0, 1);
+
+        Matrix pProjection; //用于存放投影点坐标
+        ImageMarker imageMarker;
+        int [] tempPointIndexList;
+//        int[] matchList = new int[temp1.size()];
+//        out.println("maxdis2 = "+maxdis2);
+//        out.println("Rtemplate = "+ceil(maxdis2 / 5));
+
+        //1To2 匹配
+        int[] matchList1 = new int[temp1.size()];
+        for (int i = 0; i < temp1.size(); i++) {
+            imageMarker = temp1.get(i);
+            out.println("(x,y) = ("+imageMarker.x+","+imageMarker.y+")");
+            pOrigin.set(0,0, imageMarker.x);
+            pOrigin.set(1,0, imageMarker.y);
+            pProjection = PMatrix1To2.times(pOrigin);
+            //获取区域内的点(无边界问题)
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2), temp2);
+            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            for (int l = 0; l < tempPointIndexList.length; l++) {
+                out.println("(x,y): ("+temp2.get(tempPointIndexList[l]).x+","+temp2.get(tempPointIndexList[l]).y+")");
+            }
+            //进行灰度归一化互相关匹配
+            if (tempPointIndexList.length == 0) {
+                matchList1[i] = -1;  //区域内无角点
+                //continue;
+            } else if (tempPointIndexList.length == 1) {
+                matchList1[i] = tempPointIndexList[0]; //区域内只有一个角点
+            } else {
+                matchList1[i] = myNCCMatchOneToSome(image1, image2, imageMarker, temp2, (int) ceil(maxdis2 / 15), tempPointIndexList); //一对多匹配，半径需考虑
+            }
+
+            out.println("matchList["+i+"] ="+matchList1[i]);
+
+        }
+
+        ArrayList<int[]> pointPairs = new ArrayList<int[]>();
+
+        //获取匹配点集1中有效匹配点
+        for (int i = 0; i < matchList1.length; i++) {
+            if (matchList1[i] != -1) {
+                int[] pointPair = new int[2];
+                pointPair[0] = i;
+                pointPair[1] = matchList1[i];
+                pointPairs.add(pointPair);
+            }
+        }
+        int[][] pointPairs1 = new int[pointPairs.size()][2];
+        for (int i = 0; i < pointPairs.size(); i++) {
+            pointPairs1[i][0] = pointPairs.get(i)[0];
+            pointPairs1[i][1] = pointPairs.get(i)[1];
+        }
+
+        //获取pointPairs1中不重复的2的点
+        ArrayList<Integer> PointsOnlyIn2 = new ArrayList<Integer>();
+        boolean flag = false;
+        for (int[] ints : pointPairs1) {
+            int pointOnlyIn2 = ints[1];
+            flag = true;
+            for (int j = 0; j < PointsOnlyIn2.size(); j++) {
+                if (pointOnlyIn2 == PointsOnlyIn2.get(j)) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
+                PointsOnlyIn2.add(pointOnlyIn2);
+            }
+        }
+        out.println(pointPairs1.length+"-->"+PointsOnlyIn2.size());
+
+        //对重复匹配点进行反向匹配，保留最优匹配
+        ArrayList<Integer> MatchIndexList = new ArrayList<Integer>();
+        int[][] newMatchList = new int[PointsOnlyIn2.size()][2];
+        for (int i = 0; i < PointsOnlyIn2.size(); i++) {
+            imageMarker = temp2.get(i);
+            newMatchList[i][1] = PointsOnlyIn2.get(i);
+
+            //获取与该点匹配的1中点的索引数组
+            MatchIndexList.clear();
+            for (int[] ints : pointPairs1) {
+                if (PointsOnlyIn2.get(i) == ints[1]) {
+                    int index = ints[0];
+                    MatchIndexList.add(index);
+                }
+            }
+            int[] matchIndexList = new int[MatchIndexList.size()];
+            for (int j = 0; j < MatchIndexList.size(); j++) {
+                matchIndexList[j] = MatchIndexList.get(j);
+            }
+
+            //反相匹配保留最优
+            if (matchIndexList.length == 1) {
+                newMatchList[i][0] = matchIndexList[0];
+            } else {
+                newMatchList[i][0] = myNCCMatchOneToSome(image2, image1, imageMarker, temp1, (int) ceil(maxdis1 / 15), matchIndexList);
+            }
+
+            out.println("newMatchList["+i+"] ="+newMatchList[i][0]);
+        }
+
+        //剔除无效匹配
+        pointPairs.clear();
+        for (int i = 0; i < newMatchList.length; i++) {
+            if (newMatchList[i][0] != -1) {
+                int[] pointPair = new int[2];
+                pointPair[0] = newMatchList[i][0];
+                pointPair[1] = newMatchList[i][1];
+                pointPairs.add(pointPair);
+            }
+        }
+        int[][] resultMatchList = new int[pointPairs.size()][2];
+        for (int i = 0; i < pointPairs.size(); i++) {
+            resultMatchList[i][0] = pointPairs.get(i)[0];
+            resultMatchList[i][1] = pointPairs.get(i)[1];
+        }
+        out.println("resultMatchList.length = "+resultMatchList.length);
+
+
+        //2To1 匹配
+        /*int[] matchList2 = new int[temp2.size()];
+        for (int i = 0; i < temp2.size(); i++) {
+            imageMarker = temp2.get(i);
+            out.println("(x,y) = ("+imageMarker.x+","+imageMarker.y+")");
+            pOrigin.set(0,0, imageMarker.x);
+            pOrigin.set(1,0, imageMarker.y);
+            pProjection = PMatrix2To1.times(pOrigin);
+            //获取区域内的点(无边界问题)
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis1), temp2);
+            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            for (int l = 0; l < tempPointIndexList.length; l++) {
+                out.println(tempPointIndexList[l]);
+            }
+            //进行灰度归一化互相关匹配
+            if (tempPointIndexList.length == 0) {
+                matchList2[i] = -1;  //区域内无角点
+                //continue;
+            } else if (tempPointIndexList.length == 1) {
+                matchList2[i] = tempPointIndexList[0]; //区域内只有一个角点
+            } else {
+                matchList2[i] = myNCCMatchOneToSome(image1, image2, imageMarker, temp2, (int) ceil(maxdis1 / 5), tempPointIndexList); //一对多匹配，半径需考虑
+            }
+            out.println("matchList2["+i+"] ="+matchList2[i]);
+
+
+        }*/
+
+//        return matchList1;
+
+        return resultMatchList; //matchList;
+    }
+
+
+    private int[][] getIntersectionPointIndex(int[] matchList1, int[] matchList2) {
+        ArrayList<int[]> pointPairs = new ArrayList<int[]>();
+
+        //获取匹配点集1中有效匹配点
+        for (int i = 0; i < matchList1.length; i++) {
+            if (matchList1[i] == -1) {
+                continue;
+            } else {
+                int[] pointPair = new int[2];
+                pointPair[0] = i;
+                pointPair[1] = matchList1[i];
+                pointPairs.add(pointPair);
+            }
+        }
+        int[][] pointPairs1 = new int[pointPairs.size()][2];
+        for (int i = 0; i < pointPairs.size(); i++) {
+            pointPairs1[i][0] = pointPairs.get(i)[0];
+            pointPairs1[i][1] = pointPairs.get(i)[1];
+        }
+
+        //获取匹配点集2中有效匹配点
+        pointPairs.clear();
+        for (int i = 0; i < matchList2.length; i++) {
+            if (matchList2[i] == -1) {
+                continue;
+            } else {
+                int[] pointPair = new int[2];
+                pointPair[0] = matchList2[i];
+                pointPair[1] = i;
+                pointPairs.add(pointPair);
+            }
+        }
+        int[][] pointPairs2 = new int[pointPairs.size()][2];
+        for (int i = 0; i < pointPairs.size(); i++) {
+            pointPairs2[i][0] = pointPairs.get(i)[0];
+            pointPairs2[i][1] = pointPairs.get(i)[1];
+        }
+
+        //搜索共同匹配点
+        pointPairs.clear();
+        for (int i = 0; i < pointPairs1.length; i++) {
+            for (int j = 0; j < pointPairs2.length; j++) {
+                if (pointPairs1[i][0] == pointPairs2[j][0] && pointPairs1[i][1] == pointPairs2[j][1]) {
+                    int[] pointPair = new int[2];
+                    pointPair[0] = pointPairs1[i][0];
+                    pointPair[1] = pointPairs1[i][1];
+                    pointPairs.add(pointPair);
+                }
+            }
+        }
+
+        //搜索互不包含的匹配点
+        /*for (int i = 0; i < pointPairs1.length; i++) {
+            for (int j = 0; j < pointPairs.size(); j++) {
+                if (pointPairs1[i][0] != pointPairs.get(j)[0] && pointPairs1[i][1] == pointPairs.get(j)[1]) {
+                    int[] pointPair = new int[2];
+                    pointPair[0] = pointPairs1[i][0];
+                    pointPair[1] = pointPairs1[i][1];
+                    pointPairs.add(pointPair);
+                }
+            }
+        }
+        for (int i = 0; i < pointPairs2.length; i++) {
+            for (int j = 0; j < pointPairs.size(); j++) {
+                if (pointPairs2[i][0] == pointPairs.get(j)[0] && pointPairs2[i][1] == pointPairs.get(j)[1]) {
+                    int[] pointPair = new int[2];
+                    pointPair[0] = pointPairs1[i][0];
+                    pointPair[1] = pointPairs1[i][1];
+                    pointPairs.add(pointPair);
+                }
+            }
+        }*/
+
+        int[][] pointPairResult = new int[pointPairs.size()][2];
+        for (int i = 0; i < pointPairs.size(); i++) {
+            pointPairResult[i][0] = pointPairs.get(i)[0];
+            pointPairResult[i][1] = pointPairs.get(i)[1];
+        }
+
+        return pointPairResult;
+    }
+
+    /**
+     * 获取投影点所在小区域内点的索引
+     * @param x 投影点x坐标
+     * @param y 投影点y坐标
+     * @param R 区域半径（长宽半径相同）
+     * @param list 待查找点集
+     * @return 返回对应于点集的区域内点的索引数组
+     */
+    private int[] findPointsInTheRegion(int x, int y, int R, ArrayList<ImageMarker> list) {
+        ArrayList<Integer> pointList = new ArrayList<Integer>();
+        int count = 0;
+        for (ImageMarker imageMarker:list) {
+            if (imageMarker.x >= x - R && imageMarker.x <= x + R && imageMarker.y >= y -R && imageMarker.y <= y + R) {
+                int index = count;
+                pointList.add(index);
+            }
+            count++;
+        }
+
+        int[] indexList = new int[pointList.size()];
+        for (int i = 0; i < pointList.size(); i++) {
+            indexList[i] = pointList.get(i);
+        }
+        return indexList;
+    }
+
+    /**
+     * 一个点与投影检索区域内的点进行灰度归一化互相关匹配
+     * @param image1 图一
+     * @param image2 图二
+     * @param point1 图一中单个点
+     * @param point2s 图二中角点点集
+     * @param R2 图像块匹配半径
+     * @param indexList 待查找区域内点索引数组
+     * @return 返回匹配度最高的点索引
+     */
+    private int myNCCMatchOneToSome(Bitmap image1, Bitmap image2, ImageMarker point1, ArrayList<ImageMarker> point2s, int R2, int [] indexList) {
+        Bitmap template = getSmallImageBlock(image1, Math.round(point1.x), Math.round(point1.y), R2, R2); //R2为待匹配图像块的半径
+        if (template == null) {
+            return -1;
+        }
+        //ArrayList<Bitmap> template2 = new ArrayList<Bitmap>();
+        float[] responseNCC = new float[indexList.length];
+        ImageMarker imageMarker;
+        out.println("indexList.length = "+ indexList.length);
+
+        //图像模板生成, 计算NCC匹配响应
+        for (int i = 0; i < indexList.length; i++) {
+            imageMarker = point2s.get(indexList[i]);
+            Bitmap bitmap = getSmallImageBlock(image2, Math.round(imageMarker.x), Math.round(imageMarker.y), R2, R2);
+            if (bitmap == null) {
+                responseNCC[i] = -2;
+            } else {
+                responseNCC[i] = computeNCC(template, bitmap); // -1 <= NCC <=1, 越接近1越好
+            }
+        }
+
+        //检索最大响应
+        int index = 0;
+        float max = responseNCC[index];
+        for (int i = 1; i < indexList.length; i++) {
+            if (max < responseNCC[i]) {
+                index = i;
+                max = responseNCC[i];
+            }
+        }
+        out.println("max = "+max);//Math.abs(-1) >Math.abs()-1  0.5f
+
+        if (max > 0) {
+            return indexList[index];
+        } else {
+            return -1;
+        }
+
+//        return indexList[index];
+    }
+
+    /**
+     * 获取图像中 [x,x+Rx] [y,y+Ry] 区域的图像块，若区域超出图像范围返回null
+     * @param image 原图像
+     * @param x 左上角横坐标
+     * @param y 左上角纵坐标
+     * @param Rx 横向宽度
+     * @param Ry 纵向高度
+     * @return 截取的图像块
+     */
+    private Bitmap getSmallImageBlock(Bitmap image, int x, int y,int Rx, int Ry) {
+        int xfrom = x - Rx;
+        int xto = x + Rx;
+        int yfrom = y - Ry;
+        int yto = y+Ry;
+        int xlen = xto - xfrom + 1;
+        int ylen = yto - yfrom + 1;
+
+        if (xto >= image.getWidth() || yto >= image.getHeight() || xfrom < 0 || yfrom < 0) {
+            return null;
+        }
+//        System.out.println("xfrom = "+xfrom);
+//        System.out.println("xto = "+xto);
+//        System.out.println("yfrom = "+yfrom);
+//        System.out.println("yto = "+yto);
+
+//        int color;
+        Bitmap myBitmap = null;
+        myBitmap = Bitmap.createBitmap( xlen, ylen, Bitmap.Config.ARGB_8888 );
+        for (int w = 0; w < xlen; w++) {
+            for (int h = 0; h < ylen; h++) {
+//                    color = image.getPixel(w,h);
+                myBitmap.setPixel(w, h, image.getPixel(xfrom+w,yfrom+h));
+            }
+        }
+
+        return myBitmap;
+
+    }
+
+    /**
+     * 计算两图像块的归一化互相关系数
+     * @param template1 图像一
+     * @param template2 图像二
+     * @return 归一化互相关系数
+     */
+    private float computeNCC(Bitmap template1, Bitmap template2) {
+        float response = 0;
+
+        //代入归一化公式
+        ImgObj_Para imgobj1 = new ImgObj_Para(template1);
+        ImgObj_Para imgobj2 = new ImgObj_Para(template2);
+        imgobj1.colorToGray2D(template1);
+        imgobj2.colorToGray2D(template2);
+
+        float[] meanstdtemp1 = meanAndStdOfImage(imgobj1.gray_img);
+        float[] meanstdtemp2 = meanAndStdOfImage(imgobj2.gray_img);
+
+        //计算NCC
+        for (int i = 0; i < imgobj1.gray_img.length; i++) {
+            for (int j = 0; j < imgobj1.gray_img[0].length; j++) {
+                response += (imgobj1.gray_img[i][j] - meanstdtemp1[0]) * (imgobj2.gray_img[i][j] - meanstdtemp2[0]);
+            }
+        }
+        response = response / (imgobj1.gray_img.length * imgobj1.gray_img[0].length - 1) / meanstdtemp1[1] / meanstdtemp2[1];
+
+        return response;
+
+    }
+
+    //计算灰度图像矩阵的灰度均值
+    public float[] meanAndStdOfImage(int[][] grayimage) {
+        float mean = 0;
+        for (int i = 0; i < grayimage.length; i++) {
+            for (int j = 0; j < grayimage[0].length; j++) {
+                mean += grayimage[i][j];
+            }
+        }
+        mean /= grayimage.length * grayimage[0].length;
+
+        float std = 0;
+        for (int i = 0; i < grayimage.length; i++) {
+            for (int j = 0; j < grayimage[0].length; j++) {
+                std += Math.pow(grayimage[i][j] - mean, 2);
+            }
+        }
+        std /= grayimage.length * grayimage[0].length;
+        std = (float) Math.sqrt(std);
+
+        return new float[]{mean,std};
+
+    }
+
+    ////////////////////////////////////////////////////////////////////
 
 }

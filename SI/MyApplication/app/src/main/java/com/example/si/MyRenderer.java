@@ -23,6 +23,7 @@ import androidx.annotation.RequiresApi;
 import com.example.si.IMG_PROCESSING.CornerDetection.ByteTranslate;
 
 import com.example.si.IMG_PROCESSING.CornerDetection.HarrisCornerDetector;
+import com.example.si.IMG_PROCESSING.CornerDetection.HarrisMatrix;
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 import com.example.si.IMG_PROCESSING.CornerDetection.XYZ;
 import com.example.si.RENDER.ImageUtil;
@@ -30,6 +31,12 @@ import com.example.si.RENDER.MyDraw;
 import com.example.si.RENDER.MyPattern2D;
 
 import org.apache.commons.io.IOUtils;
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.features2d.FeatureDetector;
+import org.opencv.imgproc.Imgproc;
 
 
 import java.io.File;
@@ -45,6 +52,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -59,6 +67,7 @@ import static java.lang.Math.min;
 import static java.lang.Math.pow;
 import static java.lang.Math.round;
 import static java.lang.Math.sqrt;
+import static java.lang.System.out;
 import static javax.microedition.khronos.opengles.GL10.GL_ALPHA_TEST;
 import static javax.microedition.khronos.opengles.GL10.GL_BLEND;
 import static javax.microedition.khronos.opengles.GL10.GL_ONE_MINUS_SRC_ALPHA;
@@ -264,6 +273,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     }
 
     public void ResetMarkerlist(ArrayList<ImageMarker> markerlist) {
+        //MarkerList.clear();
         MarkerList = markerlist;
     }
 
@@ -487,15 +497,10 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         int[] resultint = new int[3];
         float[] result = new float[3];
-
+        int[] R = new int[2];
         ArrayList<ImageMarker> corner = new ArrayList<ImageMarker>();
 
-        //获取合适的分割倍数
-        int stepx, stepy;
-        stepx = 25;
-        stepy = 25;
-        R[0] = round(bitmap2D.getWidth() / stepx);
-        R[1] = round(bitmap2D.getHeight() / stepy);
+
 
 //        R[0] = 1;
 //        R[1] = 1;
@@ -520,15 +525,33 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         //另存工作区原数据
         Bitmap tempBitmap = bitmap2D.copy(Bitmap.Config.ARGB_8888,true);
         Bitmap tempBitmapBackup = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,false);
-        bitmap2D_backup = bitmap2D.copy(Bitmap.Config.ARGB_8888,true);
+        int k = (int)Math.ceil(min(bitmap2D.getHeight(),bitmap2D.getWidth()) / 2000f);
+        System.out.println("k = "+k);
+        if (k <= 1) {
+            bitmap2D_backup = bitmap2D.copy(Bitmap.Config.ARGB_8888,true);
+        } else {
+            bitmap2D_backup = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / k, bitmap2D.getHeight() / k);
+        }
+        System.out.println("width = "+ bitmap2D_backup.getWidth());
+        System.out.println("height = "+bitmap2D_backup.getHeight());
+
+        //获取合适的分割倍数
+        float stepx, stepy;
+        stepx = 20f;
+        stepy = 20f;
+        R[0] = round(bitmap2D_backup.getWidth() / stepx);
+        R[1] = round(bitmap2D_backup.getHeight() / stepy);
+        System.out.println("R[0] = "+R[0]);
+        System.out.println("R[1] = "+R[1]);
+
         ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>(MarkerList);
 
         //区域中心定位图像块
         for (int center_x = R[0]; center_x < bitmap2D_backup.getWidth(); center_x += 2*R[0]+1) {
             for (int center_y = R[1]; center_y < bitmap2D_backup.getHeight(); center_y += 2*R[1]+1) {
 
-//                System.out.println("center_x = "+center_x);
-//                System.out.println("center_y = "+center_y);
+                System.out.println("center_x = "+center_x);
+                System.out.println("center_y = "+center_y);
 
                 //工作区准备
                 MarkerList.clear();
@@ -557,8 +580,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //                    result[0] = center_x + (float)resultint[0] - R[0]; //附近存在角点则矫正为最大响应
 //                    result[1] = center_y + (float)resultint[1] - R[1];
 //                    ImageMarker imageMarker = new ImageMarker();
-//                    imageMarker.x = result[0];
-//                    imageMarker.y = result[1];
+//                    imageMarker.x = result[0] * k;
+//                    imageMarker.y = result[1] * k;
 //                    imageMarker.type = lastMarkerType;
 //                    corner.add(imageMarker); //若存在角点则保留最大角点
 
@@ -569,8 +592,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                     //最多保留最大的三个点
                     for (int i = 0; i < MarkerList.size(); i++) {
                         ImageMarker imageMarker = new ImageMarker();
-                        imageMarker.x = MarkerList.get(i).x + center_x - R[0];
-                        imageMarker.y = MarkerList.get(i).y + center_y - R[1];
+                        imageMarker.x = (MarkerList.get(i).x + center_x - R[0]) * k;
+                        imageMarker.y = (MarkerList.get(i).y + center_y - R[1]) * k;
 //                        System.out.println("MarkerList.get(i).x :"+MarkerList.get(i).x);
 //                        System.out.println("MarkerList.get(i).y :"+MarkerList.get(i).y);
 //                        System.out.println("-----------------------------");
@@ -631,6 +654,184 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        System.out.println("count = "+count);
         System.out.println("corner.size() = "+corner.size());
         return corner;
+
+    }
+
+    public ArrayList<ImageMarker> globalImageCornerDetect2() {
+        int[] resultint = new int[3];
+        //float[] result = new float[3];
+        int[] R = new int[2];
+        ArrayList<ImageMarker> corner = new ArrayList<ImageMarker>();
+
+        //另存工作区原数据
+        Bitmap tempBitmap = bitmap2D.copy(Bitmap.Config.ARGB_8888,true);
+        Bitmap tempBitmapBackup = bitmap2D_backup.copy(Bitmap.Config.ARGB_8888,false);
+        int k = (int)Math.ceil(max(bitmap2D.getHeight(),bitmap2D.getWidth()) / 1000f);
+        System.out.println("k = "+k);
+
+        if (k > 1) {
+            bitmap2D = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / k, bitmap2D.getHeight() / k);
+        }
+        out.println("width = "+bitmap2D.getWidth());
+        out.println("height = "+bitmap2D.getHeight());
+
+        /*if (k <= 1) {
+            bitmap2D_backup = bitmap2D.copy(Bitmap.Config.ARGB_8888,true);
+        } else {
+            bitmap2D_backup = ImageTools.zoomBitmap(bitmap2D, bitmap2D.getWidth() / k, bitmap2D.getHeight() / k);
+        }
+        System.out.println("width = "+ bitmap2D_backup.getWidth());
+        System.out.println("height = "+bitmap2D_backup.getHeight());*/
+
+        //获取合适的分割倍数
+        float stepx, stepy;
+        stepx = 20f;
+        stepy = 20f;
+        R[0] = round(bitmap2D.getWidth() / stepx);
+        R[1] = round(bitmap2D.getHeight() / stepy);
+        System.out.println("R[0] = "+R[0]);
+        System.out.println("R[1] = "+R[1]);
+        //bitmap2D = bitmap2D_backup;
+
+        ArrayList<ImageMarker> MarkerListTemp = new ArrayList<ImageMarker>();
+
+        //工作区准备
+        MarkerList.clear();
+
+        //harris角点检测
+        if (if2dImageLoaded()){
+            //返回最大响应点
+            resultint = corner_detection2();
+        } else {
+            Toast.makeText(getContext(), "Please load a 2d image first", Toast.LENGTH_SHORT).show();
+        }
+
+        if (resultint == null) {
+            return corner;
+        }
+
+        //区域中心定位图像块
+        int [] tempPointIndexList;
+        for (int center_x = R[0]; center_x < bitmap2D.getWidth(); center_x += 2*R[0]+1) {
+            for (int center_y = R[1]; center_y < bitmap2D.getHeight(); center_y += 2*R[1]+1) {
+                System.out.println("center_x = "+center_x);
+                System.out.println("center_y = "+center_y);
+                //获取区域内的点(无边界问题)
+                tempPointIndexList = findPointsInTheRegion(center_x, center_y, R, MarkerList);
+                out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+                for (int l = 0; l < tempPointIndexList.length; l++) {
+                    out.println("(x,y): ("+MarkerList.get(tempPointIndexList[l]).x+","+MarkerList.get(tempPointIndexList[l]).y+")");
+                }
+                //对区域内点按照响应值排序，保留最大的三个响应点
+                int[] new_corner_x_y = findThreeMaxResponse(hmlist, tempPointIndexList);
+                if (new_corner_x_y != null) {
+                    for (int i = 0; i < new_corner_x_y.length / 2; i++) {
+                        ImageMarker imageMarker = new ImageMarker(new_corner_x_y[2*i+1] * k, new_corner_x_y[2*i] * k, 0, 3);
+                        corner.add(imageMarker);
+                    }
+                }
+
+
+            }
+        }
+
+
+
+
+
+
+
+
+
+        //恢复工作区原数据
+        MarkerList = MarkerListTemp;
+        bitmap2D = tempBitmap.copy(Bitmap.Config.ARGB_8888,true);
+        bitmap2D_backup = tempBitmapBackup.copy(Bitmap.Config.ARGB_8888,false);
+        tempBitmap.recycle();
+        tempBitmapBackup.recycle();
+        MarkerListTemp.clear();
+
+        //返回特征点
+//        System.out.println("count = "+count);
+        System.out.println("corner.size() = "+corner.size());
+        return corner;
+    }
+
+    /**
+     * 获取投影点所在小区域内点的索引
+     * @param x 投影点x坐标
+     * @param y 投影点y坐标
+     * @param R 区域半径（长宽半径分别对应于数组的0，1索引的元素）
+     * @param list 待查找点集
+     * @return 返回对应于点集的区域内点的索引数组
+     */
+    private int [] findPointsInTheRegion(int x, int y, int[] R, ArrayList<ImageMarker> list) {
+        ArrayList<Integer> pointList = new ArrayList<Integer>();
+        int count = 0;
+        for (ImageMarker imageMarker:list) {
+            if (imageMarker.x >= x - R[0] && imageMarker.x <= x + R[0] && imageMarker.y >= y - R[1] && imageMarker.y <= y + R[1]) {
+                int index = count;
+                pointList.add(index);
+            }
+            count++;
+        }
+
+        int[] indexList = new int[pointList.size()];
+        for (int i = 0; i < pointList.size(); i++) {
+            indexList[i] = pointList.get(i);
+        }
+        return indexList;
+    }
+
+    private int[] findThreeMaxResponse(ArrayList<HarrisMatrix> hmlist, int[] pointList) {
+        ArrayList<HarrisMatrix> tempHMList = new ArrayList<HarrisMatrix>();
+        for (int i = 0; i < pointList.length; i++) {
+            HarrisMatrix hm = new HarrisMatrix();
+            hm = hmlist.get(pointList[i]);
+            tempHMList.add(hm);
+        }
+
+        //响应降序排列
+        System.out.println("-------------------------------------------------------");
+
+        Collections.sort(tempHMList, new Comparator<HarrisMatrix>() {
+
+            @Override
+            public int compare(HarrisMatrix h1, HarrisMatrix h2) {
+                //降序
+                if (h1.getR()-h2.getR() > 0) {
+                    return -1;
+                } else if (h1.getR()-h2.getR() < 0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+
+                //return h1.compareTo(h2);
+            }
+
+        });
+
+        if (tempHMList.size() > 3) {
+            int[] new_corner_index = new int[6];
+            for (int i = 0; i < 3; i++) {
+                new_corner_index[2*i + 1] = tempHMList.get(i).getX();
+                new_corner_index[2*i] = tempHMList.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+
+            return new_corner_index;
+        } else if (tempHMList.size() >0) {
+            int[] new_corner_x_y = new int[2*tempHMList.size()];
+            for (int i = 0; i < tempHMList.size(); i++) {
+                new_corner_x_y[2*i + 1] = tempHMList.get(i).getX();
+                new_corner_x_y[2*i] = tempHMList.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+            return new_corner_x_y;
+        } else {
+            return null;
+        }
 
     }
 
@@ -1091,8 +1292,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             }
             result = ModeltoVolume(result);
 
-//            System.out.println("result[0] = "+result[0]);
-//            System.out.println("result[1] = "+result[1]);
+            System.out.println("result[0] = "+result[0]);
+            System.out.println("result[1] = "+result[1]);
 
             //-------------------------
             if (ifRefine) {
@@ -1126,9 +1327,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //                    result = getMostPossiblePoint(result, MarkerList,R);
                     result[0] += (float)resultint[0] - R[0];
                     result[1] += (float)resultint[1] - R[1];
-//                    System.out.println("----------------------");
-//                    System.out.println("result[0] = "+result[0]);
-//                    System.out.println("result[1] = "+result[1]);
+                    System.out.println("----------------------");
+                    System.out.println("result[0] = "+result[0]);
+                    System.out.println("result[1] = "+result[1]);
 
 
                 } else {
@@ -1864,7 +2065,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 //        MatOfPoint corners = new MatOfPoint();
 
-        File file = new File(filepath);
+        /*File file = new File(filepath);
         System.out.println(filepath);
         long length = 0;
         InputStream is1 = null;
@@ -2010,18 +2211,22 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        Imgproc.goodFeaturesToTrack(temp, corners, maxCorners, qualityLevel, minDistance,
 //
 //                new Mat(), blockSize, useHarrisDetector, k);
-//        Point[] pCorners = corners.toArray();
+//        Point[] pCorners = corners.toArray();*/
 
-        Bitmap destImage;
+//        Bitmap destImage;
         Bitmap sourceImage = bitmap2D;
 //        Bitmap sourceImage = image;
-        HarrisCornerDetector filter = new HarrisCornerDetector();
+        /*HarrisCornerDetector filter = new HarrisCornerDetector();
         destImage = filter.filter(sourceImage, null);
 
-        int[] corner_x_y = filter.corner_xy;
+        int[] corner_x_y = filter.corner_xy;*/
+        int[] corner_x_y = myHarrisdemo();
         int[] corner_x = new int[corner_x_y.length/2];
         int[] corner_y = new int[corner_x_y.length/2];
-        int[] maxResponseLocation = filter.globalMaxLocation;
+//        int[] maxResponseLocation = filter.globalMaxLocation;
+        int[] maxResponseLocation = new int[2];
+        maxResponseLocation[0] = corner_x_y[1];
+        maxResponseLocation[1] = corner_x_y[0];
 
 //        System.out.println("++++++++++");
 //        System.out.println("corner_x_y.length = "+corner_x_y.length);
@@ -2029,7 +2234,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         for (int n=0;n<corner_x_y.length/2;n++)
         {
             corner_x[n]=corner_x_y[2*n+1];
-            corner_y[n]=corner_x_y[2*n];
+            corner_y[n]=corner_x_y[2*n]; 
             //System.out.println(corner_x[n]);
             //System.out.println(corner_y[n]);
         }
@@ -2044,7 +2249,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //            actual_ratio+=2;
 //        }
 
-        int actual_ratio = options2.inSampleSize;
+//        int actual_ratio = options2.inSampleSize;
 
 //        System.out.println("aaaaaaaaa");
 //        System.out.println(actual_ratio);
@@ -2091,5 +2296,318 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         return maxResponseLocation;
 
     }
+
+    private int[] myHarrisdemo() {
+
+        // 定义阈值T//初始化各种Mat对象
+        int threshold = 100;
+        Mat src = new Mat();
+        Mat gray = new Mat();
+        Mat response = new Mat();
+        Mat response_norm = new Mat();
+
+        Utils.bitmapToMat(bitmap2D, src);//把image转化为Mat
+        Imgproc.cvtColor(src,gray, Imgproc.COLOR_RGBA2GRAY);
+
+        // 角点检测
+        Imgproc.cornerHarris(gray, response, 2, 3, 0.04);
+        Core.normalize(response, response_norm, 0, 255, Core.NORM_MINMAX, CvType.CV_32F);//归一化
+//        Core.convertScaleAbs(response_norm, corners);
+
+//        FeatureDetector detector = FeatureDetector.create(FeatureDetector.GRID_ORB);
+
+        // 筛选角点
+//        dst.create(src.size(), src.type());
+//        src.copyTo(dst);
+        ArrayList<HarrisMatrix> hmlist =  new ArrayList<HarrisMatrix>();
+        float[] data = new float[1];//！！！！！！！！！！
+        for(int j=0; j<response_norm.rows(); j++ )
+        {
+            for(int i=0; i<response_norm.cols(); i++ )
+            {
+                response_norm.get(j, i, data);
+                if((int)data[0] > 100)
+                {
+//                    Imgproc.circle(dst, new Point(i, j), 5,　new Scalar(0, 0, 255),
+//                            2, 8, 0);
+                    HarrisMatrix hm = new HarrisMatrix();
+                    hm.setR(data[0]);
+                    hm.setX(i);
+                    hm.setY(j);
+                    hmlist.add(hm);
+                    Log.i("Harris Corner", "find corner point……");
+                }
+            }
+        }
+
+        src.release();
+        gray.release();
+        response.release();
+        response_norm.release();
+
+        //响应降序排列
+        System.out.println("-------------------------------------------------------");
+
+        Collections.sort(hmlist, new Comparator<HarrisMatrix>() {
+
+            @Override
+            public int compare(HarrisMatrix h1, HarrisMatrix h2) {
+                //降序
+                if (h1.getR()-h2.getR() > 0) {
+                    return -1;
+                } else if (h1.getR()-h2.getR() < 0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+
+                //return h1.compareTo(h2);
+            }
+
+        });
+
+        gray.release();
+        response.release();
+
+//        for (HarrisMatrix harrisMatrix:hmlist) {
+//            if ()
+//        }
+
+        if (hmlist.size() > 3) {
+            int[] new_corner_x_y = new int[6];
+            for (int i = 0; i < 3; i++) {
+                new_corner_x_y[2*i + 1] = hmlist.get(i).getX();
+                new_corner_x_y[2*i] = hmlist.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+
+            return new_corner_x_y;
+        } else if (hmlist.size() >0) {
+            int[] new_corner_x_y = new int[2*hmlist.size()];
+            for (int i = 0; i < hmlist.size(); i++) {
+                new_corner_x_y[2*i + 1] = hmlist.get(i).getX();
+                new_corner_x_y[2*i] = hmlist.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+            return new_corner_x_y;
+        } else {
+            return new int[2];
+        }
+
+    }
+
+    public int[] corner_detection2() {
+        int[] corner_x_y = myHarrisdemo2();
+
+        if (corner_x_y == null) {
+            return null;
+        }
+
+        int[] corner_x = new int[corner_x_y.length/2];
+        int[] corner_y = new int[corner_x_y.length/2];
+        int[] maxResponseLocation = new int[2];
+        maxResponseLocation[0] = corner_x_y[1];
+        maxResponseLocation[1] = corner_x_y[0];
+
+        for (int n=0;n<corner_x_y.length/2;n++)
+        {
+            corner_x[n]=corner_x_y[2*n+1];
+            corner_y[n]=corner_x_y[2*n];
+            //System.out.println(corner_x[n]);
+            //System.out.println(corner_y[n]);
+        }
+
+        for (int i = 0; i < corner_x_y.length/2; i++) {
+            if (corner_x[i]==0&&corner_y[i]==0);
+            else{
+                ImageMarker imageMarker_drawed = new ImageMarker((float) corner_x[i],
+                        (float) corner_y[i],
+                        sz[2] / 2);
+                imageMarker_drawed.type = lastMarkerType;
+//            System.out.println("set type to 3");
+
+                MarkerList.add(imageMarker_drawed);}
+
+        }
+
+        return maxResponseLocation;
+
+    }
+
+    ArrayList<HarrisMatrix> hmlist =  new ArrayList<HarrisMatrix>();
+    private int[] myHarrisdemo2() {
+
+        if (hmlist.size() > 0) {
+            hmlist.clear();
+        }
+        // 定义阈值T//初始化各种Mat对象
+        int threshold = 100;
+        Mat src = new Mat();
+        Mat gray = new Mat();
+        Mat response = new Mat();
+        Mat response_norm = new Mat();
+        float[] data = new float[1];//！！！！！！！！！！
+
+
+        Utils.bitmapToMat(bitmap2D, src);//把image转化为Mat
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
+
+        // 角点检测
+        Imgproc.cornerHarris(gray, response, 2, 3, 0.04);
+        Core.normalize(response, response_norm, 0, 255, Core.NORM_MINMAX, CvType.CV_32F);//归一化
+
+        //获取最大响应
+        /*float maxR = 0;
+        //float minR = Float.MAX_VALUE;//，最小
+        for(int j=0; j<response_norm.rows(); j++ )
+        {
+            for(int i=0; i<response_norm.cols(); i++ )
+            {
+                response_norm.get(j, i, data);
+                if (maxR < data[0]) {
+                    maxR = data[0];
+                }
+            }
+        }
+        out.println("maxR = "+maxR);
+        float step = (maxR - 100) / 10;
+
+
+        //计算阈值
+        // 0: 101+8*step-maxR; 1: 101+6*step--100+8*step; 2: 101+4*step--100+6*step; 3: 101+3*step--100+4*step; 4: 101+2*step--100+3*step; 5: 101+step--100+2*step; 6: 101--100+step
+        //int[] count = new int[7];
+
+
+        for(int j=0; j<response_norm.rows(); j++ )
+        {
+            for(int i=0; i<response_norm.cols(); i++ )
+            {
+                response_norm.get(j, i, data);
+                if ((int)data[0] > 100+8*step) {
+                    count[0]++;
+                } else if ((int)data[0] > 100+6*step) {
+                    count[1]++;
+                } else if ((int)data[0] > 100+4*step) {
+                    count[2]++;
+                } else if ((int)data[0] > 100+3*step) {
+                    count[3]++;
+                } else if ((int)data[0] > 100+2*step) {
+                    count[4]++;
+                } else if ((int)data[0] > 100+step) {
+                    count[5]++;
+                } else if ((int)data[0] > 100) {
+                    count[6]++;
+                }
+            }
+        }
+
+        int num = 0;
+        int index = 0;
+        for (int i = 0; i < count.length; i++) {
+            if (num+count[i] < 400) {
+                num += count[i];
+            } else {
+                index = i;
+            }
+        }
+
+        if (index > 2) {
+            threshold = maxR - 6 * step - (index - 2) *step - (400 - num) / count[index] * step;
+        } else {
+            threshold = maxR - (index + 1) * 2 * step - (400 - num) / count[index] * step;
+        }*/
+
+
+
+
+        for(int j=0; j<response_norm.rows(); j++ )
+        {
+            for(int i=0; i<response_norm.cols(); i++ )
+            {
+                response_norm.get(j, i, data);
+                if((int)data[0] > threshold)
+                {
+//                    Imgproc.circle(dst, new Point(i, j), 5,　new Scalar(0, 0, 255),
+//                            2, 8, 0);
+                    HarrisMatrix hm = new HarrisMatrix();
+                    hm.setR(data[0]);
+                    hm.setX(i);
+                    hm.setY(j);
+                    hmlist.add(hm);
+                    Log.i("Harris Corner", "find corner point……");
+                }
+            }
+        }
+
+        src.release();
+        gray.release();
+        response.release();
+        response_norm.release();
+
+
+        int[] new_corner_x_y = new int[hmlist.size()*2];
+        for (int i = 0; i < hmlist.size(); i++) {
+            new_corner_x_y[2*i + 1] = hmlist.get(i).getX();
+            new_corner_x_y[2*i] = hmlist.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+        }
+
+        return new_corner_x_y;
+
+//        for (HarrisMatrix harrisMatrix:hmlist) {
+//
+//        }
+
+        //响应降序排列
+        /*System.out.println("-------------------------------------------------------");
+
+        Collections.sort(hmlist, new Comparator<HarrisMatrix>() {
+
+            @Override
+            public int compare(HarrisMatrix h1, HarrisMatrix h2) {
+                //降序
+                if (h1.getR()-h2.getR() > 0) {
+                    return -1;
+                } else if (h1.getR()-h2.getR() < 0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+
+                //return h1.compareTo(h2);
+            }
+
+        });
+
+
+//        for (HarrisMatrix harrisMatrix:hmlist) {
+//            if ()
+//        }
+
+        if (hmlist.size() > 3) {
+            int[] new_corner_x_y = new int[6];
+            for (int i = 0; i < 3; i++) {
+                new_corner_x_y[2*i + 1] = hmlist.get(i).getX();
+                new_corner_x_y[2*i] = hmlist.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+
+            return new_corner_x_y;
+        } else if (hmlist.size() >0) {
+            int[] new_corner_x_y = new int[2*hmlist.size()];
+            for (int i = 0; i < hmlist.size(); i++) {
+                new_corner_x_y[2*i + 1] = hmlist.get(i).getX();
+                new_corner_x_y[2*i] = hmlist.get(i).getY();
+//                System.out.println(i+" "+temp.get(i).getX()+","+temp.get(i).getY());
+            }
+            return new_corner_x_y;
+        } else {
+            return new int[2];
+        }*/
+
+
+
+    }
+
 
 }
