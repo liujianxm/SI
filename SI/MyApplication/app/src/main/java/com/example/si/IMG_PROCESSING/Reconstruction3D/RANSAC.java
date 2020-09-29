@@ -2,28 +2,31 @@ package com.example.si.IMG_PROCESSING.Reconstruction3D;
 
 import android.util.Log;
 
-import com.example.si.IMG_PROCESSING.GSDT.HeapElem;
-
+import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 
 import Jama.Matrix;
 
-import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D.compute_fundamental_normalized;
+import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.compute_Homography_normalized;
+import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.compute_fundamental_normalized;
 import static java.lang.StrictMath.abs;
 import static java.lang.StrictMath.max;
-import static java.lang.StrictMath.min;
-import static java.lang.System.out;
 
 
 public class RANSAC {
     public static double[][] PoListHoSelected_1;
     public static double[][] PoListHoSelected_2;
+    static List<Integer> BestInlierIdxH = new ArrayList<>();
+    static List<Integer> BestInlierIdxF = new ArrayList<>();
+    static float SH, SF;
+    public static Matrix bestF;
+    public static Matrix bestH;
+
+
     final static String TAG = "RANSAC";
     private static Random random = new Random();
     // randPerm(N,K) returns a vector of K unique values. This is sometimes
@@ -54,11 +57,219 @@ public class RANSAC {
         return res;
     }
 
+    public static float InitializeRANSAC(Matrix PoListHo_1, Matrix PoListHo_2, int num, int iter) throws InterruptedException {
+//        Thread threadF = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                Log.v("InitializeRANSAC","Here enter the thread F");
+//                bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 9, 500);
+//            }
+//        });
+//        Thread threadH = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                Log.v("InitializeRANSAC","Here enter the thread H");
+//                bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 9, 500);
+//            }
+//        });
+////        threadF.start();
+////        threadH.start();
+//        threadF.join();
+//        threadH.join();
+        Log.v("InitializeRANSAC","Here enter the thread F");
+        bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 9, 500);
+        Log.v("InitializeRANSAC","Here enter the thread H");
+        bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 9, 500);
+        return SH/(SH+SF);
+    }
+
+    private static float CheckHomography(Matrix PoListHo_1, Matrix PoListHo_2, Matrix H, List<Integer> inlierIdx){
+        float sigma = 1.0f;
+        float score = 0.0f;
+        final float th = 5.991f;
+        final int num = PoListHo_1.getRowDimension();
+        float invSigmaSquare = 1.0f/(sigma*sigma);
+        Matrix Hinv = H.inverse();
+        for(int i=0; i<num; i++){
+            Matrix po1 = PoListHo_1.getMatrix(i,i,0,2);
+            Matrix po2 = PoListHo_2.getMatrix(i,i,0,2);
+            boolean bIn = true;
+            double u1 = po1.get(0,0);
+            double v1 = po1.get(0,1);
+            double u2 = po2.get(0,0);
+            double v2 = po2.get(0,1);
+            // Reprojection error in first image
+            // x2in1 = H12*x2
+            float w2in1inv = (float) (1.0f/(Hinv.get(2,0)*u2+Hinv.get(2,1)*v2+Hinv.get(2,2)));
+            float u2in1 = (float) ((Hinv.get(0,0)*u2+Hinv.get(0,1)*v2+Hinv.get(0,2))*w2in1inv);
+            float v2in1 = (float) ((Hinv.get(1,0)*u2+Hinv.get(1,1)*v2+Hinv.get(1,2))*w2in1inv);
+            float squareDist1 = (float) ((u1-u2in1)*(u1-u2in1) + (v1 - v2in1)*(v1 - v2in1));
+            float chiSquare1 = squareDist1*invSigmaSquare;
+            if(chiSquare1>th) bIn = false;
+            else score += th -chiSquare1;
+            // Reprojection error in second image
+            // x1in2 = H21*x1
+            float w1in2inv = (float) (1.0f/(H.get(2,0)*u1+H.get(2,1)*v1+H.get(2,2)));
+            float u1in2 = (float) ((H.get(0,0)*u1+H.get(0,1)*v1+H.get(0,2))*w1in2inv);
+            float v1in2 = (float) ((H.get(1,0)*u1+H.get(1,1)*v1+H.get(1,2))*w1in2inv);
+            float squareDist2 = (float) ((u2-u1in2)*(u2-u1in2) + (v2 - v1in2)*(v2 - v1in2));
+            float chiSquare2 = squareDist2*invSigmaSquare;
+            if(chiSquare2>th) bIn = false;
+            else score += th - chiSquare2;
+
+            if(bIn)
+                inlierIdx.add(i);
+        }
+        return score;
+    }
+
+    /**
+     * 返回最佳 H 和对应的内点下标
+     * @param PoListHo_1
+     * @param PoListHo_2
+     * @param num
+     * @param iter
+     * @return
+     */
+    public static Matrix CheckHomographyRansac(Matrix PoListHo_1, Matrix PoListHo_2, int num, int iter){
+        SH=0.0f;
+        int number = PoListHo_1.getRowDimension();
+        if(num>=number) num = max(9,number-2);
+        int bestInNum;
+        Matrix bestH = new Matrix(3,3);
+//        List<Integer> BestInlierIdx = new ArrayList<>();
+        float currentScore;
+        for(int i=0; i<iter; i++) {
+            Set<Integer> idx = randPerm(number, num);
+            Matrix Po1Sample = new Matrix(num, 3);
+            Matrix Po2Sample = new Matrix(num, 3);
+            int count = 0;
+            for (Integer idxSample : idx) {
+                Po1Sample.setMatrix(count, count, 0, 2, PoListHo_1.getMatrix(idxSample, idxSample, 0, 2));
+                Po2Sample.setMatrix(count, count, 0, 2, PoListHo_2.getMatrix(idxSample, idxSample, 0, 2));
+                count++;
+            }
+            Matrix HEstimate = compute_Homography_normalized(Po1Sample, Po2Sample);
+            List<Integer> inlierIdx = new ArrayList<>();
+            currentScore = CheckHomography(PoListHo_1, PoListHo_2, HEstimate, inlierIdx);
+            if(currentScore > SH && inlierIdx.size()/(float)number > 0.4)//添加内点比例
+            {
+                bestH = HEstimate;
+                BestInlierIdxH = inlierIdx;
+                Log.d(TAG, "目前的内点个数为："+BestInlierIdxH.size());
+                SH = currentScore;
+            }
+        }
+        bestInNum = BestInlierIdxH.size();
+        Log.d(TAG, "最终的内点个数为："+bestInNum);
+/*        PoListHoSelected_1 = new double[bestInNum][3];
+        PoListHoSelected_2 = new double[bestInNum][3];
+        Log.d(TAG, "dist&&&&&&&&&&&&&&&&&&&&&&");
+        int c = 0;
+        for(Integer id : BestInlierIdx){
+            // Log.d(TAG, "选取的id："+id);
+            PoListHoSelected_1[c] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//            Log.d(TAG, "PoListHoSelected_1："+PoListHoSelected_1[c][0]+","+PoListHoSelected_1[c][1]+","+PoListHoSelected_1[c][2]);
+            PoListHoSelected_2[c] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//            Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[c][0]+","+PoListHoSelected_2[c][1]+","+PoListHoSelected_2[c][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+            c++;
+        }*/
+        return bestH;
+    }
+
+
+    private static float CheckFundamental(Matrix PoListHo_1, Matrix PoListHo_2, Matrix F, List<Integer> inlierIdx){
+        float sigma = 1.0f;
+        final int num = PoListHo_1.getRowDimension();
+        float score = 0.0f;
+        float th = 3.841f;
+//        float th = 5*10E-3f;
+        float thScore = 5.991f;
+        float invSigmaSquare = 1.0f/(sigma*sigma);
+        for(int i=0; i<num; i++){
+            Matrix po1 = PoListHo_1.getMatrix(i,i,0,2);
+            Matrix po2 = PoListHo_2.getMatrix(i,i,0,2);
+            boolean bIn = true;
+            double[] EpiLines2_Para = F.times(po1.transpose()).getColumnPackedCopy();//3*1
+            double[] EpiLines1_Para = F.transpose().times(po2.transpose()).getColumnPackedCopy();//3*1  这两行可能写反
+            double num2 = EpiLines2_Para[0]*po2.get(0,0)+EpiLines2_Para[1]*po2.get(0,1)+EpiLines2_Para[2];
+            double squareDist1 = num2*num2/(EpiLines2_Para[0]*EpiLines2_Para[0]+EpiLines2_Para[1]*EpiLines2_Para[1]);
+            double chiSquare1 = squareDist1*invSigmaSquare;
+            if(chiSquare1>th)
+                bIn = false;
+            else
+                score += thScore - chiSquare1;
+            double num1 = EpiLines1_Para[0]*po1.get(0,0)+EpiLines1_Para[1]*po1.get(0,1)+EpiLines1_Para[2];
+            double squareDist2 = num1*num1/(EpiLines1_Para[0]*EpiLines1_Para[0]+EpiLines1_Para[1]*EpiLines1_Para[1]);
+            double chiSquare2 = squareDist2*invSigmaSquare;
+//            Log.d(TAG, "$$$$$$$$$$$$$$$："+chiSquare2+",,,"+th);
+            if(chiSquare2>th)
+                bIn = false;
+            else
+                score += thScore - chiSquare2;
+            if(bIn)
+                inlierIdx.add(i);
+        }
+        return score;
+    }
+
+    public static Matrix CheckFundamentalRansac(Matrix PoListHo_1, Matrix PoListHo_2, int num, int iter){
+        SF=0.0f;
+        int number = PoListHo_1.getRowDimension();
+        if(num>=number) num = max(9,number-2);
+        int bestInNum;
+        Matrix bestF = new Matrix(3,3);
+//        List<Integer> BestInlierIdx = new ArrayList<>();
+        float currentScore;
+        for(int i=0; i<iter; i++) {
+            Set<Integer> idx = randPerm(number, num);
+            Matrix Po1Sample = new Matrix(num, 3);
+            Matrix Po2Sample = new Matrix(num, 3);
+            int count = 0;
+            for (Integer idxSample : idx) {
+                Po1Sample.setMatrix(count, count, 0, 2, PoListHo_1.getMatrix(idxSample, idxSample, 0, 2));
+                Po2Sample.setMatrix(count, count, 0, 2, PoListHo_2.getMatrix(idxSample, idxSample, 0, 2));
+                count++;
+            }
+            Matrix FEstimate = compute_fundamental_normalized(Po1Sample, Po2Sample);
+            List<Integer> inlierIdx = new ArrayList<>();
+            currentScore = CheckFundamental(PoListHo_1, PoListHo_2, FEstimate, inlierIdx);
+            if(currentScore > SF && inlierIdx.size()/(float)number > 0.4)
+            {
+                bestF = FEstimate;
+                BestInlierIdxF = inlierIdx;
+                Log.d(TAG, "目前的内点个数为："+BestInlierIdxF.size());
+                SF = currentScore;
+            }
+        }
+        bestInNum = BestInlierIdxF.size();
+        Log.d(TAG, "最终的内点个数为："+bestInNum);
+
+/*        int c = 0;
+        PoListHoSelected_1 = new double[bestInNum][3];
+        PoListHoSelected_2 = new double[bestInNum][3];
+        Log.d(TAG, "dist&&&&&&&&&&&&&&&&&&&&&&");
+        for(Integer id : BestInlierIdx){
+            // Log.d(TAG, "选取的id："+id);
+            PoListHoSelected_1[c] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//            Log.d(TAG, "PoListHoSelected_1："+PoListHoSelected_1[c][0]+","+PoListHoSelected_1[c][1]+","+PoListHoSelected_1[c][2]);
+            PoListHoSelected_2[c] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//            Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[c][0]+","+PoListHoSelected_2[c][1]+","+PoListHoSelected_2[c][2]);
+            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestF.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+            c++;
+        }*/
+        return bestF;
+    }
+
+
     /**
      * 八点法结合 RANSAC 稳健估计基础矩阵 F
      * @param PoListHo_1 齐次坐标点对
      * @param PoListHo_2 齐次坐标点对
-     * @param num 每次随机选取的点对数 12
+     * @param num 每次随机选取的点对数 9
      * @param iter 迭代次数 2000
      * @param threshDist 归为内点的阈值
      * @param InlierRatio 内点比例
@@ -135,6 +346,7 @@ public class RANSAC {
 
         return bestF;
     }
+
 
     //用来计算直线参数
     public static List<Double> perform(List<Double> data_Y, int num, int iter, double threshDist, double inlierRatio) {

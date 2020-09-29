@@ -1,17 +1,17 @@
 package com.example.si.IMG_PROCESSING.CornerDetection;
 
 public class XYZ implements Cloneable{
-    public float x;
-    public float y;
-    public float z;
+    public double x;
+    public double y;
+    public double z;
 
-    public XYZ(float px, float py, float pz){
+    public XYZ(double px, double py, double pz){
         x = px;
         y = py;
         z = pz;
     }
 
-    public XYZ(float a){
+    public XYZ(double a){
         x = a;
         y = a;
         z = a;

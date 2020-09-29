@@ -438,7 +438,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             for (int i = 0; i < MarkerList.size(); i++) {
 //                System.out.println("start draw marker---------------------");
                 ImageMarker imageMarker = MarkerList.get(i);
-                float[] markerModel = VolumetoModel(new float[]{imageMarker.x, imageMarker.y, imageMarker.z});
+                float[] markerModel = VolumetoModel(new float[]{(float) imageMarker.x, (float) imageMarker.y, (float) imageMarker.z});
                 if (imageMarker.radius == 5) {
 //                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
                     myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], markerModel[2], 0.01f);
@@ -470,7 +470,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             //增加marker直接添加即可
             Log.v("MyRenderer","Update bitmap for adding marker.");
             imageMarker = MarkerList.get(MarkerList.size()-1);
-            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(MarkerList.size()),fontSize, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(MarkerList.size()),fontSize, Color.BLUE,(int)imageMarker.x,(int)(imageMarker.y));
             isAddPoint = false;
         } else {
             //删除marker需要重新绘制
@@ -479,7 +479,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             for (int index = 0; index < MarkerList.size(); index++) {
                 imageMarker = MarkerList.get(index);
                 //index--;
-                bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),fontSize, Color.BLUE,round(imageMarker.x),round(imageMarker.y));
+                bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),fontSize, Color.BLUE,(int)imageMarker.x,(int)(imageMarker.y));
 //            bitmap2D = imageUtil.drawTextToLeftTop(getContext(),bitmap2D, Integer.toString(index+1),20, Color.BLUE,100,100);
             }
         }
@@ -1606,8 +1606,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 //        System.out.println("+++++++++++++++++++++");
 //        System.out.println("value.x = "+value.x);
 //        System.out.println("value.y = "+value.y);
-        Marker[0] = value.x;
-        Marker[1] = value.y;
+        Marker[0] = (float) value.x;
+        Marker[1] = (float) value.y;
         Marker[2] = index; //二维图像中z坐标无效，暂时用于存储索引值
         return Marker;
     }

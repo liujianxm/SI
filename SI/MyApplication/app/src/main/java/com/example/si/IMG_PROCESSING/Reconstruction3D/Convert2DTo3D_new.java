@@ -2,21 +2,28 @@ package com.example.si.IMG_PROCESSING.Reconstruction3D;
 
 
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
+import android.view.WindowManager;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
-
+import com.example.si.MainActivity;
 import org.opencv.core.Mat;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Vector;
@@ -24,6 +31,7 @@ import java.util.Vector;
 import Jama.Matrix;
 import Jama.SingularValueDecomposition;
 
+import static java.lang.Double.doubleToLongBits;
 import static java.lang.Double.isFinite;
 import static java.lang.StrictMath.PI;
 import static java.lang.StrictMath.abs;
@@ -33,6 +41,7 @@ import static java.lang.StrictMath.min;
 import static java.lang.StrictMath.pow;
 import static java.lang.StrictMath.round;
 import static java.lang.StrictMath.sqrt;
+import static java.lang.System.in;
 import static java.lang.System.out;
 
 
@@ -54,13 +63,16 @@ public class Convert2DTo3D_new {
     ArrayList<Double> distance2;
     Matrix PoSelected1 = null;
     Matrix PoSelected2 = null;
-    double sigma = 15.0f;
+    float sigma = 2.0f;
     double mSigma2 = sigma*sigma;
     Matrix R = new Matrix(3, 3);
-    Matrix t21 = new Matrix(3, 1);
-    Vector<Boolean> vbTriangulated;
+    Matrix t21 = new Matrix(1, 3);
+    Vector<Boolean> vbTriangulatedF;
+    Vector<Boolean> vbTriangulatedH;
     final String TAG = "Convert2DTo3D";
     Matrix vP3D4_item = null;
+    Matrix R1 = new Matrix(3,3), R2 = new Matrix(3,3), t = new Matrix(1,3);
+    ArrayList<Float> ParallaxList = new ArrayList<>(4);//用来存放四种RT下的视角差
 //    ArrayList<double[]> vP3D1 = new ArrayList<double[]>();
 
 
@@ -69,11 +81,12 @@ public class Convert2DTo3D_new {
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
      */
+    @SuppressLint("ShowToast")
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public boolean Convert2DTo3D_Fun_new(double[][] PoList_1, double[][] PoList_2, MobileModel mm){
+    public boolean Convert2DTo3D_Fun_new(double[][] PoList_1, double[][] PoList_2, DataBuilder dataBuilder, ArrayList<double[]> FfList){
 //    public boolean Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
         ////////////////////此处经过修改！！！！！！！！
-        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
+/*        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
         Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
         Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
         // //////////////////////
@@ -105,14 +118,14 @@ public class Convert2DTo3D_new {
 //        Matrix E1 = K.inverse().transpose().times(F.times(K.inverse()));/////////////
         F = compute_fundamental_normalized(PoSelected1, PoSelected2);////////////重新计算一次F
         X_3D = new Matrix(PoSelected1.getRowDimension(),4);
-        boolean Flag = ReconstructF(F, K,1,15);
+        boolean Flag = ReconstructF(F, K,1,12);
         Log.d("Convert2DTo3D_new","Flag:"+Flag);
         P2_Selected = new Matrix(3,4);
         P2_Selected.setMatrix(0,2,0,2,R);
         P2_Selected.setMatrix(0,2,3,3,t21);
         P2_Selected = K.times(P2_Selected);
         Matrix e = compute_epipole(F.transpose());  //计算外极点
-/*        Matrix E1 = K.transpose().times(F.times(K));
+*//*        Matrix E1 = K.transpose().times(F.times(K));
         out.println("==============本质矩阵E1的值为==================");
         for (int i=0; i<3; i++){
             for (int j=0; j<3; j++){
@@ -121,28 +134,35 @@ public class Convert2DTo3D_new {
         }
         ArrayList<Matrix> P2 = ComputePFromEssential(E1);//计算第二角度可能的投影矩阵
         //Matrix F = compute_fundamental_normalized(Po1, Po2);
-        //Matrix F = compute_fundamental_normalized(PoSelected1, PoSelected2);*/
+        //Matrix F = compute_fundamental_normalized(PoSelected1, PoSelected2);*//*
         ////////计算极线参数abc/////////
         ComputeCorrespondEpiLines(PoSelected1, PoSelected2, F);
-        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());
+        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());*/
 
 
 //////////////////////////////内参自标定///////////////////////////////////
-    /*    Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵齐次坐标
-        Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
-          Matrix F = RANSAC.MyRansac(Po1,Po2,9,500,5*10E-3,0.7);
-          out.println("==============F的值为==================");
-          for (int i=0; i<3; i++){
-              for (int j=0; j<3; j++){
-                  out.println("点("+i+","+j+")的值：" + F.get(i,j));
-              }
-          }
-          PoSelected1 = new Matrix(RANSAC.PoListHoSelected_1);
-          PoSelected2 = new Matrix(RANSAC.PoListHoSelected_2);
+        Matrix Po1 = Point2D3DToHomogeneous(PoList_1, 0);//n*3矩阵齐次坐标
+        Matrix Po2 = Point2D3DToHomogeneous(PoList_2, 0);//n*3矩阵
+
+
+        Matrix F = RANSAC.CheckFundamentalRansac(Po1, Po2, 9, 500);
+//        Matrix F = RANSAC.CheckHomographyRansac(Po1, Po2, 9, 500);
+        out.println("==============F的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + F.get(i,j));
+            }
+        }
+        PoSelected1 = new Matrix(RANSAC.PoListHoSelected_1);
+        PoSelected2 = new Matrix(RANSAC.PoListHoSelected_2);
+//        PoSelected1 = Po1;
+//        PoSelected2 = Po2;
+        F = compute_fundamental_normalized(PoSelected1, PoSelected2);
+//        F = compute_Homography_normalized(PoSelected1, PoSelected2);
         //计算内参矩阵
         Matrix e = compute_epipole(F);  //计算外极点
 
-        out.println("==============本质矩阵E的值为==================");
+        out.println("==============重新计算矩阵F的值为==================");
         for (int i=0; i<3; i++){
             for (int j=0; j<3; j++){
                 out.println("点("+i+","+j+")的值：" + F.get(i,j));
@@ -156,20 +176,174 @@ public class Convert2DTo3D_new {
         }
 
         System.out.println(paras[0]+","+paras[1]+","+paras[2]);
-        intrinsic = buildIntrinsicMatrix(paras[0]);
-        F = compute_fundamental_normalized(PoSelected1, PoSelected2);
-        ArrayList<Matrix> P2 = ComputePFromEssential(F);//计算第二角度可能的投影矩阵*/
+//        intrinsic = buildIntrinsicMatrix(3200);
+        P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}});//恢复原P1
+        intrinsic = buildIntrinsicMatrix((paras[0]+paras[1])/2);
+        P1 = intrinsic.times(P1);
+//        F = compute_fundamental_normalized(PoSelected1, PoSelected2);
+//        Matrix F0 = new Matrix(new double[][]{{1.83931547e-08, -3.48196882e-07, -1.78018112e-03},{4.55207839e-07, -2.52908003e-09, -5.49841251e-04},{1.60451019e-03,  5.36483237e-04,  8.16320457e-01}});
+//        Matrix F0 = new Matrix(new double[][]{{2.25317821e-08,-4.26544354e-07,-2.18073810e-03},{5.57633751e-07,-3.09814609e-09,-6.73560544e-04},{1.96553960e-03,6.57196855e-04,1.00000000e+00}});
+        Matrix F0 = dataBuilder.F;
+        Matrix temp;
+        temp = (F0.times(1/F0.normF())).minus(F.times(1/F.normF()));
+        ///////////////存放〘∆F〙/〘F〙和|delta f|/f//////////
+        double[] errFf = new double[2];
+        errFf[0] = temp.normF()/F0.normF();
+        errFf[1] = abs(intrinsic.get(0,0)-3200)/3200;
+        FfList.add(errFf);
+        /////////////////////////////////////////////////////
+/*        out.println("==============误差************的值为==================");
+        out.println("  〘∆F〙/〘F〙:" + temp.normF()/F0.normF());
+        out.println("  |delta f|/f::" + abs(intrinsic.get(0,0)-3200)/3200);
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("第"+i+","+j+"处的 |deltaF|/F:"+abs(temp.get(i,j))/F0.get(i,j));
+            }
+        }*/
+        X_3D = new Matrix(PoSelected1.getRowDimension(),4);
+        boolean Flag = ReconstructF(F,0.5f,9);
+        Log.d("Convert2DTo3D_new","Flag:"+Flag);
+        if(!Flag){
+            Toast.makeText(MainActivity.getContext(),"Fail to 3D Reconstruction!!", Toast.LENGTH_SHORT).show();
+        }
+        P2_Selected = new Matrix(3,4);
+        P2_Selected.setMatrix(0,2,0,2,R);
+        P2_Selected.setMatrix(0,2,3,3,t21.transpose());
+        P2_Selected = intrinsic.times(P2_Selected);
 ///////////////////////////////////////////////////////////////////////
 
-/*        ////////计算极线参数abc/////////
+        ////////计算极线参数abc/////////
         ComputeCorrespondEpiLines(PoSelected1, PoSelected2, F);
+//        X_3D = TriangulateMultiPoints(PoSelected1, PoSelected2,P1,this.P2_Selected);//3*n
         ///////////////////////////////
-        SelectPFrom4P(PoSelected1, PoSelected2, P1, P2);//恢复的三位坐标矩阵
-        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());*/
+//        SelectPFrom4P(PoSelected1, PoSelected2, P1, P2);//恢复的三位坐标矩阵
+        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());
         return true;
     }
 
     /////////////////////////////////////////////
+
+    @SuppressLint("ShowToast")
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public boolean Convert2DTo3D_Fun_init(double[][] PoList_1, double[][] PoList_2, Matrix dataBuilderF, ArrayList<double[]> FfList) throws InterruptedException {
+
+//////////////////////////////内参自标定///////////////////////////////////
+        Matrix Po1 = Point2D3DToHomogeneous(PoList_1, 0);//n*3矩阵齐次坐标
+        Matrix Po2 = Point2D3DToHomogeneous(PoList_2, 0);//n*3矩阵
+        //判断使用哪个矩阵
+        float score = RANSAC.InitializeRANSAC(Po1, Po2, 9, 500);
+        Log.v("Convert2DTo3D_Fun_init","The score is :::"+score);
+        double[][] PoListHoSelected_1;
+        double[][] PoListHoSelected_2;
+        Matrix matrixFH;
+        if(score > 0.5){
+            PoListHoSelected_1 = new double[RANSAC.BestInlierIdxH.size()][3];
+            PoListHoSelected_2 = new double[RANSAC.BestInlierIdxH.size()][3];
+            int c=0;
+            for(Integer id : RANSAC.BestInlierIdxH){
+                Log.d(TAG, "选取的id："+id);
+                PoListHoSelected_1[c] = Po1.getMatrix(id, id, 0,2).getRowPackedCopy();
+                Log.d(TAG, "PoListHoSelected_1："+PoListHoSelected_1[c][0]+","+PoListHoSelected_1[c][1]+","+PoListHoSelected_1[c][2]);
+                PoListHoSelected_2[c] = Po2.getMatrix(id, id, 0,2).getRowPackedCopy();
+                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[c][0]+","+PoListHoSelected_2[c][1]+","+PoListHoSelected_2[c][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                c++;
+            }
+            PoSelected1 = new Matrix(PoListHoSelected_1);
+            PoSelected2 = new Matrix(PoListHoSelected_2);
+//            matrixFH = compute_Homography_normalized(PoSelected1, PoSelected2);
+            matrixFH = RANSAC.bestH;
+        }else {
+            PoListHoSelected_1 = new double[RANSAC.BestInlierIdxF.size()][3];
+            PoListHoSelected_2 = new double[RANSAC.BestInlierIdxF.size()][3];
+            int cc=0;
+            for(Integer id : RANSAC.BestInlierIdxF){
+                // Log.d(TAG, "选取的id："+id);
+                PoListHoSelected_1[cc] = Po1.getMatrix(id, id, 0,2).getRowPackedCopy();
+            Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[cc][0]+","+PoListHoSelected_1[cc][1]+","+PoListHoSelected_1[cc][2]);
+                PoListHoSelected_2[cc] = Po2.getMatrix(id, id, 0,2).getRowPackedCopy();
+            Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[cc][0]+","+PoListHoSelected_2[cc][1]+","+PoListHoSelected_2[cc][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                cc++;
+            }
+            PoSelected1 = new Matrix(PoListHoSelected_1);
+            PoSelected2 = new Matrix(PoListHoSelected_2);
+//            matrixFH = compute_fundamental_normalized(Po1, Po2);//////////////
+            matrixFH = RANSAC.bestF;
+        }
+//        Matrix matrixFH = compute_fundamental_normalized(Po1, Po2);
+        //计算内参矩阵
+        Matrix e = compute_epipole(matrixFH);  //计算外极点
+        out.println("==============重新计算矩阵matrixFH的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + matrixFH.get(i,j));
+            }
+        }
+
+        double [] paras = cameraSelfCalibrate(matrixFH, e); //[f1 f2 a]
+        if (paras == null) {
+            Log.v("Convert2DTo3D", "Given points can not get initiate matrix!");
+            return false;
+        }
+
+        System.out.println(paras[0]+","+paras[1]+","+paras[2]);
+//        intrinsic = buildIntrinsicMatrix(3200);
+
+
+        P1 = new Matrix(new double[][]{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}});//恢复原P1
+        intrinsic = buildIntrinsicMatrix((paras[0]+paras[1])/2);
+
+
+/*        Matrix temp;
+        temp = (dataBuilderF.times(1/ dataBuilderF.normF())).minus(matrixFH.times(1/matrixFH.normF()));
+        ///////////////存放〘∆F〙/〘F〙和|delta f|/f//////////
+        double[] errFf = new double[2];
+        errFf[0] = temp.normF()/ dataBuilderF.normF();
+        errFf[1] = abs(intrinsic.get(0,0)-3200)/3200;
+        FfList.add(errFf);
+        out.println("==============误差************的值为==================");
+        out.println("  〘∆F〙/〘F〙:" + temp.normF()/ dataBuilderF.normF());
+        out.println("  |delta f|/f::" + abs(intrinsic.get(0,0)-3200)/3200);
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("第"+i+","+j+"处的 |deltaF|/F:"+abs(temp.get(i,j))/ dataBuilderF.get(i,j));
+            }
+        }*/
+
+        P1 = intrinsic.times(P1);
+        X_3D = new Matrix(PoSelected1.getRowDimension(),4);
+        boolean Flag;
+        if(score>0.5) {
+            Flag = ReconstructH(matrixFH, 0.35f, 1);///
+        }else {
+            Flag = ReconstructF(matrixFH, 0.35f, 1);///
+        }
+        Log.d("Convert2DTo3D_new","Flag:"+Flag);
+        if(!Flag){
+            //Toast_in_Thread("Point number is insufficient!");
+            Looper.prepare();
+            Toast.makeText(MainActivity.getContext(),"Fail to 3D Reconstruction!!", Toast.LENGTH_SHORT).show();
+            Looper.loop();
+        }
+        P2_Selected = new Matrix(3,4);
+        P2_Selected.setMatrix(0,2,0,2,R);
+        P2_Selected.setMatrix(0,2,3,3,t21.transpose());
+        P2_Selected = intrinsic.times(P2_Selected);
+///////////////////////////////////////////////////////////////////////
+
+        ////////计算极线参数abc/////////
+        ComputeCorrespondEpiLines(PoSelected1, PoSelected2, matrixFH);
+//        X_3D = TriangulateMultiPoints(PoSelected1, PoSelected2,P1,this.P2_Selected);//3*n
+        ///////////////////////////////
+//        SelectPFrom4P(PoSelected1, PoSelected2, P1, P2);//恢复的三位坐标矩阵
+        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());
+        return true;
+    }
+
+
 
 
     /**
@@ -181,6 +355,7 @@ public class Convert2DTo3D_new {
         Matrix Intrinsic_matrix;
         switch (mm){
             case MIX2:
+//                Intrinsic_matrix = new Matrix(new double[][] {{3053.5,0.0,0.0},{0.0,3063.3,0.0},{0,0,1.0}});
                 Intrinsic_matrix = new Matrix(new double[][] {{3053.5,0.0,0.0},{0.0,3063.3,0.0},{1513.5,2018.1,1.0}});
                 //Intrinsic_matrix = new Matrix(new double[][] {{1500.5,0.0,0.0},{0.0,1500.3,0.0},{750.5,1009.1,1.0}});
                 break;
@@ -197,17 +372,31 @@ public class Convert2DTo3D_new {
     /**
      * 将普通2D坐标点转化为齐次坐标
      * @param Po_list 坐标点矩阵，n*2格式
+     * @param Type 点坐标类型 0--2d  1--3d
      * @return n*3的 Matrix 格式的齐次坐标
      */
-    public Matrix Point2DToHomogeneous(double[][] Po_list){
+    public Matrix Point2D3DToHomogeneous(double[][] Po_list, int Type){
         int List_len = Po_list.length;
-        double[][] temp = new double[List_len][3];
-        for(int i=0; i<List_len; i++){
-            for(int j=0; j<=2; j++){
-                if(j==2) temp[i][j] = 1;
-                else temp[i][j] = Po_list[i][j];
+        double[][] temp = null;
+        if(Type == 0) {
+            temp = new double[List_len][3];
+            for (int i = 0; i < List_len; i++) {
+                for (int j = 0; j <= 2; j++) {
+                    if (j == 2) temp[i][j] = 1.0;
+                    else temp[i][j] = Po_list[i][j];
+                }
+            }
+            return new Matrix(temp);
+        }else if(Type == 1){
+            temp = new double[List_len][4];
+            for (int i = 0; i < List_len; i++) {
+                for (int j = 0; j <= 3; j++) {
+                    if (j == 3) temp[i][j] = 1.0;
+                    else temp[i][j] = Po_list[i][j];
+                }
             }
         }
+        assert temp != null;
         return new Matrix(temp);
     }
 
@@ -276,22 +465,17 @@ public class Convert2DTo3D_new {
         }
         double[][] A_array = new double[Po_num][9];
         for(int i=0; i<Po_num; i++){
-            //此处有改动 0914
-            A_array[i] = new double[]{PoList_1.get(i,0)*PoList_2.get(i,0), PoList_1.get(i,0)*PoList_2.get(i,1), PoList_1.get(i,0)*PoList_2.get(i,2),
-                    PoList_1.get(i,1)*PoList_2.get(i,0), PoList_1.get(i,1)*PoList_2.get(i,1), PoList_1.get(i,1)*PoList_2.get(i,2),
-                    PoList_1.get(i,2)*PoList_2.get(i,0), PoList_1.get(i,2)*PoList_2.get(i,1), PoList_1.get(i,2)*PoList_2.get(i,2)};
-/*            final double u1 = PoList_1.get(i,0);
+
+            final double u1 = PoList_1.get(i,0);
             final double v1 = PoList_1.get(i,1);
             final double u2 = PoList_2.get(i,0);
             final double v2 = PoList_2.get(i,1);
-            A_array[i] = new double[]{u2*u1, u2*v1, u2, v2*u1, v2*v1, v2, u1,v1,1};*/
+            A_array[i] = new double[]{u2*u1, u2*v1, u2, v2*u1, v2*v1, v2, u1,v1,1};
         }
         Matrix A = new Matrix(A_array);
-        //  out.println("==AAAAAAAAAAAAAAAAAAAAAAAA=====cond:"+ A.cond());
         //进行奇异值分解
         SingularValueDecomposition s = A.svd();
         Matrix V = s.getV();//9*9
-        //  Matrix F = matrixReshape(V.getMatrix(8,8,0,8).getArray() ,3,3);
         Matrix F = matrixReshape(V.getMatrix(0,8,8,8).getArray() ,3,3);
         //进行奇异值分解
         SingularValueDecomposition f = F.svd();
@@ -307,10 +491,38 @@ public class Convert2DTo3D_new {
     }
 
     /**
+     * 计算单应矩阵
+     * @param PoList_1 第一张图的匹配点坐标 n*3
+     * @param PoList_2 第二张图的匹配点坐标
+     * @return H单应矩阵
+     */
+    public static Matrix ComputeHomography(Matrix PoList_1, Matrix PoList_2){
+        int Po_num = PoList_1.getRowDimension();//获取匹配点对数
+        if(PoList_2.getRowDimension() != Po_num || Po_num <= 8){
+            throw new IllegalArgumentException("Number of points don't match OR Need more than 8 matched points.");
+        }
+        double[][] A_array = new double[2*Po_num][9];
+        for(int i=0; i<Po_num; i++){
+            final double u1 = PoList_1.get(i,0);
+            final double v1 = PoList_1.get(i,1);
+            final double u2 = PoList_2.get(i,0);
+            final double v2 = PoList_2.get(i,1);
+            A_array[2*i] = new double[]{0.0, 0.0, 0.0, -u1, -v1, -1, v2*u1, v2*v1, v2};
+            A_array[2*i+1] = new double[]{u1, v1, 1, 0.0, 0.0, 0.0, -u2*u1, -u2*v1, -u2};
+        }
+        Matrix A = new Matrix(A_array);
+        //进行奇异值分解
+        SingularValueDecomposition s = A.svd();
+        Matrix V = s.getV();//9*9
+        return matrixReshape(V.getMatrix(0,8,8,8).getArray() ,3,3);
+    }
+
+    /**
      * 计算E
      */
-    public static Matrix compute_fundamental_normalized(Matrix PoList_1, Matrix PoList_2){//n*3
+    public static Matrix compute_Homography_normalized(Matrix PoList_1, Matrix PoList_2){//n*3
         int Po_num = PoList_1.getRowDimension();//获取匹配点对数
+//        out.println("==here" + Po_num);
         if(PoList_2.getRowDimension() != Po_num){
             throw new IllegalArgumentException("Number of points don't match.");
         }
@@ -321,15 +533,60 @@ public class Convert2DTo3D_new {
         double S1 = sqrt(2)/std1;
         double S2 = sqrt(2)/std2;
         double[][] temp1 = {{S1,0,-S1*po1mean[0]}, {0,S1,-S1*po1mean[1]}, {0,0,1}};
+/*        double[] std1 = Objects.requireNonNull(getXYMeanStdValue(PoList_1.getMatrix(0, Po_num-1, 0, 1).getArray()));//未求齐次坐标
+        double[] std2 = Objects.requireNonNull(getXYMeanStdValue(PoList_2.getMatrix(0, Po_num-1, 0, 1).getArray()));
+        double S1X = sqrt(1)/std1[2];
+        double S1Y = sqrt(1)/std1[3];
+        double S2X = sqrt(1)/std2[2];
+        double S2Y = sqrt(1)/std2[3];
+        double[][] temp1 = {{S1X,0,-S1X*po1mean[0]}, {0,S1Y,-S1Y*po1mean[1]}, {0,0,1}};*/
         Matrix T1 = new Matrix(temp1);
         PoList_1 = T1.times(PoList_1.transpose()).transpose();
         double[][] temp2 = {{S2,0,-S2*po2mean[0]}, {0,S2,-S2*po2mean[1]}, {0,0,1}};
+//        double[][] temp2 = {{S2X,0,-S2X*po2mean[0]}, {0,S2Y,-S2Y*po2mean[1]}, {0,0,1}};
+        Matrix T2 = new Matrix(temp2);
+        PoList_2 = T2.times(PoList_2.transpose()).transpose();
+        Matrix H = ComputeHomography(PoList_1,PoList_2);
+        H = (T2.inverse()).times(H.times(T1));//此处有改动，T2左乘
+//        out.println("==here" + "=====compute_fundamental_norma");
+        return H.times(1/H.get(2,2));
+//         return F;
+    }
+
+    /**
+     * 计算E
+     */
+    public static Matrix compute_fundamental_normalized(Matrix PoList_1, Matrix PoList_2){//n*3
+        int Po_num = PoList_1.getRowDimension();//获取匹配点对数
+//        out.println("==here" + Po_num);
+        if(PoList_2.getRowDimension() != Po_num){
+            throw new IllegalArgumentException("Number of points don't match.");
+        }
+        double[] po1mean = AvgValue(PoList_1);
+        double[] po2mean = AvgValue(PoList_2);//计算均值
+        double std1 = Objects.requireNonNull(getWholeMeanStdValue(PoList_1.getMatrix(0, Po_num-1, 0, 1).getArray()))[1];//未求齐次坐标
+        double std2 = Objects.requireNonNull(getWholeMeanStdValue(PoList_2.getMatrix(0, Po_num-1, 0, 1).getArray()))[1];
+        double S1 = sqrt(2)/std1;
+        double S2 = sqrt(2)/std2;
+        double[][] temp1 = {{S1,0,-S1*po1mean[0]}, {0,S1,-S1*po1mean[1]}, {0,0,1}};
+/*        double[] std1 = Objects.requireNonNull(getXYMeanStdValue(PoList_1.getMatrix(0, Po_num-1, 0, 1).getArray()));//未求齐次坐标
+        double[] std2 = Objects.requireNonNull(getXYMeanStdValue(PoList_2.getMatrix(0, Po_num-1, 0, 1).getArray()));
+        double S1X = sqrt(1)/std1[2];
+        double S1Y = sqrt(1)/std1[3];
+        double S2X = sqrt(1)/std2[2];
+        double S2Y = sqrt(1)/std2[3];
+        double[][] temp1 = {{S1X,0,-S1X*po1mean[0]}, {0,S1Y,-S1Y*po1mean[1]}, {0,0,1}};*/
+        Matrix T1 = new Matrix(temp1);
+        PoList_1 = T1.times(PoList_1.transpose()).transpose();
+        double[][] temp2 = {{S2,0,-S2*po2mean[0]}, {0,S2,-S2*po2mean[1]}, {0,0,1}};
+//        double[][] temp2 = {{S2X,0,-S2X*po2mean[0]}, {0,S2Y,-S2Y*po2mean[1]}, {0,0,1}};
         Matrix T2 = new Matrix(temp2);
         PoList_2 = T2.times(PoList_2.transpose()).transpose();
         Matrix F = ComputeFundamental(PoList_1,PoList_2);
-        F = (T1.transpose()).times(F.times(T2));
+        F = (T2.transpose()).times(F.times(T1));//此处有改动，T2左乘
+//        out.println("==here" + "=====compute_fundamental_norma");
         return F.times(1/F.get(2,2));
-        // return F;
+//         return F;
     }
 
 
@@ -354,11 +611,59 @@ public class Convert2DTo3D_new {
     }
 
     /**
+     * 获取XY均值以及标准差
+     * @param Po_list 匹配点
+     * @return 分xy的 meanStd
+     */
+
+    public static double[] getXYMeanStdValue(double[][] Po_list){
+        double[] meanStd;
+        if(Po_list == null){
+            out.println("out of data!");
+            return null;
+        }else{
+            int Height = Po_list.length;//图像高
+            int Width = Po_list[0].length;//图像宽（反）
+            meanStd = new double[4];
+            double meanX = 0.0;
+            double meanY = 0.0;
+            double stdX = 0.0;
+            double stdY = 0.0;
+            int j,i;
+            for (j = 0; j < Height; j++)
+                for (i = 0; i < Width; i++) {
+                    meanX += Po_list[j][0];
+                    meanY += Po_list[j][1];
+                }
+//            mean /= Height*Width;
+            meanX /= Height;
+            meanY /= Height;
+            for (j = 0; j < Height; j++) {
+                for (i = 0; i < Width; i++) {
+                    stdX += Math.pow(Po_list[j][0] - meanX, 2);
+                    stdY += Math.pow(Po_list[j][1] - meanY, 2);
+                }
+            }
+//            std /= Height*Width-1;
+            stdX /= Height-1;
+            stdY /= Height-1;
+            stdX = Math.sqrt(stdX);
+            stdY = Math.sqrt(stdY);
+
+            meanStd[0] = meanX;
+            meanStd[1] = meanY;
+            meanStd[2] = stdX;
+            meanStd[3] = stdY;
+            return meanStd;
+        }
+    }
+
+
+    /**
      * 获取全局均值以及标准差
      * @param Po_list 匹配点
      * @return 全局 meanStd
      */
-
     public static double[] getWholeMeanStdValue(double[][] Po_list){
         double[] meanStd;
         if(Po_list == null){
@@ -367,7 +672,7 @@ public class Convert2DTo3D_new {
         }else{
             int Height = Po_list.length;//图像高
             int Width = Po_list[0].length;//图像宽（反）
-            meanStd = new double[2];
+            meanStd = new double[4];
             double mean = 0.0;
             double std = 0.0;
             int j,i;
@@ -392,6 +697,7 @@ public class Convert2DTo3D_new {
 
 
 
+
     /**
      * 计算 inv(k)*point 用于后续代入ComputeFundamental()函数计算本质矩阵
      * @param Po_list  图中的匹配点坐标
@@ -401,7 +707,7 @@ public class Convert2DTo3D_new {
 
     public Matrix CalculateKPoList(double[][] Po_list, MobileModel mm){
         Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵
-        Matrix Po = Point2DToHomogeneous(Po_list);//n*3矩阵
+        Matrix Po = Point2D3DToHomogeneous(Po_list, 0);//n*3矩阵
         Po = (K.inverse()).times(Po.transpose());//3*n矩阵
         return Po.transpose();
     }
@@ -412,21 +718,55 @@ public class Convert2DTo3D_new {
     /**
      * 从E中分解出旋转和平移矩阵
      * @param E
-     * @param R1
-     * @param R2
-     * @param t
      */
-    private void DecomposeE(Matrix E, Matrix R1, Matrix R2, Matrix t){
+//    private void DecomposeE(Matrix E, Matrix R1, Matrix R2, Matrix t){
+    private void DecomposeE(Matrix E){
         SingularValueDecomposition e = E.svd();
+        Matrix Se = e.getS();
         Matrix Ue = e.getU();
         Matrix VeT = e.getV().transpose();
+        //限制E满足奇异值两个相等，一个为0
+        double sigmaave = (Se.get(0,0)+Se.get(1,1))/2;
+        Se.set(0,0,sigmaave);
+        Se.set(1,1,sigmaave);
+        Se.set(2,2,0);
+        E = Ue.times(Se.times(VeT));
+        E = E.times(1/E.get(2,2));
+        out.println("==============E重构后的值为=================="+sigmaave);
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + E.get(i,j));
+            }
+        }
+        e = E.svd();
+        Ue = e.getU();
+        VeT = e.getV().transpose();
         Matrix W = new Matrix(new double[][]{{0, -1, 0}, {1, 0, 0}, {0, 0, 1}});
-        t = Ue.getMatrix(0,2,2,2);
-        t = t.times(1/t.norm2());//3*1
+        Matrix tx = Ue.times(W.times(Se.times(Ue.transpose())));
+//        Matrix tx = Ue.times(W.times(Ue.transpose()));
+//        t = new Matrix(new double[][]{{tx.get(2,1),tx.get(0,2),tx.get(1,0)}});//1*3
+
+
+        t = Ue.getMatrix(0,2,2,2).transpose();
+        out.println("Ue2::"+ Ue.get(0,2)+"  ,"+Ue.get(1,2)+","+Ue.get(2,2));
+//        out.println(t.norm2()+"  t"+t.get(0,0)+""+t.get(0,1)+""+t.get(0,2));
+        t = t.times(1/t.normF());//3*1
         R1 = Ue.times(W.times(VeT));
         if(R1.det()<0) R1 = R1.times(-1);
         R2 = Ue.times((W.transpose()).times(VeT));
         if(R2.det()<0) R2 = R2.times(-1);
+        out.println("==============R1的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + R1.get(i,j));
+            }
+        }
+        out.println("==============R2的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + R2.get(i,j)+"   t"+t.get(0,i));
+            }
+        }
 
     }
 
@@ -439,12 +779,10 @@ public class Convert2DTo3D_new {
      * @param Po_2
      * @param th2
      * @param vbGood
-     * @param parallax
      * @return
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private int CheckRT(Matrix R, Matrix t, Matrix K, Matrix Po_1, Matrix Po_2, float th2,
-                        Vector<Boolean> vbGood, float parallax){
+    private int CheckRT(Matrix R, Matrix t, Matrix K, Matrix Po_1, Matrix Po_2, float th2, Vector<Boolean> vbGood){
 //        vP3D1.clear();
         int num = Po_1.getRowDimension();
         //    vP3D = new Matrix(num,3);
@@ -452,82 +790,118 @@ public class Convert2DTo3D_new {
         final double fy = K.get(1,1);
         final double cx = K.get(0,2);
         final double cy = K.get(1,2);
-        Vector<Double> vCosParallax = new Vector<>(num);
+        out.println("====="+fx+","+fy+","+cx+","+cy);
+        List<Double> vCosParallax = new ArrayList<>(num);
         vbGood = new Vector<>(num);
         // Camera 1 Projection Matrix K[I|0]
-        P1 = K.times(P1);
+//        P1 = K.times(P1);
+        out.println("==============P1的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<4; j++){
+                out.println("点("+i+","+j+")的值：" + P1.get(i,j));
+            }
+        }
         Matrix O1 = new Matrix(new double[][]{{0, 0, 0}});//1*3
-        out.println("*************"+O1.getRowDimension());
+//        out.println("*************"+O1.getRowDimension());
         // Camera 2 Projection Matrix K[R|t]
         Matrix P2 = new Matrix(3,4);
         P2.setMatrix(0,2,0,2,R);
-        P2.setMatrix(0,2,3,3,t);
+        P2.setMatrix(0,2,3,3,t.transpose());
         P2 = K.times(P2);
-        Matrix O2 = (R.transpose().times(t)).times(-1);//3*1
+        Matrix O2 = (R.transpose().times(t.transpose())).times(-1);//3*1
+        out.println("O2的值：" + O2.get(0,0)+""+ O2.get(1,0)+""+ O2.get(2,0));
+        out.println("==============P2的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<4; j++){
+                out.println("点("+i+","+j+")的值：" + P2.get(i,j));
+            }
+        }
 
 
-
+        out.println("==============开始筛选过程==================");
         int nGood = 0;
         for(int i=0; i<num; i++){
-            double point1_x = Po_1.get(i,0);
-            double point1_y = Po_1.get(i,1);
-            double point2_x = Po_2.get(i,0);
-            double point2_y = Po_2.get(i,1);
-            Matrix p3dC1 = TriangulatePoints(Po_1, Po_2, P1, P2).getMatrix(0,0,0,2);//1*3
+            double point1_x = Po_1.getMatrix(i,i,0,1).get(0,0);
+            double point1_y = Po_1.getMatrix(i,i,0,1).get(0,1);
+            double point2_x = Po_2.getMatrix(i,i,0,1).get(0,0);
+            double point2_y = Po_2.getMatrix(i,i,0,1).get(0,1);
+            //单点三角化
+            Matrix p3dC1 = TriangulatePoints(Po_1.getMatrix(i,i,0,2), Po_2.getMatrix(i,i,0,2), P1, P2).getMatrix(0,0,0,2);//1*3
+            Log.v("CheckRT","p3dC1+++++");
+            p3dC1.print(1,3);
             if(!isFinite(p3dC1.get(0,0))||!isFinite(p3dC1.get(0,1))||!isFinite(p3dC1.get(0,2))){
                 vbGood.set(i,false);
+                out.println("****111111111111***被筛除*************");
                 continue;
             }
             // Check parallax
             Matrix normal1 = p3dC1.minus(O1);//1*3
             double dist1 = normal1.norm2();
+            Log.v("CheckRT","dist:"+dist1);
             Matrix normal2 = p3dC1.minus(O2.transpose());
             double dist2 = normal2.norm2();
             double cosParallax = normal1.times(normal2.transpose()).get(0,0)/(dist1*dist2);
+            Log.v("CheckRT","cosParallax:"+cosParallax);
             // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-            if(p3dC1.get(0,2)<=0 && cosParallax<0.99998) continue;
+            if(p3dC1.get(0,2)<=0 && cosParallax<0.99998){
+                out.println("****2222222222222***被筛除*************");
+                continue;
+            }
             // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-            Matrix p3dC2 = R.times(p3dC1.transpose()).plus(t).transpose();//1*3
-            if(p3dC2.get(0,2)<=0 && cosParallax<0.99998) continue;
+            Matrix p3dC2 = R.times(p3dC1.transpose()).plus(t.transpose()).transpose();//1*3
+            if(p3dC2.get(0,2)<=0 && cosParallax<0.99998){
+                out.println("****3333333333333***被筛除*************");
+                continue;
+            }
             // Check reprojection error in first image
+            Log.v("CheckRT","Have added one 3d Point..++++++++++++++");
             double im1x, im1y;
             double invZ1 = 1.0/p3dC1.get(0,2);
             im1x = fx*p3dC1.get(0,0)*invZ1 + cx;
             im1y = fy*p3dC1.get(0,1)*invZ1 + cy;
             double squareError1 = pow(im1x-point1_x,2)+pow(im1y-point1_y,2);
-            if(squareError1 > th2) continue;
+            out.println("squareError1********"+squareError1);
+            if(squareError1 > th2) {
+                out.println("****4444444444444444***被筛除*************");
+                continue;
+            }
             // Check reprojection error in second image
             double im2x, im2y;
             double invZ2 = 1.0/p3dC2.get(0,2);
             im2x = fx*p3dC2.get(0,0)*invZ2 + cx;
             im2y = fy*p3dC2.get(0,1)*invZ2 + cy;
             double squareError2 = pow(im2x-point2_x,2)+pow(im2y-point2_y,2);
-            if(squareError2 > th2) continue;
+            out.println("squareError2********"+squareError2+","+th2);
+            if(squareError2 > th2){
+                out.println("****555555555555***被筛除*************");
+                continue;
+            }
             vCosParallax.add(cosParallax);
             vP3D4_item.setMatrix(i, i,0,2, p3dC1);
+            Log.v("CheckRT",vCosParallax.size()+"Have added one 3d Point..++++++++++++++");
+/*            for(int j=0; j<vP3D4_item.getRowDimension(); j++){
+                out.println("第"+j+"个："+vP3D4_item.get(j,0)+","+vP3D4_item.get(j,1)+","+vP3D4_item.get(j,2));
+            }*/
 
 //            vP3D1.add(p3dC1.getRowPackedCopy());
 
-            Log.v("CheckRT","Have added one 3d Point..++++++++++++++");
+
+           // p3dC1.print(1,3);
             nGood++;
-            if(cosParallax<0.99998){
+/*            if(cosParallax<0.99998){
                 vbGood.set(i, true);
-            }
+            }*/
         }
         // 得到3D点中较大的视差角
         if(nGood>0){
-            Log.v("CheckRT","Have enter here + nGood");
-            //将视差角余弦有小到大排序, 取出第50个，或者最后那个也就是最大那个
-            vCosParallax.sort(new Comparator<Double>() {
-                @Override
-                public int compare(Double o1, Double o2) {
-                    return o1 - o2 > 0 ? 1:-1;
-                }
-            });
+            Log.v("CheckRT","Have enter here "+ nGood);
+            //将视差角余弦由小到大排序, 取出第50个，或者最后那个也就是最大那个
+            vCosParallax.sort((o1, o2) -> o2 - o1 > 0 ? 1:-1);
             int idx = min(50, vCosParallax.size()-1);
-            parallax = (float) (acos(vCosParallax.get(idx))*180/PI);
+            ParallaxList.add((float) (acos(vCosParallax.get(idx))*180/PI));
+            Log.v("CheckRT","ParallaxList "+ ParallaxList.toString());
         }else {
-            parallax = 0;
+            ParallaxList.add(0.0f);
         }
         return nGood;
     }
@@ -535,53 +909,63 @@ public class Convert2DTo3D_new {
     /**
      * 从基础矩阵恢复位姿
      * @param F
-     * @param K
      * @param minParallax
      * @param minTriangulated
      * @return
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private boolean ReconstructF(Matrix F, Matrix K, float minParallax, int minTriangulated){
+    private boolean ReconstructF(Matrix F, float minParallax, int minTriangulated){
+        Log.v("ReconstructH","Here enter the ReconstructF fun>>>>>>>>>>>>>>>>>>>");
         // Compute Essential Matrix from Fundamental Matrix
-        Matrix E = K.transpose().times(F.times(K));
-        Matrix R1 = new Matrix(3,3), R2 = new Matrix(3,3), t = new Matrix(3,1);
+        Matrix E = intrinsic.transpose().times(F.times(intrinsic));
+//        Matrix R1 = new Matrix(3,3), R2 = new Matrix(3,3), t = new Matrix(3,1);
         // Recover the 4 motion hypotheses
-        DecomposeE(E, R1, R2, t);
+/*        E = new Matrix(new double[][]{{0.04353816,-1.19007965,-1.68130081}
+                ,{1.95370921,0.70878012,-4.82419685}
+                ,{1.8028886,4.83133697,1.00}});*/
+        out.println("==============E矩阵的值为==================");
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                out.println("点("+i+","+j+")的值：" + E.get(i,j));
+            }
+        }
+        DecomposeE(E);
         Matrix t1 = t;
         Matrix t2 = t.times(-1);
         // Reconstruct with the 4 hyphoteses and check
         ArrayList<Matrix> vP3D4 = new ArrayList<>(4);
         int num = PoSelected1.getRowDimension();
+        Log.v(TAG,"++++++++++++num+++++++++++++"+num);
         Vector<Boolean> vbTriangulated1 = new Vector<>(num);
         Vector<Boolean> vbTriangulated2 = new Vector<>(num);
         Vector<Boolean> vbTriangulated3 = new Vector<>(num);
         Vector<Boolean> vbTriangulated4 = new Vector<>(num);
-        float parallax1 = 0,parallax2 = 0, parallax3 = 0, parallax4 = 0;
+//        float parallax1 = 0,parallax2 = 0, parallax3 = 0, parallax4 = 0;
         vP3D4_item = new Matrix(num, 3);
-        int nGood1 = CheckRT(R1, t1, K, PoSelected1, PoSelected2, (float) mSigma2, vbTriangulated1, parallax1);
+        int nGood1 = CheckRT(R1, t1, intrinsic, PoSelected1, PoSelected2, (float) (4*mSigma2), vbTriangulated1);
 //        Matrix vp3d = ArrayListToMatrix(vP3D1);
-        Log.v(TAG,"++++++++++++++nGood1++++++++++++++++"+nGood1);
+        Log.v(TAG,"++++++++++++++nGood1++++++++++++++++"+nGood1+"  parallax1:  "+ParallaxList.get(0));
         for(int j=0; j<vP3D4_item .getRowDimension(); j++){
             out.println("第"+j+"个："+vP3D4_item .get(j,0)+","+vP3D4_item .get(j,1)+","+vP3D4_item.get(j,2));
         }
         vP3D4.add(vP3D4_item);
         vP3D4_item = new Matrix(num, 3);
-        int nGood2 = CheckRT(R2, t1, K, PoSelected1, PoSelected2, (float) mSigma2, vbTriangulated2, parallax2);
-        Log.v(TAG,"++++++++++++++nGood2++++++++++++++++"+nGood2);
+        int nGood2 = CheckRT(R2, t1, intrinsic, PoSelected1, PoSelected2, (float) (4*mSigma2), vbTriangulated2);
+        Log.v(TAG,"++++++++++++++nGood2++++++++++++++++"+nGood2+"  parallax2:  "+ParallaxList.get(1));
         for(int j=0; j<vP3D4_item.getRowDimension(); j++){
             out.println("第"+j+"个："+vP3D4_item.get(j,0)+","+vP3D4_item.get(j,1)+","+vP3D4_item.get(j,2));
         }
         vP3D4.add(vP3D4_item);
         vP3D4_item = new Matrix(num, 3);
-        int nGood3 = CheckRT(R1, t2, K, PoSelected1, PoSelected2, (float) mSigma2, vbTriangulated3, parallax3);
-        Log.v(TAG,"++++++++++++++nGood3++++++++++++++++"+nGood3);
+        int nGood3 = CheckRT(R1, t2, intrinsic, PoSelected1, PoSelected2, (float) (4*mSigma2), vbTriangulated3);
+        Log.v(TAG,"++++++++++++++nGood3++++++++++++++++"+nGood3+"  parallax3:  "+ParallaxList.get(2));
         for(int j=0; j<vP3D4_item.getRowDimension(); j++){
             out.println("第"+j+"个："+vP3D4_item.get(j,0)+","+vP3D4_item.get(j,1)+","+vP3D4_item.get(j,2));
         }
         vP3D4.add(vP3D4_item);
         vP3D4_item = new Matrix(num, 3);
-        int nGood4 = CheckRT(R2, t2, K, PoSelected1, PoSelected2, (float) mSigma2, vbTriangulated4, parallax4);
-        Log.v(TAG,"++++++++++++++nGood4++++++++++++++++"+nGood4);
+        int nGood4 = CheckRT(R2, t2, intrinsic, PoSelected1, PoSelected2, (float) (4*mSigma2), vbTriangulated4);
+        Log.v(TAG,"++++++++++++++nGood4++++++++++++++++"+nGood4+"  parallax4:  "+ParallaxList.get(3));
         for(int j=0; j<vP3D4_item.getRowDimension(); j++){
             out.println("第"+j+"个："+vP3D4_item.get(j,0)+","+vP3D4_item.get(j,1)+","+vP3D4_item.get(j,2));
         }
@@ -590,7 +974,7 @@ public class Convert2DTo3D_new {
 /*        Matrix R = new Matrix(3, 3);
         Matrix t21 = new Matrix(3, 1);*/
         // minTriangulated为可以三角化恢复三维点的个数
-        int nMinGood = max((int)0.9*num, minTriangulated);
+        int nMinGood = (int) max(0.1*num, minTriangulated);//
         int nsimilar = 0;
         if(nGood1>0.7*maxGood)
             nsimilar++;
@@ -603,6 +987,7 @@ public class Convert2DTo3D_new {
         // If there is not a clear winner or not enough triangulated points reject initialization
         if(maxGood<nMinGood || nsimilar>1)
         {
+            Log.v(TAG, "maxGood<nMinGood??::"+ (maxGood < nMinGood) + ", nsimilar>1"+(nsimilar>1));
             Log.v(TAG,"HERE");
             return false;
         }
@@ -611,37 +996,37 @@ public class Convert2DTo3D_new {
         // Matrix vP3D;
         Log.v(TAG,"Have Triangulated..........");
         if(maxGood == nGood1){
-            if(parallax1>minParallax){
-                X_3D = vP3D4.get(0);
-                vbTriangulated = vbTriangulated1;
+            if(ParallaxList.get(0)>minParallax){
+                X_3D = Point2D3DToHomogeneous(vP3D4.get(0).getArray(),1);//n*4
+                vbTriangulatedF = vbTriangulated1;
                 R = R1;
                 t21 = t1;
                 return true;
             }
         }else if(maxGood == nGood2){
-            if(parallax2>minParallax)
+            if(ParallaxList.get(1)>minParallax)
             {
-                X_3D = vP3D4.get(1);
-                vbTriangulated = vbTriangulated2;
+                X_3D = Point2D3DToHomogeneous(vP3D4.get(1).getArray(),1);
+                vbTriangulatedF = vbTriangulated2;
                 R = R2;
                 t21 = t1;
                 return true;
             }
         }else if(maxGood == nGood3){
-            if(parallax3>minParallax)
+            if(ParallaxList.get(2)>minParallax)
             {
-                X_3D = vP3D4.get(2);
-                vbTriangulated = vbTriangulated3;
+                X_3D = Point2D3DToHomogeneous(vP3D4.get(2).getArray(),1);
+                vbTriangulatedF = vbTriangulated3;
                 R = R1;
                 t21 = t2;
                 return true;
             }
         }else if(maxGood==nGood4)
         {
-            if(parallax4>minParallax)
+            if(ParallaxList.get(3)>minParallax)
             {
-                X_3D = vP3D4.get(3);
-                vbTriangulated = vbTriangulated4;
+                X_3D = Point2D3DToHomogeneous(vP3D4.get(3).getArray(),1);
+                vbTriangulatedF = vbTriangulated4;
                 R = R2;
                 t21 = t2;
                 return true;
@@ -649,6 +1034,130 @@ public class Convert2DTo3D_new {
         }
         return false;
     }
+
+    /**
+     * 从单应矩阵 H 中恢复相机位姿和三维点坐标
+     * @param H
+     * @param minParallax
+     * @param minTriangulated
+     * @return
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private boolean ReconstructH(Matrix H, float minParallax, int minTriangulated){
+        Log.v("ReconstructH","Here enter the ReconstructH fun>>>>>>>>>>>>>>>");
+        Matrix A = intrinsic.inverse().times(H.times(intrinsic));
+        SingularValueDecomposition a = A.svd();
+        Matrix Sa = a.getS();
+        Matrix Ua = a.getU();
+        Matrix Va = a.getV();
+        double s = Ua.det()*(Va.transpose()).det();
+        double d1 = Sa.get(0,0);
+        double d2 = Sa.get(1,1);
+        double d3 = Sa.get(2,2);
+        if(d1/d2<1.00001 || d2/d3<1.00001)
+        {
+            return false;
+        }
+        ArrayList<Matrix> vR = new ArrayList<>();
+        ArrayList<Matrix> vt = new ArrayList<>();
+        ArrayList<Matrix> vn = new ArrayList<>();;
+        double aux1 = sqrt((d1*d1-d2*d2)/(d1*d1-d3*d3));
+        double aux3 = sqrt((d2*d2-d3*d3)/(d1*d1-d3*d3));
+        double[] x1 = {aux1,aux1,-aux1,-aux1};
+        double[] x3 = {aux3,-aux3,aux3,-aux3};
+        //case d'=d2
+        double aux_stheta = sqrt((d1*d1-d2*d2)*(d2*d2-d3*d3))/((d1+d3)*d2);
+        double ctheta = (d2*d2+d1*d3)/((d1+d3)*d2);
+        double[] stheta = {aux_stheta, -aux_stheta, -aux_stheta, aux_stheta};
+        for(int i=0; i<4; i++){
+            Matrix Rp = new Matrix(new double[][]{{1,0,0},{0,1,0},{0,0,1}});
+            Rp.set(0,0, ctheta);
+            Rp.set(0,2, -stheta[i]);
+            Rp.set(2,0, stheta[i]);
+            Rp.set(2,2, ctheta);
+            Matrix R = Ua.times(Rp.times(Va.transpose())).times(s);
+            vR.add(R);
+            Matrix tp = new Matrix(3,1);
+            tp.set(0,0, x1[i]);
+            tp.set(1,0, 0);
+            tp.set(2,0, -x3[i]);
+            tp = tp.times(d1-d3);
+            Matrix t = Ua.times(tp);
+            vt.add(t.times(1/t.normF()));
+            Matrix np = new Matrix(3,1);
+            np.set(0,0, x1[i]);
+            np.set(1,0, 0);
+            np.set(2,0, x3[i]);
+            Matrix n = Va.transpose().times(np);
+            if(n.get(2,0)<0)  n = n.times(-1);
+            vn.add(n);
+        }
+        //case d'=-d2
+        double aux_sphi = sqrt((d1*d1-d2*d2)*(d2*d2-d3*d3))/((d1-d3)*d2);
+        double cphi = (d1*d3-d2*d2)/((d1-d3)*d2);
+        double[] sphi = {aux_sphi, -aux_sphi, -aux_sphi, aux_sphi};
+        for(int i=0; i<4; i++){
+            Matrix Rp = new Matrix(new double[][]{{1,0,0},{0,1,0},{0,0,1}});
+            Rp.set(0,0, cphi);
+            Rp.set(0,2, -sphi[i]);
+            Rp.set(1,1, -1);
+            Rp.set(2,0, sphi[i]);
+            Rp.set(2,2, -cphi);
+            Matrix R = Ua.times(Rp.times(Va.transpose())).times(s);
+            vR.add(R);
+            Matrix tp = new Matrix(3,1);
+            tp.set(0,0, x1[i]);
+            tp.set(1,0, 0);
+            tp.set(2,0, x3[i]);
+            tp = tp.times(d1+d3);
+            Matrix t = Ua.times(tp);
+            vt.add(t.times(1/t.normF()));
+            Matrix np = new Matrix(3,1);
+            np.set(0,0, x1[i]);
+            np.set(1,0, 0);
+            np.set(2,0, x3[i]);
+            Matrix n = Va.transpose().times(np);
+            if(n.get(2,0)<0)  n = n.times(-1);
+            vn.add(n);
+        }
+        int bestGood = 0;
+        int secondBestGood = 0;
+        int bestSolutionIdx = -1;
+        float bestParallax = -1;
+        //==================================================================//
+        // Instead of applying the visibility constraints proposed in the Faugeras' paper (which could fail for points seen with low parallax)
+        // We reconstruct all hypotheses and check in terms of triangulated points and parallax
+        int num = PoSelected1.getRowDimension();
+        Log.v(TAG,"++++++++++++num+++++++++++++"+num);
+        Matrix best_vP3D = new Matrix(num, 3);
+        Vector<Boolean> best_vbTriangulated = new Vector<>(num);
+        for(int i=0; i<8; i++){
+            float parallaxi = 0;
+            Matrix vP3D_i = new Matrix(num, 3);
+            Vector<Boolean> vbTriangulated_i = new Vector<>(num);
+            int nGood = CheckRT(vR.get(i), vt.get(2).transpose(), intrinsic, PoSelected1, PoSelected2, (float) (4*mSigma2), vbTriangulated_i);
+            if(nGood > bestGood){
+                secondBestGood = bestGood;
+                bestGood = nGood;
+                bestSolutionIdx = i;
+                bestParallax = parallaxi;
+                best_vP3D = vP3D_i;
+                best_vbTriangulated = vbTriangulated_i;
+            }else if(nGood > secondBestGood){
+                secondBestGood = nGood;
+            }
+        }
+        if(secondBestGood < 0.75*bestGood && bestParallax >= minParallax && bestGood > minTriangulated && bestGood > 0.1*num){
+            R = vR.get(bestSolutionIdx);
+            t21 = vt.get(bestSolutionIdx);
+            X_3D = best_vP3D;
+            vbTriangulatedH = best_vbTriangulated;
+            return true;
+        }
+        return false;
+    }
+
+
 
     private Matrix ArrayListToMatrix(ArrayList<double[]> vp3d){
         double[][] array = new double[vp3d.size()][];
@@ -661,103 +1170,6 @@ public class Convert2DTo3D_new {
 
 
 
-
-
-    /**
-     * 利用本质矩阵求解投影矩阵，共有四种可能，需要后续排除（应该是存在问题！！！！！！！！！！！！！！）
-     * @param E 本质矩阵
-     * @return 四种可能的 P 矩阵 3*4
-     */
-//    public ArrayList<Matrix> ComputePFromEssential(Matrix F) {
-    public ArrayList<Matrix> ComputePFromEssential(Matrix E) {
-//        Matrix E = (intrinsic.transpose()).times(F.times(intrinsic));
-        //进行奇异值分解
-        out.println("&&&&&&&&&&&&&&&&& rank(E):"+E.rank());
-        SingularValueDecomposition e = E.svd();
-        Matrix VeT = e.getV().transpose();
-        if ((e.getU().times(VeT)).det() < 0) {
-            VeT = VeT.times(-1);
-        }
-//        Matrix reE = e.getU().times(e.getS().times(VeT));
-//        out.println("==============本质矩阵分解得到的USV恢复的E的值为==================");
-//        for (int i=0; i<3; i++){
-//            for (int j=0; j<3; j++){
-//                out.println("点("+i+","+j+")的值U：" + reE.get(i,j));
-//            }
-//        }
-//        I_Matrix.set(2, 2, 0);
-//        E = e.getU().times(I_Matrix.times(e.getV()));
-        Matrix W = new Matrix(new double[][]{{0, -1, 0}, {1, 0, 0}, {0, 0, 1}});
-        ArrayList<Matrix> P2 = new ArrayList<>(4);
-        //double[][] temp_array = new double[3][4];
-        Matrix Ue = e.getU();
-        Matrix UWV = (Ue.times(W.times(VeT)));
-/*        out.println("==============UWV==================");
-        for (int ii=0; ii<3; ii++){
-            for (int j=0; j<3; j++){
-                out.println("点("+ii+","+j+")的值：" + UWV.get(ii,j));
-            }
-        }*/
-        Matrix UWtV = (Ue.times((W.transpose()).times(VeT)));
-        Matrix U2 = Ue.getMatrix(0,2,2,2);
-/*        out.println("==============Ut==================");
-        for (int ii=0; ii<3; ii++){
-            out.println("点("+ii+"的值：" + U2.get(ii,0));
-        }*/
-        for(int i=0; i<4; i++){
-            switch (i){
-                case 0:
-                    Matrix item = new Matrix(3,4);
-                    item.setMatrix(0,2,0,2,UWV);
-                    item.setMatrix(0,2,3,3,U2);
-                    P2.add(item);
-/*                    out.println("==============P2 1的值为==================");
-                    for (int ii=0; ii<3; ii++){
-                        for (int j=0; j<4; j++){
-                            out.println("点("+ii+","+j+")的值：" + item.get(ii,j));
-                        }
-                    }*/
-                    break;
-                case 1:
-                    Matrix item1 = new Matrix(3,4);
-                    item1.setMatrix(0,2,0,2,UWV);
-                    item1.setMatrix(0,2,3,3,U2.times(-1));
-                    P2.add(item1);
-/*                    out.println("==============P2 2的值为==================");
-                    for (int ii=0; ii<3; ii++){
-                        for (int j=0; j<4; j++){
-                            out.println("点("+ii+","+j+")的值：" + item1.get(ii,j));
-                        }
-                    }*/
-                    break;
-                case 2:
-                    Matrix item2 = new Matrix(3,4);
-                    item2.setMatrix(0,2,0,2,UWtV);
-                    item2.setMatrix(0,2,3,3,U2);
-                    P2.add(item2);
-/*                    out.println("==============P2 3的值为==================");
-                    for (int ii=0; ii<3; ii++){
-                        for (int j=0; j<4; j++){
-                            out.println("点("+ii+","+j+")的值：" + item2.get(ii,j));
-                        }
-                    }*/
-                    break;
-                case 3:
-                    Matrix item3 = new Matrix(3,4);
-                    item3.setMatrix(0,2,0,2,UWtV);
-                    item3.setMatrix(0,2,3,3,U2.times(-1));
-                    P2.add(item3);
-/*                    out.println("==============P2 4的值为==================");
-                    for (int ii=0; ii<3; ii++){
-                        for (int j=0; j<4; j++){
-                            out.println("点("+ii+","+j+")的值：" + item3.get(ii,j));
-                        }
-                    }*/
-                    break;
-            }
-        }
-        return P2;
-    }
 
     /**
      * 三角化求一对点的三维对应点坐标，单个点（与SLAM做法相同）
@@ -786,35 +1198,23 @@ public class Convert2DTo3D_new {
         M.setMatrix(1,1,0,3, (P1.getMatrix(2,2,0,3).times(Po_1.get(0,1))).minus(P1.getMatrix(1,1,0,3)));
         M.setMatrix(2,2,0,3, (P2.getMatrix(2,2,0,3).times(Po_2.get(0,0))).minus(P2.getMatrix(0,0,0,3)));
         M.setMatrix(3,3,0,3, (P2.getMatrix(2,2,0,3).times(Po_2.get(0,1))).minus(P2.getMatrix(1,1,0,3)));
-//        out.println("==============矩阵M的值为==================");
-//        for(int i=0; i<4; i++){
-//            for(int j=0; j<4; j++){
-//                out.println("M的第("+i+","+j+")个点的值：" + M.get(i,j));
-//            }
-//        }
+/*        out.println("==============矩阵M的值为==================");
+        for(int i=0; i<4; i++){
+            for(int j=0; j<4; j++){
+                out.println("M的第("+i+","+j+")个点的值：" + M.get(i,j));
+            }
+        }*/
         SingularValueDecomposition m = M.svd();
         Matrix X = m.getV().getMatrix(0,3,3,3);//V取最后一列
+        out.println("============================"+M.times(X).get(0,0)+","+M.times(X).get(1,0)+","+M.times(X).get(2,0));
+//        out.println(">>>>>>>>>>齐次坐标未归一时X的值：" + X.get(0,0)+","+X.get(1,0)+","+X.get(2,0)+","+X.get(3,0));
         X = X.times(1/(X.get(3,0)));
-//        out.println("!!!!!!!!!!!X的值：" + X.get(0,0)+","+X.get(1,0)+","+X.get(2,0));
+        out.println("!!!!!!!!!!!X的值：" + X.get(0,0)+","+X.get(1,0)+","+X.get(2,0)+","+X.get(3,0));
 //        out.println("@@@@@@@@@@@@@@@@@@@@@@@"+M.times(X).get(0,0));
 //        out.println("=======================cond:"+ M.cond());
         return X.transpose();
     }
 
-/* //弃用，计算结果有问题，有待研究
-    public Matrix TriangulatePoints(Matrix Po_1, Matrix Po_2, Matrix P1, Matrix P2){
-        double[][] ZeroArray = new double[6][6];
-        Matrix M = new Matrix(ZeroArray);
-        M.setMatrix(0,2,0,3,P1);
-        M.setMatrix(3,5,0,3,P2);
-        M.setMatrix(0,2,4,4,Po_1.times(-1).transpose());
-        M.setMatrix(3,5,5,5,Po_2.times(-1).transpose());
-        SingularValueDecomposition m = M.svd();
-        out.println("=======================cond:"+ M.cond());
-        Matrix X = m.getV().getMatrix(5,5,0,3);
-        X = X.times(1/(X.get(0,3)));
-        return X;
-    }*/
 
 
 
@@ -833,89 +1233,13 @@ public class Convert2DTo3D_new {
         }
         double[][] XArray = new double[point_num][4];
         for(int i=0; i<point_num; i++){
+            Log.d("TRIANGULATEmulti","第"+i+"个点坐标"+PoList_1.getMatrix(i,i,0,2).get(0,0)+","+PoList_1.getMatrix(i,i,0,2).get(0,1));
+            Log.d("TRIANGULATEmulti","第"+i+"个点坐标"+PoList_2.getMatrix(i,i,0,2).get(0,0)+","+PoList_2.getMatrix(i,i,0,2).get(0,1));
             XArray[i] = TriangulatePoints(PoList_1.getMatrix(i,i,0,2),PoList_2.getMatrix(i,i,0,2),P1,P2).getRowPackedCopy();
         }
         return new Matrix(XArray).transpose();
     }
 
-    /**
-     * 获得投影矩阵以及恢复的三维点坐标
-     * @param PoList_1 第一幅图的点对
-     * @param PoList_2 第二幅图的点对
-     * @param P1 第一个角度的投影矩阵
-     * @param P2List 4个可能的投影矩阵
-     */
-    public void SelectPFrom4P(Matrix PoList_1, Matrix PoList_2, Matrix P1, ArrayList<Matrix> P2List){
-/*        P1 = K.times(P1);
-        for(int i=0; i<4; i++){
-            P2List.set(i, K.times(P2List.get(i)));
-        }*/
-        int ind = 0;
-        double maxres = 0;
-        Matrix X;
-        boolean[] Flag = new boolean[PoList_1.getRowDimension()];//用来标记深度均为正的点
-        for(int i=0; i<4; i++){
-            X = TriangulateMultiPoints(PoList_1,PoList_2,P1,P2List.get(i));//4*n
-//            out.println("#####===========P2( "+i+" )的值为============#####");
-//            for (int ii=0; ii<3; ii++){
-//                for (int j=0; j<4; j++){
-//                    out.println("点("+ii+","+j+")的值：" + P2List.get(i).get(ii,j));
-//                }
-//            }
-            double[] d1 = P1.times(X).getArray()[2];
-            double[] d2 = P2List.get(i).times(X).getArray()[2];
-            double sum = 0;
-            boolean[] f = new boolean[d1.length];
-            //////////此处需要重新改一下////////
-            for(int j=0; j<d1.length; j++){
-//                System.out.println("d1[j]:"+d1[j]+" " + "d2[j]:"+d2[j]);
-//                if(d1[j]>0) sum += d1[j];
-//                if(d2[j]>0) sum += d2[j];
-                f[j] = d1[j] > 0 && d2[j] > 0;
-                sum++;
-            }
-//            if(sum > maxres){
-            if(sum > maxres){
-                maxres = sum;
-                ind = i;
-                Flag = f;
-            }
-        }
-        int count = 0;//可改成 maxres
-        for (boolean b : Flag) {
-            if (b) {
-                //out.println(b);
-                count++;
-            }
-        }
-        this.P2_Selected = P2List.get(ind);
-        out.println("==============P2 2的值为==================");
-        for (int ii=0; ii<3; ii++){
-            for (int j=0; j<4; j++){
-                out.println("点("+ii+","+j+")的值：" + P2_Selected.get(ii,j));
-            }
-        }
-        System.out.println("##############################################");
-        X = TriangulateMultiPoints(PoList_1,PoList_2,P1,this.P2_Selected);//4*n
-        System.out.println("==============所得三维点坐标==================");
-        for (int j=0; j<X.getColumnDimension(); j++){
-            out.println(j+"点的值：" + X.get(0,j)+","+X.get(1,j)+ ","+X.get(2,j)+ ","+X.get(3,j));
-        }
-        System.out.println(X.getRowDimension()+","+X.getColumnDimension());
-        System.out.println("Flag.length:"+Flag.length);
-        System.out.println("count:"+count);
-        double[][] XSelected = new double[X.getColumnDimension()][4];
-        //       double[][] XSelected = new double[9][4];//暂改
-        //       int pos=0;
-        for(int k = 0; k<Flag.length; k++){
-//            if(!Flag[k]){
-            XSelected[k] = X.getMatrix(0,3,k,k).getColumnPackedCopy();//此处有问题
-            // XSelected[pos] = (X.getMatrix(0,3,k,k).times(1/X.get(3,k))).getColumnPackedCopy();//除以其次坐标
-//                pos++;
-//            }
-        }
-        this.X_3D = QiCiTo1(new Matrix(XSelected));
-    }
 
     /**
      * 求找出的特征点的三位坐标
@@ -924,8 +1248,8 @@ public class Convert2DTo3D_new {
      * @return FeaturePoints3D
      */
     public ArrayList<ImageMarker> CalculateFeaturePoints3D(ArrayList<ImageMarker> FeaturePoList_1, ArrayList<ImageMarker> FeaturePoList_2){
-        Matrix PoList_1 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_1));//n*3矩阵
-        Matrix PoList_2 = Point2DToHomogeneous(MarkerListToArray(FeaturePoList_2));//n*3矩阵
+        Matrix PoList_1 = Point2D3DToHomogeneous(MarkerListToArray(FeaturePoList_1), 0);//n*3矩阵
+        Matrix PoList_2 = Point2D3DToHomogeneous(MarkerListToArray(FeaturePoList_2), 0);//n*3矩阵
         Matrix X = TriangulateMultiPoints(PoList_1,PoList_2,P1,this.P2_Selected);//4*n
         FeaturePoints3D = ArrayToMarkerList(X.transpose(),OpticalCenter[0],OpticalCenter[1]);
         return FeaturePoints3D;
@@ -951,8 +1275,8 @@ public class Convert2DTo3D_new {
             out.println("****************" + X_3D.get(i, 0) + "," + X_3D.get(i, 1) + "," + X_3D.get(i, 2) + "," + X_3D.get(i, 3));
         }
         out.println("==============投影回二维的点坐标==================");
-        Matrix PointOrigin1 = Point2DToHomogeneous(poList1);
-        Matrix PointOrigin2 = Point2DToHomogeneous(poList2);
+        Matrix PointOrigin1 = Point2D3DToHomogeneous(poList1,0);
+        Matrix PointOrigin2 = Point2D3DToHomogeneous(poList2,0);
         /////////////////////////////////////////////////
         ///加上偏移量
 //        Matrix OffsetXY = new Matrix(Point3D.getRowDimension(),3);
@@ -990,11 +1314,6 @@ public class Convert2DTo3D_new {
     }
 
 
-//    public void Point3DTo2D(Matrix Point3D, Matrix P){
-//        Matrix Point2DComputed1 = P1.times(Point3D.transpose()).transpose();//n*3
-//        Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1, OpticalCenter[0], OpticalCenter[1]);
-//        Matrix Point2DComputed2 = P2_Selected.times(Point3D.transpose()).transpose();//n*3
-//        Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2, OpticalCenter[0], OpticalCenter[1]);
 
     /**
      * 三维坐标反投影
@@ -1002,8 +1321,16 @@ public class Convert2DTo3D_new {
      */
     public void Point3DTo2D(Matrix Point3D){
         Matrix Point2DComputed1 = QiCiTo1(P1.times(Point3D.transpose()).transpose());//n*3
+//        Matrix Point2DComputed1 = QiCiTo1(P1.times(Point3D).transpose());//n*3
         Point3Dto2D1 = ArrayToMarkerList(Point2DComputed1,OpticalCenter[0], OpticalCenter[1]);
         Matrix Point2DComputed2 = QiCiTo1(P2_Selected.times(Point3D.transpose()).transpose());//n*3
+/*        out.println("==============P2_Selected 2的值为==================");
+        for (int ii=0; ii<3; ii++){
+            for (int j=0; j<4; j++){
+                out.println("点("+ii+","+j+")的值：" + P2_Selected.get(ii,j));
+            }
+        }*/
+//        Matrix Point2DComputed2 = QiCiTo1(P2_Selected.times(Point3D).transpose());//n*3
         Point3Dto2D2 = ArrayToMarkerList(Point2DComputed2,OpticalCenter[0], OpticalCenter[1]);
 
     }
@@ -1017,8 +1344,8 @@ public class Convert2DTo3D_new {
     public static double[][] MarkerListToArray (ArrayList<ImageMarker> markerList) {
         double[][] array_markerList = new double[markerList.size()][2];
         for (int i = 0; i < markerList.size(); i++) {
-            array_markerList[i][0] = round(markerList.get(i).x);
-            array_markerList[i][1] = round(markerList.get(i).y);
+            array_markerList[i][0] = markerList.get(i).x;
+            array_markerList[i][1] = markerList.get(i).y;
         }
         return array_markerList;
     }
@@ -1047,12 +1374,7 @@ public class Convert2DTo3D_new {
         }
         return MarkerList;
     }
-//    double[][] polist1 = new double[][]{{326, 314}, {325, 369}, {332, 445}, {334, 506}, {377, 314}, {377, 370}, {388, 426}, {392, 478}, {438, 312}};
-//    double[][] polist2 = new double[][]{{456, 402}, {471, 465}, {486, 511}, {506, 557}, {497, 385}, {515, 424}, {536, 469}, {548, 512}, {539, 361}};
-//    Matrix E_set = new Matrix(new double[][]{{9.2657E-04, -3.0478E-01, 1.0417E-02},{-5.5426E-02, -3.2049E-01, 6.2389E-01},{7.2953E-04, -6.4118E-01, 2.9404E-02}});
-//    Matrix K = get_IntrinsicMatrix(MobileModel.MIX2);//3*3矩阵
-//    Matrix F_set = (K.inverse().transpose()).times(E_set.times(K.inverse()));
-//    Matrix Po = Point2DToHomogeneous(polist1);//n*3矩阵
+
 
     /**
      * 计算外极点
@@ -1248,7 +1570,7 @@ public class Convert2DTo3D_new {
     public void ComputeCorrespondEpiLines(Matrix PoListHo1, Matrix PoListHo2, Matrix F){
 //        this.EpiLines2_Para = QiCiTo1(F.times(PoListHo1.transpose()).transpose()).transpose().getArray();//3*n
 //        this.EpiLines1_Para = QiCiTo1((F.transpose()).times(PoListHo2.transpose()).transpose()).transpose().getArray();
-        this.EpiLines2_Para = F.transpose().times(PoListHo1.transpose()).getArray();//3*n
+        this.EpiLines2_Para = F.times(PoListHo1.transpose()).getArray();//3*n
 
         Matrix EPara2 = new Matrix(EpiLines2_Para);
         SingularValueDecomposition para2 = EPara2.transpose().svd();
@@ -1259,7 +1581,7 @@ public class Convert2DTo3D_new {
         Matrix re = EPara2.transpose().times(e2.transpose());
         re.transpose().print(1,EPara2.getRowDimension());
 
-        this.EpiLines1_Para = F.times(PoListHo2.transpose()).getArray();
+        this.EpiLines1_Para = F.transpose().times(PoListHo2.transpose()).getArray();
         Matrix EPara1 = new Matrix(EpiLines1_Para);
         SingularValueDecomposition para1 = EPara1.transpose().svd();
         Matrix e1 = QiCiTo1(para1.getV().getMatrix(2,2,0,2));

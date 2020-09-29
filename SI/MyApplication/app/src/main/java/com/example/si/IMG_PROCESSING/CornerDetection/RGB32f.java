@@ -12,9 +12,9 @@ public class RGB32f implements Cloneable{
     }
 
     public RGB32f(XYZ a){
-        r = a.x;
-        g = a.y;
-        b = a.z;
+        r = (float) a.x;
+        g = (float) a.y;
+        b = (float) a.z;
     }
 
     @Override
