@@ -67,6 +67,7 @@ import static java.lang.Math.min;
 import static java.lang.Math.pow;
 import static java.lang.Math.round;
 import static java.lang.Math.sqrt;
+import static java.lang.System.in;
 import static java.lang.System.out;
 import static javax.microedition.khronos.opengles.GL10.GL_ALPHA_TEST;
 import static javax.microedition.khronos.opengles.GL10.GL_BLEND;
@@ -685,8 +686,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         //获取合适的分割倍数
         float stepx, stepy;
-        stepx = 20f;
-        stepy = 20f;
+        stepx = 30f;
+        stepy = 30f;
         R[0] = round(bitmap2D.getWidth() / stepx);
         R[1] = round(bitmap2D.getHeight() / stepy);
         System.out.println("R[0] = "+R[0]);
@@ -719,9 +720,9 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 //获取区域内的点(无边界问题)
                 tempPointIndexList = findPointsInTheRegion(center_x, center_y, R, MarkerList);
                 out.println("tempPointIndexList.length = "+tempPointIndexList.length);
-                for (int l = 0; l < tempPointIndexList.length; l++) {
-                    out.println("(x,y): ("+MarkerList.get(tempPointIndexList[l]).x+","+MarkerList.get(tempPointIndexList[l]).y+")");
-                }
+//                for (int l = 0; l < tempPointIndexList.length; l++) {
+//                    out.println("(x,y): ("+MarkerList.get(tempPointIndexList[l]).x+","+MarkerList.get(tempPointIndexList[l]).y+")");
+//                }
                 //对区域内点按照响应值排序，保留最大的三个响应点
                 int[] new_corner_x_y = findThreeMaxResponse(hmlist, tempPointIndexList);
                 if (new_corner_x_y != null) {
@@ -2441,12 +2442,12 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             hmlist.clear();
         }
         // 定义阈值T//初始化各种Mat对象
-        int threshold = 100;
+        double threshold;
         Mat src = new Mat();
         Mat gray = new Mat();
         Mat response = new Mat();
         Mat response_norm = new Mat();
-        float[] data = new float[1];//！！！！！！！！！！
+        float[] data = new float[1];//！！！！！！！！！！ = 100
 
 
         Utils.bitmapToMat(bitmap2D, src);//把image转化为Mat
@@ -2456,25 +2457,50 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         Imgproc.cornerHarris(gray, response, 2, 3, 0.04);
         Core.normalize(response, response_norm, 0, 255, Core.NORM_MINMAX, CvType.CV_32F);//归一化
 
-        //获取最大响应
-        /*float maxR = 0;
-        //float minR = Float.MAX_VALUE;//，最小
+        //获取响应数组和最大最小响应值
+        float maxR = 0;
+        float minR = Float.MAX_VALUE;//，最小
+        double[] sortArray = new double[response_norm.rows()*response_norm.cols()];
         for(int j=0; j<response_norm.rows(); j++ )
         {
             for(int i=0; i<response_norm.cols(); i++ )
             {
                 response_norm.get(j, i, data);
+                sortArray[j*response_norm.cols()+i] = data[0];
                 if (maxR < data[0]) {
                     maxR = data[0];
+                } else if (minR > data[0]) {
+                    minR = data[0];
                 }
             }
         }
-        out.println("maxR = "+maxR);
-        float step = (maxR - 100) / 10;
+//        out.println("maxR = "+maxR);
+//        float step = (maxR - 100) / 10;
+        Arrays.sort(sortArray); //升序排列
 
-
+        //迭代求取阈值
+        int saveNum = 10000;  //有待调整
+        int[] tempThre = new int[4];
+        int count = 0;
+        tempThre[3] = sortArray.length - 1;
+        System.out.println("*************************************************************************");
+        while (tempThre[1] < saveNum) {
+            //step = (maxR - minR) / Math.pow(10, count);
+            tempThre = indexOfThreshold(sortArray, saveNum, tempThre[1], tempThre[2], tempThre[3]);
+            count++;
+            System.out.println(count+" tempThre[1] = "+tempThre[1]);
+            System.out.println("tempThre[2] = "+tempThre[2]);
+            System.out.println("tempThre[3] = "+tempThre[3]);
+        }
+        System.out.println("*************************************************************************");
         //计算阈值
-        // 0: 101+8*step-maxR; 1: 101+6*step--100+8*step; 2: 101+4*step--100+6*step; 3: 101+3*step--100+4*step; 4: 101+2*step--100+3*step; 5: 101+step--100+2*step; 6: 101--100+step
+        threshold = sortArray[tempThre[3]];
+        System.out.println("threshold = "+threshold);
+        System.out.println("sortArray[tempThre[3]] = "+sortArray[tempThre[2]]);
+
+
+
+        /*// 0: 101+8*step-maxR; 1: 101+6*step--100+8*step; 2: 101+4*step--100+6*step; 3: 101+3*step--100+4*step; 4: 101+2*step--100+3*step; 5: 101+step--100+2*step; 6: 101--100+step
         //int[] count = new int[7];
 
 
@@ -2607,6 +2633,158 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 
 
+    }
+
+    /**
+     * 区间内十等分逼近数量分割阈值
+     * @param sortArray 有序数组，升序
+     * @param saveNum 需要保留的较大数的数量
+     * @param toltalNum 当前已经保留的数量
+     * @param fromIndex 区间起点
+     * @param toIndex 区间终点
+     * @return 阈值所在的索引值、本次迭代后保留的数量、下一次迭代的区间起点索引值、下一次迭代的区间终点的索引值
+     */
+    private int[] indexOfThreshold(double[] sortArray, int saveNum, int toltalNum, int fromIndex, int toIndex) {
+        float step = (float)(sortArray[toIndex] - sortArray[fromIndex]) / 10;
+        double minNum = sortArray[fromIndex];
+        int[] result = new int[4];
+
+        out.println("step = "+step);
+        out.println("sortArray[toIndex] = "+sortArray[toIndex]);
+        out.println("sortArray[fromIndex] = "+sortArray[fromIndex]);
+
+        int[] count = new int[10];
+        int[] fromIndexes = new int[10];
+        //int[] toIndexes = new int[10];
+
+        for (int i = toIndex; i >= fromIndex; i--) {
+            if (sortArray[i] > minNum+9*step) {
+                count[0]++;
+                if (count[0] == 1) {
+                    fromIndexes[0] = i;
+                }
+            } else if (sortArray[i] > minNum+8*step) {
+                count[1]++;
+                if (count[1] == 1) {
+                    fromIndexes[1] = i;
+                }
+            } else if (sortArray[i] > minNum+7*step) {
+                count[2]++;
+                if (count[2] == 1) {
+                    fromIndexes[2] = i;
+                }
+            } else if (sortArray[i] > minNum+6*step) {
+                count[3]++;
+                if (count[3] == 1) {
+                    fromIndexes[3] = i;
+                }
+            } else if (sortArray[i] > minNum+5*step) {
+                count[4]++;
+                if (count[4] == 1) {
+                    fromIndexes[4] = i;
+                }
+            } else if (sortArray[i] > minNum+4*step) {
+                count[5]++;
+                if (count[5] == 1) {
+                    fromIndexes[5] = i;
+                }
+            } else if (sortArray[i] > minNum+3*step) {
+                count[6]++;
+                if (count[6] == 1) {
+                    fromIndexes[6] = i;
+                }
+            } else if (sortArray[i] > minNum+2*step) {
+                count[7]++;
+                if (count[7] == 1) {
+                    fromIndexes[7] = i;
+                }
+            } else if (sortArray[i] > minNum+1*step) {
+                count[8]++;
+                if (count[8] == 1) {
+                    fromIndexes[8] = i;
+                }
+            } else {
+                count[9]++;
+                if (count[9] == 1) {
+                    fromIndexes[9] = i;
+                }
+            }
+        }
+        out.println("sortArray.length = "+sortArray.length);
+        System.out.println("count = "+Arrays.toString(count));
+        System.out.println("fromIndexes = "+Arrays.toString(fromIndexes));
+
+        //int num = 0;
+        int index = 0;
+        //boolean flag = true; && flag//flag = false;
+        /*while (toltalNum+count[index] < saveNum) {
+            toltalNum += count[index];
+            System.out.println("toltalNum = "+toltalNum);
+            index++;
+        }*/
+
+        for (int i = 0; i < 10; i++) {
+            if (toltalNum+count[i] < saveNum) {
+                toltalNum += count[i];
+                System.out.println("toltalNum = "+toltalNum);
+            } else {
+                index = i;
+                //System.out.println("toltalNum = "+toltalNum);
+                break;
+            }
+        }
+        System.out.println("index = "+index);
+
+        //达到总点数不大于1.5倍目标点数时返回当前点数大于目标点数，否则小于目标点数并准备下次迭代
+        if (toltalNum + count[index] - saveNum < saveNum / 2) {
+            result[0] = index;
+            result[1] = toltalNum + count[index];
+
+        } else {
+            result[0] = index - 1;
+            result[1] = toltalNum;
+//            result[2] = fromIndexes[index] + 1;
+//            result[3] = fromIndexes[index-1];
+        }
+        if (index == 9) {
+            result[2] = 0;
+        } else {
+            result[2] = fromIndexes[index + 1] + 1;
+        }
+
+        result[3] = fromIndexes[index];
+
+        System.out.println("result = "+Arrays.toString(result));
+        return result;
+
+
+
+
+
+
+
+        /*for(int j=0; j<response_norm.rows(); j++ )
+        {
+            for(int i=0; i<response_norm.cols(); i++ )
+            {
+                response_norm.get(j, i, data);
+                if ((int)data[0] > 100+8*step) {
+                    count[0]++;
+                } else if ((int)data[0] > 100+6*step) {
+                    count[1]++;
+                } else if ((int)data[0] > 100+4*step) {
+                    count[2]++;
+                } else if ((int)data[0] > 100+3*step) {
+                    count[3]++;
+                } else if ((int)data[0] > 100+2*step) {
+                    count[4]++;
+                } else if ((int)data[0] > 100+step) {
+                    count[5]++;
+                } else if ((int)data[0] > 100) {
+                    count[6]++;
+                }
+            }
+        }*/
     }
 
 

@@ -503,10 +503,10 @@ public class MainActivity extends AppCompatActivity {
                         try {
 //                            Circle_Fun();
                          //  Test_Fun();
-//                            testforcorner();
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                Convert2Dto3D_Test();
-                            }
+                            testforcorner();
+//                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//                                Convert2Dto3D_Test();
+//                            }
 
 
                         } catch (Exception e) {
@@ -562,9 +562,10 @@ public class MainActivity extends AppCompatActivity {
                     case 2:
                         if (isMutiImg) {
                             clear3D_Reconstruction();
-                        } else if (ImageOpened == true) {
-                            ImageOpened = false;
-                            clearPreImage();
+                            if (ImageOpened == true) {
+                                ImageOpened = false;
+                                clearPreImage();
+                            }
                         }
                         Reconstruction3D();
                         isMutiImg = true;
@@ -1458,6 +1459,11 @@ public class MainActivity extends AppCompatActivity {
             @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void run() {
+                if (!ImageOpened || !ImageOpened2) {
+                    Log.v("MainActivity","Need two pictures!");
+                    Toast_in_Thread("Need two pictures!");
+                    return;
+                }
 
                 if (!isProcessed) {
                     isProcessed = true;
@@ -1465,15 +1471,23 @@ public class MainActivity extends AppCompatActivity {
                     //获取特征点并匹配
                     pointsGetAndMatch();
 
+                    if (isP1) {
+                        myrenderer.ResetMarkerlist(MarkerList1);
+                    } else {
+                        myrenderer.ResetMarkerlist(MarkerList2);
+                    }
+                    myGLSurfaceView.requestRender();
+
                     //检验是否可以进行三维重建
                     if (MarkerList1.size() < 9 || MarkerList2.size() < 9) {
                         //Toast.makeText(getContext(), "Point number is insufficient!", Toast.LENGTH_SHORT).show();
+                        Log.v("MainActivity", "Point number is insufficient!");
                         Toast_in_Thread("Point number is insufficient!");
                         return;
                     }
 
                     //图像点对的三维重建
-                    convert2DTo3D();
+                    //convert2DTo3D();
 
 
                     //提示运行完成
@@ -1515,7 +1529,7 @@ public class MainActivity extends AppCompatActivity {
             p2.Convert2DTo2D_func(Po_list1, Po_list2);
             MarkerList1.addAll(p2.Point2Dto2D1);
             MarkerList2.addAll(p2.Point2Dto2D2);
-            myGLSurfaceView.requestRender();
+            //myGLSurfaceView.requestRender();
 
         }
 
@@ -1559,13 +1573,14 @@ public class MainActivity extends AppCompatActivity {
             System.out.println("(x1,y1): ("+imageMarker1.x+","+imageMarker1.y+")---(x2,y2): ("+imageMarker2.x+","+imageMarker2.y+")");
             newTemp1.add(imageMarker1);
             newTemp2.add(imageMarker2);
-            out.println("newTemp1.size = "+newTemp1.size()+"---newTemp2.size = "+newTemp2.size());
+//            out.println("newTemp1.size = "+newTemp1.size()+"---newTemp2.size = "+newTemp2.size());
 
         }
+        out.println("newTemp1.size = "+newTemp1.size()+"---newTemp2.size = "+newTemp2.size());
         MarkerList1.clear();
         MarkerList2.clear();
         MarkerList1.addAll(newTemp1);
-        MarkerList2.addAll(newTemp2);
+        MarkerList2.addAll(newTemp2);/**/
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -1651,9 +1666,9 @@ public class MainActivity extends AppCompatActivity {
         temp1 = myrenderer.globalImageCornerDetect2();
         System.out.println("temp.size() = "+temp1.size());
 
-        for (ImageMarker imageMarker:temp1) {
-            out.println("{"+imageMarker.x+","+imageMarker.y+","+"1},");
-        }
+//        for (ImageMarker imageMarker:temp1) {
+//            out.println("{"+imageMarker.x+","+imageMarker.y+","+"1},");
+//        }
 
 //        //获取图二角点
 //        myrenderer.ResetImage(img2);
@@ -1759,7 +1774,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("-- Min dist : "+ min_dist );
         MatOfDMatch good_matches = new MatOfDMatch();
         for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
-            if( matches.toArray()[i].distance <= StrictMath.max(1.5f*min_dist, 20) ) {
+            if( matches.toArray()[i].distance <= StrictMath.max(2f*min_dist, 20) ) {
                 good_matches.push_back( matches.row(i));
             }
         }
@@ -1777,7 +1792,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d("RImage",MarkerList1.get(i).x+","+MarkerList1.get(i).y);
         }
         System.out.println("%%%%%%%%%%%%%%%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
-        myGLSurfaceView.requestRender();
+//        myGLSurfaceView.requestRender();
 
 
 

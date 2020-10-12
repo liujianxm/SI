@@ -1417,11 +1417,11 @@ public class Convert2DTo3D {
         //Matrix                                    Bitmap image1, Bitmap image2
         Log.v("Convert20To3D","Convert2DT02D: get projection Matrix.");
         PMatrix1To2 = computeProjectionMatrix2DTo2D(PoList1, PoList2);
-        for (int i = 0; i < PMatrix1To2.getColumnDimension(); i++) {
+        /*for (int i = 0; i < PMatrix1To2.getColumnDimension(); i++) {
             for (int j = 0; j < PMatrix1To2.getRowDimension(); j++) {
                 out.println("PMatrix1To2.get("+i+","+j+") = "+PMatrix1To2.get(i,j));
             }
-        }
+        }*/
         double detPMatrix1To2 = PMatrix1To2.det();
         if (detPMatrix1To2 == 0) {
             Toast.makeText(getContext(), "The input matrix is illegal.", Toast.LENGTH_SHORT).show();
@@ -1532,10 +1532,10 @@ public class Convert2DTo3D {
             pProjection = PMatrix1To2.times(pOrigin);
             //获取区域内的点(无边界问题)
             tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2), temp2);
-            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            /*out.println("tempPointIndexList.length = "+tempPointIndexList.length);
             for (int l = 0; l < tempPointIndexList.length; l++) {
                 out.println("(x,y): ("+temp2.get(tempPointIndexList[l]).x+","+temp2.get(tempPointIndexList[l]).y+")");
-            }
+            }*/
             //进行灰度归一化互相关匹配
             if (tempPointIndexList.length == 0) {
                 matchList1[i] = -1;  //区域内无角点
@@ -1560,10 +1560,10 @@ public class Convert2DTo3D {
             pProjection = PMatrix2To1.times(pOrigin);
             //获取区域内的点(无边界问题)
             tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis1), temp2);
-            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            /*out.println("tempPointIndexList.length = "+tempPointIndexList.length);
             for (int l = 0; l < tempPointIndexList.length; l++) {
                 out.println(tempPointIndexList[l]);
-            }
+            }*/
             //进行灰度归一化互相关匹配
             if (tempPointIndexList.length == 0) {
                 matchList2[i] = -1;  //区域内无角点
@@ -1606,11 +1606,11 @@ public class Convert2DTo3D {
             pOrigin.set(1,0, imageMarker.y);
             pProjection = PMatrix1To2.times(pOrigin);
             //获取区域内的点(无边界问题)
-            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2), temp2);
-            out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+            tempPointIndexList = findPointsInTheRegion((int) Math.round(pProjection.get(0,0)), (int) Math.round(pProjection.get(1,0)), (int) ceil(maxdis2*2), temp2);
+            /*out.println("tempPointIndexList.length = "+tempPointIndexList.length);
             for (int l = 0; l < tempPointIndexList.length; l++) {
                 out.println("(x,y): ("+temp2.get(tempPointIndexList[l]).x+","+temp2.get(tempPointIndexList[l]).y+")");
-            }
+            }*/
             //进行灰度归一化互相关匹配
             if (tempPointIndexList.length == 0) {
                 matchList1[i] = -1;  //区域内无角点
@@ -1868,7 +1868,7 @@ public class Convert2DTo3D {
         //ArrayList<Bitmap> template2 = new ArrayList<Bitmap>();
         float[] responseNCC = new float[indexList.length];
         ImageMarker imageMarker;
-        out.println("indexList.length = "+ indexList.length);
+//        out.println("indexList.length = "+ indexList.length);
 
         //图像模板生成, 计算NCC匹配响应
         for (int i = 0; i < indexList.length; i++) {
@@ -1890,7 +1890,7 @@ public class Convert2DTo3D {
                 max = responseNCC[i];
             }
         }
-        out.println("max = "+max);//Math.abs(-1) >Math.abs()-1  0.5f
+//        out.println("max = "+max);//Math.abs(-1) >Math.abs()-1  0.5f
 
         if (max > 0) {
             return indexList[index];
