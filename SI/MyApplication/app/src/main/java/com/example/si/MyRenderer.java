@@ -26,6 +26,7 @@ import com.example.si.IMG_PROCESSING.CornerDetection.HarrisCornerDetector;
 import com.example.si.IMG_PROCESSING.CornerDetection.HarrisMatrix;
 import com.example.si.IMG_PROCESSING.CornerDetection.ImageMarker;
 import com.example.si.IMG_PROCESSING.CornerDetection.XYZ;
+import com.example.si.RENDER.Axises3D;
 import com.example.si.RENDER.ImageUtil;
 import com.example.si.RENDER.MyDraw;
 import com.example.si.RENDER.MyPattern2D;
@@ -190,6 +191,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private int screen_w;
     private int screen_h;
     private float cur_scale = 1.0f;
+    private float[] minXYZ = new float[3];
 
     private byte[] grayscale;
     private int data_length;
@@ -201,11 +203,13 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     private Bitmap text_Bitmap;
     private boolean isTakePic = false;
     private String mCapturePath;
+    private Axises3D mAxises3D;
 
 
     private boolean ifFileSupport = false;
     private boolean ifFileLoaded = false;
     private boolean ifLoadSWC = false;
+    private boolean ifDraw3D = false;
 
     private boolean ifShowSWC = true;
 
@@ -251,6 +255,21 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         ifFileSupport = true;
     }
 
+    public void ResetIfDraw3D(boolean b, int[] maxXYZ) {
+        ifDraw3D = b;
+
+        sz = maxXYZ;
+        int intMax = Math.max(Math.max(sz[0], sz[1]),sz[2]);
+//        Integer[] num = {sz[0], sz[1], sz[2]};
+//        float max_dim = (float) Collections.max(Arrays.asList(num));
+//        Log.v("MyRenderer", Float.toString(max_dim));
+
+        mz[0] = (float) sz[0] / intMax;
+        mz[1] = (float) sz[1] / intMax;
+        mz[2] = (float) sz[2] / intMax;
+//        float floatMax = Math.max(Math.max(mz[0], mz[1]),mz[2]);
+    }
+
     public void ResetImage(Bitmap show_image, Bitmap backup_image) {
 
         bitmap2D = show_image;
@@ -288,6 +307,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         Log.v("onSurfaceCreated:", "successfully");
 
         MyPattern2D.initProgram();
+        mAxises3D = new Axises3D();
 
         Matrix.setIdentityM(translateMatrix, 0);//建立单位矩阵
         Matrix.setIdentityM(zoomMatrix, 0);//建立单位矩阵
@@ -414,7 +434,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
 
 //        if (fileType == FileType.JPG || fileType == FileType.PNG)
-        if (myPattern2D != null){
+        if (myPattern2D != null && !ifDraw3D){
             myPattern2D.draw(finalMatrix);
 //            myPattern2D.draw(finalMatrix, 1);
 
@@ -431,6 +451,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         GLES30.glDisable(GLES30.GL_DEPTH_TEST);
 
 //        System.out.println("MarkerList.size() = "+MarkerList.size());
+        //画三维坐标轴
+        if (ifDraw3D) {
+            mAxises3D.drawAxises3D(finalMatrix);
+        }
+
         //现画的marker
         if (MarkerList.size() > 0) {
             float radius = 0.015f;
@@ -686,8 +711,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         //获取合适的分割倍数
         float stepx, stepy;
-        stepx = 30f;
-        stepy = 30f;
+        stepx = 40f;
+        stepy = 40f;
         R[0] = round(bitmap2D.getWidth() / stepx);
         R[1] = round(bitmap2D.getHeight() / stepy);
         System.out.println("R[0] = "+R[0]);
@@ -1077,17 +1102,17 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     }
 
 
-    public void rotate(float dx, float dy, float dis) {
+    public void rotate(float dx, float dy) {
 
-        angleX = dy * 30;
-        angleY = dx * 30;
+        angleX = dy * 70;
+        angleY = dx * 70;
         Matrix.setRotateM(rotationXMatrix, 0, angleX, 1.0f, 0.0f, 0.0f);
         Matrix.setRotateM(rotationYMatrix, 0, angleY, 0.0f, 1.0f, 0.0f);
         float[] curRotationMatrix = new float[16];
         Matrix.multiplyMM(curRotationMatrix, 0, rotationXMatrix, 0, rotationYMatrix, 0);
         Matrix.multiplyMM(rotationMatrix, 0, curRotationMatrix, 0, rotationMatrix, 0);
 
-//        Log.v("angleX = ", Float.toString(angleX));
+//        Log.v("angleX = ", Float.toString(angleX));, float dis
 //        Log.v("angleY = ", Float.toString(angleY));
     }
 

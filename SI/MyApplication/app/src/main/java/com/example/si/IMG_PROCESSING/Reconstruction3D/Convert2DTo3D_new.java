@@ -22,6 +22,8 @@ import com.example.si.MainActivity;
 import org.opencv.core.Mat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -59,6 +61,7 @@ public class Convert2DTo3D_new {
     public Matrix intrinsic;
     public double[][] EpiLines1_Para = null;
     public double[][] EpiLines2_Para = null;
+    public int[] maxXYZ = new int[3];
     ArrayList<Double> distance1;
     ArrayList<Double> distance2;
     Matrix PoSelected1 = null;
@@ -328,6 +331,8 @@ public class Convert2DTo3D_new {
             Toast.makeText(MainActivity.getContext(),"Fail to 3D Reconstruction!!", Toast.LENGTH_SHORT).show();
             Looper.loop();
         }
+        double[] minmaxXYZ = getMinMaxXYZ3D();
+        getMinusMin3DPoints(minmaxXYZ);
         P2_Selected = new Matrix(3,4);
         P2_Selected.setMatrix(0,2,0,2,R);
         P2_Selected.setMatrix(0,2,3,3,t21.transpose());
@@ -1356,11 +1361,30 @@ public class Convert2DTo3D_new {
      * @return
      */
 
-    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int offset_x, int offset_y) {
+    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, double offset_x, double offset_y) {
         ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
         for (int i = 0; i < X.getRowDimension(); i++) {
-            ImageMarker temp = new ImageMarker((float) X.get(i,0)+offset_x,(float) X.get(i,1)+offset_y,(float) X.get(i,2));
+            ImageMarker temp = new ImageMarker( X.get(i,0)+offset_x, X.get(i,1)+offset_y, X.get(i,2));
             temp.type = 2;
+
+//            out.println("//"+temp.x+","+temp.y);
+//    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int MarkerColor) {
+//        ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
+//        for (int i = 0; i < X.getRowDimension(); i++) {
+//           // ImageMarker temp = new ImageMarker((float) X.get(i,0),(float) X.get(i,1),(float) X.get(i,2));
+//            ImageMarker temp = new ImageMarker((float) X.get(i,0),(float) X.get(i,1),0);
+//            temp.type = MarkerColor;
+
+            MarkerList.add(temp);
+        }
+        return MarkerList;
+    }
+
+    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, double offset_x, double offset_y, double offset_z, int Type) {
+        ArrayList<ImageMarker> MarkerList = new ArrayList<>(X.getRowDimension());
+        for (int i = 0; i < X.getRowDimension(); i++) {
+            ImageMarker temp = new ImageMarker( X.get(i,0)+offset_x, X.get(i,1)+offset_y, X.get(i,2) + offset_z);
+            temp.type = Type;
 
 //            out.println("//"+temp.x+","+temp.y);
 //    public static ArrayList<ImageMarker> ArrayToMarkerList (Matrix X, int MarkerColor) {
@@ -1643,6 +1667,34 @@ public class Convert2DTo3D_new {
         out.println("==============点到极线的距离误差中值和均值为==================");
         out.println("距离误差中值为:"+ dist.toArray()[round(num/2)]+",均值为："+sum/num);
         return distance;
+    }
+
+    public double[] getMinMaxXYZ3D() {
+        double[] minmaxXYZ = new double[6];
+        double[] tempInt;
+        for (int i = 0; i < 3; i++) {
+            double[] tempDouble = X_3D.getMatrix(0,X_3D.getRowDimension()-1,i,i).getColumnPackedCopy();
+            tempInt = getArrayMinMax(tempDouble);
+            minmaxXYZ[2*i] = tempInt[0];
+            minmaxXYZ[2*i+1] = tempInt[1];
+        }
+        return minmaxXYZ;
+    }
+
+    public double[] getArrayMinMax(double[] array) {
+        double[] result = new double[2];
+        Arrays.sort(array); //升序排列
+        result[0] = array[0];
+        result[1] = array[array.length-1];
+        return result;
+    }
+
+    public void getMinusMin3DPoints(double[] minmaxXYZ) {
+        FeaturePoints3D.clear();
+        FeaturePoints3D = ArrayToMarkerList(X_3D,-minmaxXYZ[0],-minmaxXYZ[2],-minmaxXYZ[4],4);
+        maxXYZ[0] = (int) (minmaxXYZ[1] - minmaxXYZ[0]);
+        maxXYZ[1] = (int) (minmaxXYZ[3] - minmaxXYZ[2]);
+        maxXYZ[2] = (int) (minmaxXYZ[5] - minmaxXYZ[4]);
     }
 
 }

@@ -1487,7 +1487,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     //图像点对的三维重建
-                    //convert2DTo3D();
+                    convert2DTo3D();
 
 
                     //提示运行完成
@@ -1651,6 +1651,15 @@ public class MainActivity extends AppCompatActivity {
         } else {
             myrenderer.ResetImage(showimg2);
         }
+        myGLSurfaceView.requestRender();
+
+        displayPoints3D(p);
+        myGLSurfaceView.requestRender();
+    }
+
+    private void displayPoints3D(Convert2DTo3D_new p) {
+        myrenderer.ResetMarkerlist(p.FeaturePoints3D);
+        myrenderer.ResetIfDraw3D(true, p.maxXYZ);
         myGLSurfaceView.requestRender();
     }
 
@@ -2616,13 +2625,14 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case MotionEvent.ACTION_POINTER_DOWN:
                         isZooming=true;
+                        isZoomingNotStop = true;
                         float x1=toOpenGLCoord(this,motionEvent.getX(1),true);
                         float y1=toOpenGLCoord(this,motionEvent.getY(1),false);
                         dis_start=computeDis(normalizedX,x1,normalizedY,y1);
 
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        if(isZooming){
+                        if(isZooming && isZoomingNotStop){
                             float x2=toOpenGLCoord(this,motionEvent.getX(1),true);
                             float y2=toOpenGLCoord(this,motionEvent.getY(1),false);
                             double dis=computeDis(normalizedX,x2,normalizedY,y2);
@@ -2630,14 +2640,15 @@ public class MainActivity extends AppCompatActivity {
                             myrenderer.zoom((float) scale);
                             requestRender();
                             dis_start=dis;
-                        }else {
-//                            move(normalizedX - X, normalizedY - Y);
+                        }else if (!isZooming) {
+                            myrenderer.rotate(normalizedX - X, normalizedY - Y);
+                            requestRender();
                             X = normalizedX;
                             Y = normalizedY;
                         }
                         break;
                     case MotionEvent.ACTION_POINTER_UP:
-                        isZooming=false;
+                        isZoomingNotStop = false;
                         X = normalizedX;
                         Y = normalizedY;
                         break;
@@ -2703,11 +2714,14 @@ public class MainActivity extends AppCompatActivity {
                                     requestRender();
                                 }
                             }
+                            isZooming = false;
+
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         break;
-                    default:break;
+                    default:
+                        break;
 
                 }
                 return true;
