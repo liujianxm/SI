@@ -2630,6 +2630,16 @@ public class MainActivity extends AppCompatActivity {
                         float y1=toOpenGLCoord(this,motionEvent.getY(1),false);
                         dis_start=computeDis(normalizedX,x1,normalizedY,y1);
 
+/*
+                        dis_x_start = x1 - normalizedX;
+                        dis_y_start = y1 - normalizedY;
+
+                        x0_start = normalizedX;
+                        y0_start = normalizedY;
+                        x1_start = x1;
+                        y1_start = y1;
+*/
+
                         break;
                     case MotionEvent.ACTION_MOVE:
                         if(isZooming && isZoomingNotStop){
@@ -2638,6 +2648,15 @@ public class MainActivity extends AppCompatActivity {
                             double dis=computeDis(normalizedX,x2,normalizedY,y2);
                             double scale=dis/dis_start;
                             myrenderer.zoom((float) scale);
+
+/*
+                            float dis_x = x2 - normalizedX;
+                            float dis_y = y2 - normalizedY;
+                            float ave_x = (x2 - x1_start + normalizedX - x0_start) / 2;
+                            float ave_y = (y2 - y1_start + normalizedY - y0_start) / 2;
+                            myrenderer.rotate(ave_x, ave_y, (float)(computeDis((x2 + normalizedX) / 2, (x1_start + x0_start) / 2, (y2 + normalizedY) / 2, (y1_start + y0_start) / 2)));
+*/
+
                             requestRender();
                             dis_start=dis;
                         }else if (!isZooming) {
@@ -2715,7 +2734,6 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                             isZooming = false;
-
                         } catch (Exception e) {
                             e.printStackTrace();
                         }

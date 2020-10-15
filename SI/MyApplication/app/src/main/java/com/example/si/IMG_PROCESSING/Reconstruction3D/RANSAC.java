@@ -15,6 +15,7 @@ import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.c
 import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.compute_fundamental_normalized;
 import static java.lang.StrictMath.abs;
 import static java.lang.StrictMath.max;
+import static java.lang.StrictMath.min;
 
 
 public class RANSAC {
@@ -57,7 +58,7 @@ public class RANSAC {
         return res;
     }
 
-    public static float InitializeRANSAC(Matrix PoListHo_1, Matrix PoListHo_2, int num, int iter) throws InterruptedException {
+    public static float InitializeRANSAC(Matrix PoListHo_1, Matrix PoListHo_2) throws InterruptedException {
 //        Thread threadF = new Thread(new Runnable() {
 //            @Override
 //            public void run() {
@@ -77,14 +78,14 @@ public class RANSAC {
 //        threadF.join();
 //        threadH.join();
         Log.v("InitializeRANSAC","Here enter the thread F");
-        bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 9, 500);
+        bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 12, 3000);
         Log.v("InitializeRANSAC","Here enter the thread H");
-        bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 9, 500);
+        bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 12, 3000);
         return SH/(SH+SF);
     }
 
     private static float CheckHomography(Matrix PoListHo_1, Matrix PoListHo_2, Matrix H, List<Integer> inlierIdx){
-        float sigma = 1.0f;
+        float sigma = 2.0f;
         float score = 0.0f;
         final float th = 5.991f;
         final int num = PoListHo_1.getRowDimension();
@@ -152,7 +153,7 @@ public class RANSAC {
             Matrix HEstimate = compute_Homography_normalized(Po1Sample, Po2Sample);
             List<Integer> inlierIdx = new ArrayList<>();
             currentScore = CheckHomography(PoListHo_1, PoListHo_2, HEstimate, inlierIdx);
-            if(currentScore > SH && inlierIdx.size()/(float)number > 0.4)//添加内点比例
+            if(currentScore > SH && inlierIdx.size()/(float)number > 0.3)//添加内点比例
             {
                 bestH = HEstimate;
                 BestInlierIdxH = inlierIdx;
@@ -179,9 +180,29 @@ public class RANSAC {
         return bestH;
     }
 
-
+    /**
+     * // 计算 基础矩阵 得分
+     * // 和卡方分布的对应值比较，由此判定该点是否为内点。累计内点的总得分
+     * // p2转置 * F * p1 =  0
+     *
+     *  * p2 ------> p1
+     *  *                    f11   f12    f13     u1
+     *  *   (u2 v2 1)    *   f21   f22    f23  *  v1    = 0应该=0 不等于零的就是误差
+     *  * 		             f31   f32    f33 	   1
+     *  * 	a1 = f11*u2+f21*v2+f31;
+     * 	    b1 = f12*u2+f22*v2+f32;
+     * 	    c1 = f13*u2+f23*v2+f33;
+     * 	num1 = a1*u1 + b1*v1+ c1;// 应该等0
+     * 	num1*num1/(a1*a1+b1*b1);// 误差
+     *
+     * @param PoListHo_1
+     * @param PoListHo_2
+     * @param F
+     * @param inlierIdx
+     * @return
+     */
     private static float CheckFundamental(Matrix PoListHo_1, Matrix PoListHo_2, Matrix F, List<Integer> inlierIdx){
-        float sigma = 1.0f;
+        float sigma = 2.0f;
         final int num = PoListHo_1.getRowDimension();
         float score = 0.0f;
         float th = 3.841f;
@@ -218,7 +239,7 @@ public class RANSAC {
     public static Matrix CheckFundamentalRansac(Matrix PoListHo_1, Matrix PoListHo_2, int num, int iter){
         SF=0.0f;
         int number = PoListHo_1.getRowDimension();
-        if(num>=number) num = max(9,number-2);
+        if(num>=number) num = min(9,number-2);//匹配点对数小于9，可能到不了这里
         int bestInNum;
         Matrix bestF = new Matrix(3,3);
 //        List<Integer> BestInlierIdx = new ArrayList<>();
@@ -236,7 +257,7 @@ public class RANSAC {
             Matrix FEstimate = compute_fundamental_normalized(Po1Sample, Po2Sample);
             List<Integer> inlierIdx = new ArrayList<>();
             currentScore = CheckFundamental(PoListHo_1, PoListHo_2, FEstimate, inlierIdx);
-            if(currentScore > SF && inlierIdx.size()/(float)number > 0.4)
+            if(currentScore > SF && inlierIdx.size()/(float)number > 0.3 && inlierIdx.size()>BestInlierIdxH.size())
             {
                 bestF = FEstimate;
                 BestInlierIdxF = inlierIdx;
