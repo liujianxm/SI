@@ -223,6 +223,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
     public Bitmap GetBitmap() { return bitmap2D; }
     public Bitmap GetBackupBitmap() { return bitmap2D_backup; }
     public int getMarkerNum() { return markernum; }
+    public boolean getIfDraw3D() { return ifDraw3D; }
 
     public void setMarkerNum(int num) {
         markernum = num;
@@ -466,11 +467,19 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 ImageMarker imageMarker = MarkerList.get(i);
                 float[] markerModel = VolumetoModel(new float[]{(float) imageMarker.x, (float) imageMarker.y, (float) imageMarker.z});
                 if (imageMarker.radius == 5) {
-//                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
-                    myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], markerModel[2], 0.01f);
+//
+                    if (ifDraw3D) {
+                        myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
+                    } else {
+                        myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], 0.5f, 0.01f);
+                    }
                 } else {
-//                    myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, radius);
-                    myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], markerModel[2],  radius);
+//
+                    if (ifDraw3D) {
+                        myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, radius);
+                    } else {
+                        myDraw.drawRing2D(finalMatrix, imageMarker.type, markerModel[0], markerModel[1], 0.5f,  radius);
+                    }
                 }
 //                Log.v("onDrawFrame: ", "(" + markerDrawed.get(i) + ", " + markerDrawed.get(i+1) + ", " + markerDrawed.get(i+2) + ")");
 
@@ -711,8 +720,8 @@ public class MyRenderer implements GLSurfaceView.Renderer {
 
         //获取合适的分割倍数
         float stepx, stepy;
-        stepx = 40f;
-        stepy = 40f;
+        stepx = 35f;
+        stepy = 35f;
         R[0] = round(bitmap2D.getWidth() / stepx);
         R[1] = round(bitmap2D.getHeight() / stepy);
         System.out.println("R[0] = "+R[0]);
@@ -740,11 +749,11 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         int [] tempPointIndexList;
         for (int center_x = R[0]; center_x < bitmap2D.getWidth(); center_x += 2*R[0]+1) {
             for (int center_y = R[1]; center_y < bitmap2D.getHeight(); center_y += 2*R[1]+1) {
-                System.out.println("center_x = "+center_x);
-                System.out.println("center_y = "+center_y);
+//                System.out.println("center_x = "+center_x);
+//                System.out.println("center_y = "+center_y);
                 //获取区域内的点(无边界问题)
                 tempPointIndexList = findPointsInTheRegion(center_x, center_y, R, MarkerList);
-                out.println("tempPointIndexList.length = "+tempPointIndexList.length);
+//                out.println("tempPointIndexList.length = "+tempPointIndexList.length);
 //                for (int l = 0; l < tempPointIndexList.length; l++) {
 //                    out.println("(x,y): ("+MarkerList.get(tempPointIndexList[l]).x+","+MarkerList.get(tempPointIndexList[l]).y+")");
 //                }
@@ -818,7 +827,7 @@ public class MyRenderer implements GLSurfaceView.Renderer {
         }
 
         //响应降序排列
-        System.out.println("-------------------------------------------------------");
+//        System.out.println("-------------------------------------------------------");
 
         Collections.sort(tempHMList, new Comparator<HarrisMatrix>() {
 
@@ -1470,6 +1479,49 @@ public class MyRenderer implements GLSurfaceView.Renderer {
             //无marker可删
             Toast.makeText(getContext(), "There is no markers in this view!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    public int delete2DMarkerPairs(float x, float y) throws CloneNotSupportedException {
+        //isAddPoint = false;
+        float [] result = new float[3];
+        float [] center = solve2DMarker(x, y);
+//        center[0] = x;
+//        center[1] = y;
+        //选取最近的角点
+        if (!MarkerList.isEmpty()) {
+            //附近存在角点则矫正
+            result = getMostNearMarker(MarkerList,center);
+
+//            System.out.println("----------------------");
+//            System.out.println("center[0] = "+center[0]);
+//            System.out.println("center[1] = "+center[1]);
+//            System.out.println("result[0] = "+result[0]);
+//            System.out.println("result[1] = "+result[1]);
+            int offset = (int) ceil(max(bitmap2D.getWidth(),bitmap2D.getHeight())/1000) * 80;
+            offset *= offset;
+
+            //最近marker距离小于offset，则认为选中该marker,一次只删除一个
+            if ((pow(result[0]-center[0],2)+pow(result[1]-center[1],2)) < offset) {
+                MarkerList.remove((int)result[2]);
+                //updateShowBitmap();
+                Log.v("delete2DMarker", "Delete success!!!");
+//                for (ImageMarker imagemarker:MarkerList) {
+//                    if (imagemarker.x == result[0] && imagemarker.y == result[1]) {
+//                        MarkerList.remove(imagemarker);
+//                        updateShowBitmap();
+//                        Log.v("delete2DMarker", "Delete success!!!");
+//                        break;
+//                    }
+//                }
+            }
+
+
+        } else {
+            //无marker可删
+            Toast.makeText(getContext(), "There is no markers in this view!", Toast.LENGTH_SHORT).show();
+        }
+
+        return (int)result[2];
     }
 
     // add the marker drawed into markerlist

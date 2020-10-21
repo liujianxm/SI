@@ -76,11 +76,13 @@ import com.lxj.xpopup.interfaces.OnSelectListener;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.DMatch;
 import org.opencv.core.KeyPoint;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfDMatch;
 import org.opencv.core.MatOfKeyPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
@@ -93,6 +95,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Objects;
+import java.util.Set;
 
 
 import Jama.Matrix;
@@ -133,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
     private Button finished;
     private Button loadImage;
     private Button Process;
+    private Button dimension_switch;
     private Boolean ImageOpened = false;
     private Boolean ImageOpened2 = false;
     private boolean isMutiImg = false;
@@ -143,6 +147,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean isFinished2 = false;
     private boolean isProcessed = false;
     private boolean isProcessed2 = false;
+    private boolean ifDraw3D = false;
+    private boolean ifDeletePointPair = false;
 
     private Bitmap showimg1 = null;
     private Bitmap showimg2 = null;
@@ -211,6 +217,8 @@ public class MainActivity extends AppCompatActivity {
     //        double[][] X = new double[][]{{1052,758,90,1},{1851,2190,389,1},{3900,1356,343,1},{3138,1886,89,1},{787,2938,943,1},{1703,1799,699,1},{3027,1798,869,1},{2673,642,767,1},{3023,2381,944,1},{775,1985,653,1},{195,1601,247,1},{1294,2205,279,1},{3515,1543,157,1},{3882,896,920,1},{751,344,463,1},{2161,1428,907,1},{2458,64,494,1},{3060,2765,476,1},{3014,2123,387,1},{2556,2961,624,1},{1767,570,564,1},{706,2732,874,1},{519,1925,986,1},{573,567,295,1},{753,319,285,1},{1593,2379,595,1},{1864,2509,475,1},{2971,541,676,1},{3313,2610,572,1},{491,2456,73,1},{802,408,255,1},{1932,485,244,1},{3505,1101,337,1},{3636,2540,993,1},{1458,930,884,1},{3869,1111,608,1},{2777,2428,455,1},{405,2572,484,1},{901,1930,691,1},{978,1573,249,1},{3055,2967,779,1},{841,1566,656,1},{3214,1343,861,1},{2794,1116,222,1},{858,922,576,1},{2387,1063,776,1},{1989,2693,816,1},{3230,632,483,1},{332,1348,712,1},{1959,1850,950,1}};
     private ArrayList<ImageMarker> MarkerList1 = new ArrayList<ImageMarker>();
     private ArrayList<ImageMarker> MarkerList2 = new ArrayList<ImageMarker>();
+    private ArrayList<ImageMarker> MarkerList3D = new ArrayList<ImageMarker>();
+    private int[] maxXYZ;
 //    private ArrayList<ImageMarker> MarkerList1 = Convert2DTo3D.ArrayToMarkerList(new Matrix(polist1),0,0);
 //    private ArrayList<ImageMarker> MarkerList2 = Convert2DTo3D.ArrayToMarkerList(new Matrix(polist2),0,0);
 //    boolean tag2 = true;
@@ -1038,7 +1046,7 @@ public class MainActivity extends AppCompatActivity {
         img_switch = new Button(this);
         img_switch.setText("P1");
         img_switch.setAllCaps(false);
-        img_switch.setTextColor(Color.RED);
+        img_switch.setTextColor(Color.BLACK);
         FrameLayout.LayoutParams params_img_switch = new FrameLayout.LayoutParams(230, 120);
         params_img_switch.gravity = Gravity.TOP | Gravity.LEFT;
         params_img_switch.setMargins(50,20,0,0);
@@ -1055,41 +1063,53 @@ public class MainActivity extends AppCompatActivity {
         this.addContentView(loadImage,params_loadImage);//
         loadImage.setVisibility(View.VISIBLE);
 
-        /*select_points = new Button(this);
+        select_points = new Button(this);
         select_points.setText("Point");
         select_points.setAllCaps(false);
         select_points.setTextColor(Color.BLACK);
         FrameLayout.LayoutParams params_select_points = new FrameLayout.LayoutParams(230, 120);
         params_select_points.gravity = Gravity.TOP | Gravity.LEFT;
-        params_select_points.setMargins(550,20,0,0);
+//        params_select_points.setMargins(550,20,0,0);
+        params_select_points.setMargins(300,20,0,0);
         this.addContentView(select_points,params_select_points);//
-        select_points.setVisibility(View.VISIBLE);*/
+        select_points.setVisibility(View.GONE);
 
-        /*finished = new Button(this);
+        finished = new Button(this);
         finished.setText("Finish");
         finished.setAllCaps(false);
         finished.setTextColor(Color.BLACK);
         FrameLayout.LayoutParams params_finished = new FrameLayout.LayoutParams(230, 120);
         params_finished.gravity = Gravity.TOP | Gravity.LEFT;
-        params_finished.setMargins(800,20,0,0);
+//        params_finished.setMargins(800,20,0,0);
+        params_finished.setMargins(550,20,0,0);
         this.addContentView(finished,params_finished);//
-        finished.setVisibility(View.GONE);*/
+        finished.setVisibility(View.GONE);
 
         Process = new Button(this);
         Process.setText("Process");
         Process.setAllCaps(false);
-        Process.setTextColor(Color.RED);
+        Process.setTextColor(Color.BLACK);
         FrameLayout.LayoutParams params_Process = new FrameLayout.LayoutParams(230, 120);
         params_Process.gravity = Gravity.TOP | Gravity.LEFT;
         params_Process.setMargins(550,20,0,0);
         this.addContentView(Process,params_Process);//
         Process.setVisibility(View.VISIBLE);
 
+        dimension_switch = new Button(this);
+        dimension_switch.setText("P1");
+        dimension_switch.setAllCaps(false);
+        dimension_switch.setTextColor(Color.BLACK);
+        FrameLayout.LayoutParams params_dimension_switch = new FrameLayout.LayoutParams(230, 120);
+        params_dimension_switch.gravity = Gravity.TOP | Gravity.LEFT;
+        params_dimension_switch.setMargins(50,20,0,0);
+        this.addContentView(dimension_switch,params_dimension_switch);//
+        dimension_switch.setVisibility(View.GONE);
+
         img_switch.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                //clearSelect_points();
+                clearSelect_points();
                 if (isP1){
 //                    MarkerList1 = myrenderer.getMarkerList();
                     ////////////////////////
@@ -1210,7 +1230,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        /*select_points.setOnClickListener(new Button.OnClickListener() {
+        select_points.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //测试解方程函数
@@ -1241,9 +1261,9 @@ public class MainActivity extends AppCompatActivity {
 
 
             }
-        });*/
+        });
 
-        //finished
+        //finished 旧版
         /*finished.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1358,6 +1378,32 @@ public class MainActivity extends AppCompatActivity {
             }
         });*/
 
+        //finished 20201020版
+        finished.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.v("Finished", "Finish point select of the image!");
+                boolean flag = false;
+                if (isP1) {
+                    if (img1 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } else {
+                    if (img2 == null) {
+                        Toast.makeText(context, "Please load a image first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+
+                clearSelect_points();
+                isFinished1 = true;
+                isFinished2 = true;
+                ifDeletePointPair = false;
+                setLayoutAfterFinish();
+            }
+        });
+
         //Process
         Process.setOnClickListener(new Button.OnClickListener() {
             @Override
@@ -1431,21 +1477,91 @@ public class MainActivity extends AppCompatActivity {
                     myGLSurfaceView.requestRender();
                     initiateForReconstruction3D();
                 }*/
-
-                try {
-                    Processing();
-                } catch (Exception e) {
-                    e.printStackTrace();
+                if (isFinished1 && isFinished2) {
+                    try {
+                        Processing();
+                        initializeLayout3D();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+//                    initiateForReconstruction3D();
+                } else {
+                    //ORB提取匹配点
+                    ORBTest(img1,img2);
+                    myGLSurfaceView.requestRender();
+                    select_points.setVisibility(View.VISIBLE);
+                    finished.setVisibility(View.VISIBLE);
+                    Process.setVisibility(View.GONE);
+                    loadImage.setVisibility(View.GONE);
                 }
-                initiateForReconstruction3D();
+
+
                 //改变marker颜色可以直接对相应ImageMarker对象的type属性进行修改，深蓝色为3号，type支持1-8
             }
         });
 
+        //dimension switch
+        /*dimension_switch.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.v("dimension switch", "Image loading!");
+                if (ifDraw3D) {
+                    ifDraw3D = false;
+                    setLayoutTo2D();
+                } else {
+                    ifDraw3D = true;
+                    setLayoutTo3D();
+                }
+                myGLSurfaceView.requestRender();
+            }
+        });*/
+
     }
 
+    private void setLayoutAfterFinish() {
+        select_points.setVisibility(View.GONE);
+        finished.setVisibility(View.GONE);
+        FrameLayout.LayoutParams params_Process = new FrameLayout.LayoutParams(230, 120);
+        params_Process.setMargins(300,20,0,0);
+        Process.setLayoutParams(params_Process);
+        Process.setVisibility(View.VISIBLE);
+    }
 
+    private void setLayoutTo2D() {
 
+        img_switch.setVisibility(View.VISIBLE);
+        dimension_switch.setText("2D");
+
+        if (isP1) {
+            myrenderer.ResetMarkerlist(MarkerList1);
+            myrenderer.ResetImage(showimg1,img1);
+        } else {
+            myrenderer.ResetMarkerlist(MarkerList2);
+            myrenderer.ResetImage(showimg2,img2);
+        }
+
+    }
+
+    private void setLayoutTo3D() {
+
+        img_switch.setVisibility(View.GONE);
+        dimension_switch.setText("3D");
+
+        myrenderer.ResetMarkerlist(MarkerList3D);
+        myrenderer.ResetIfDraw3D(ifDraw3D, maxXYZ);
+    }
+
+    private void initializeLayout3D() {
+        FrameLayout.LayoutParams params_img_switch = new FrameLayout.LayoutParams(230, 120);
+        params_img_switch.gravity = Gravity.TOP | Gravity.LEFT;
+        params_img_switch.setMargins(300,20,0,0);
+        img_switch.setLayoutParams(params_img_switch);
+        img_switch.setVisibility(View.VISIBLE);
+
+        Process.setVisibility(View.GONE);
+
+//        dimension_switch.setVisibility(View.VISIBLE);
+    }
 
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
@@ -1462,6 +1578,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!ImageOpened || !ImageOpened2) {
                     Log.v("MainActivity","Need two pictures!");
                     Toast_in_Thread("Need two pictures!");
+                    uiHandler.sendEmptyMessage(1);
                     return;
                 }
 
@@ -1483,12 +1600,12 @@ public class MainActivity extends AppCompatActivity {
                         //Toast.makeText(getContext(), "Point number is insufficient!", Toast.LENGTH_SHORT).show();
                         Log.v("MainActivity", "Point number is insufficient!");
                         Toast_in_Thread("Point number is insufficient!");
+                        uiHandler.sendEmptyMessage(1);
                         return;
                     }
 
                     //图像点对的三维重建
-                    convert2DTo3D();
-
+//                    convert2DTo3D();
 
                     //提示运行完成
                     Toast_in_Thread("The external parameter matrix of camera is calculated!!");
@@ -1515,7 +1632,30 @@ public class MainActivity extends AppCompatActivity {
 
     private void pointsGetAndMatch() {
         //ORB提取匹配点
-        ORBTest();
+//        ORBTest(img1,img2);
+        //区域ORB提取匹配点
+//        regionAutoORB();
+
+//        out.println("markerlist1: "+MarkerList1.size());
+
+//        precisePointPairsSelect(Math.max(img1.getHeight(), img1.getWidth())/10);
+//        out.println("treshold = "+Math.max(img1.getHeight(), img1.getWidth())/10);
+
+        //RANSAC筛选
+//        MatOfPoint2f Po1_Mat = p2.ArrayToMatOfPoint2f(MarkerListToArray(MarkerList1));
+//        MatOfPoint2f Po2_Mat = p2.ArrayToMatOfPoint2f(MarkerListToArray(MarkerList2));
+//        Mat mask = new Mat();
+//        Calib3d.findFundamentalMat(Po1_Mat, Po2_Mat, Calib3d.FM_RANSAC, 5f, 0.995, mask);
+//
+//        for (int i = 0; i < MarkerList1.size(); i++) {
+//            if (mask.get(i,0)[0] == 0) {
+//                out.println("mask.get(i,0)[0] = "+mask.get(i,0)[0]);
+//                MarkerList1.remove(i);
+//                MarkerList2.remove(i);
+//                i--;
+//
+//            }
+//        }
 //        Toast.makeText(getContext(), "Feature Points have been obtained!", Toast.LENGTH_SHORT).show();
         out.println("markerlist1: "+MarkerList1.size());
 
@@ -1581,6 +1721,61 @@ public class MainActivity extends AppCompatActivity {
         MarkerList2.clear();
         MarkerList1.addAll(newTemp1);
         MarkerList2.addAll(newTemp2);/**/
+    }
+
+    public void precisePointPairsSelect(int threshold) { //threshold = max(image.getWidth(), image.getHeight())
+        boolean flag = false; //ArrayList<ImageMarker> MarkerList1, ArrayList<ImageMarker> MarkerList2,
+        Set<Integer> res;
+        ArrayList<ImageMarker> tempMarkerList1 = new ArrayList<ImageMarker>();
+        ArrayList<ImageMarker> tempMarkerList2 = new ArrayList<ImageMarker>();
+
+        //初始化三个低误差点
+        res = p2.randPerm(MarkerList1.size(), 3);
+        while (!flag) {
+            double[][] Po_list1 = new double[3][2];
+            double[][] Po_list2 = new double[3][2];
+            for (int i = 0; i < 3; i++) {
+                ImageMarker imageMarker1 = MarkerList1.get((int) res.toArray()[i]);
+                tempMarkerList1.add(imageMarker1);
+
+                ImageMarker imageMarker2 = MarkerList2.get((int) res.toArray()[i]);
+                tempMarkerList2.add(imageMarker2);
+            }
+            Po_list1 = MarkerListToArray(tempMarkerList1);
+            Po_list2 = MarkerListToArray(tempMarkerList2);
+            p2.Convert2DTo2D_func(Po_list1, Po_list2);
+            out.println("maxdis2 = "+p2.maxdis2);
+            if (p2.maxdis2 <= threshold) {
+                flag = true;
+            } else {
+                res = p2.randPerm(MarkerList1.size(), 3);
+            }
+        }
+
+        //逐个增加低误差点对
+        for (int i = 0; i < MarkerList1.size(); i++) {
+            if (i == (int)res.toArray()[0] || i == (int)res.toArray()[1] || i == (int)res.toArray()[2]) {
+                continue;
+            }
+            ImageMarker imageMarker1 = MarkerList1.get(i);
+            tempMarkerList1.add(imageMarker1);
+            ImageMarker imageMarker2 = MarkerList2.get(i);
+            tempMarkerList2.add(imageMarker2);
+            double[][] Po_list1 = MarkerListToArray(tempMarkerList1);
+            double[][] Po_list2 = MarkerListToArray(tempMarkerList2);
+            p2.Convert2DTo2D_func(Po_list1, Po_list2);
+            out.println("maxdis2 = "+p2.maxdis2);
+
+            if (p2.maxdis2 > threshold) {
+                tempMarkerList1.remove(imageMarker1);
+                tempMarkerList2.remove(imageMarker2);
+            }
+        }
+
+        MarkerList1.clear();
+        MarkerList1.addAll(tempMarkerList1);
+        MarkerList2.clear();
+        MarkerList2.addAll(tempMarkerList2);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -1653,13 +1848,129 @@ public class MainActivity extends AppCompatActivity {
         }
         myGLSurfaceView.requestRender();
 
-        displayPoints3D(p);
-        myGLSurfaceView.requestRender();
+        ifDraw3D = true;
+        displayPoints3D(p, ifDraw3D);
+
+        ////////////////////////////////////////////////////
+        /*ArrayList<ImageMarker> temp = new ArrayList<>();
+        ImageMarker marker1 = new ImageMarker(200,1000,400,3);
+        temp.add(marker1);
+        ImageMarker marker2 = new ImageMarker(0,1000,400,3);
+        temp.add(marker2);
+        ImageMarker marker3 = new ImageMarker(200,0,400,3);
+        temp.add(marker3);
+        ImageMarker marker4 = new ImageMarker(0,0,0,3);
+        temp.add(marker4);
+
+        int[] max = new int[]{200,1000,400};
+
+        myrenderer.ResetMarkerlist(temp);
+        myrenderer.ResetIfDraw3D(true, max);
+        myGLSurfaceView.requestRender();*/
+        ///////////////////////////////////////////////////
     }
 
-    private void displayPoints3D(Convert2DTo3D_new p) {
+    private void regionAutoORB() {
+        int[] R = new int[2];
+        ArrayList<ImageMarker> tempList1 = new ArrayList<ImageMarker>();
+        ArrayList<ImageMarker> tempList2 = new ArrayList<ImageMarker>();
+        Bitmap temp1, temp2;
+
+        //获取合适的分割倍数
+        float stepx, stepy;
+        stepx = 7f; //  ?????
+        stepy = 7f;
+        R[0] = round(img1.getWidth() / stepx);
+        R[1] = round(img1.getHeight() / stepy);
+        System.out.println("R[0] = "+R[0]);
+        System.out.println("R[1] = "+R[1]);
+
+        if (MarkerList1 != null) {
+            //工作区准备
+            MarkerList1.clear();
+            MarkerList2.clear();
+        }
+
+
+        //区域中心定位图像块
+        for (int center_x = R[0]; center_x < img1.getWidth(); center_x += 2*R[0]+1) {
+            for (int center_y = R[1]; center_y < img1.getHeight(); center_y += 2*R[1]+1) {
+                System.out.println("center_x = "+center_x);
+                System.out.println("center_y = "+center_y);
+                //AutoORB获取匹配点对
+                temp1 = getSmallImageBlock(img1,center_x,center_y,R[0],R[1]);
+                temp2 = getSmallImageBlock(img2,center_x,center_y,R[0],R[1]);
+                if (temp1 == null || temp2 == null) {
+                    continue;
+                }
+
+                ORBTest(temp1, temp2, center_x-R[0], center_y-R[1]);
+
+                if (MarkerList1 != null) {
+                    tempList1.addAll(MarkerList1);
+                    tempList2.addAll(MarkerList2);
+                    MarkerList1.clear();
+                    MarkerList2.clear();
+                }
+
+            }
+        }
+
+        MarkerList1.addAll(tempList1);
+        MarkerList2.addAll(tempList2);
+    }
+
+    /**
+     * 获取图像中 [x,x+Rx] [y,y+Ry] 区域的图像块，若区域超出图像范围返回null
+     * @param image 原图像
+     * @param x 左上角横坐标
+     * @param y 左上角纵坐标
+     * @param Rx 横向宽度
+     * @param Ry 纵向高度
+     * @return 截取的图像块
+     */
+    private Bitmap getSmallImageBlock(Bitmap image, int x, int y,int Rx, int Ry) {
+        int xfrom = x - Rx;
+        int xto = x + Rx;
+        int yfrom = y - Ry;
+        int yto = y+Ry;
+        int xlen = xto - xfrom + 1;
+        int ylen = yto - yfrom + 1;
+
+        if (xto >= image.getWidth() || yto >= image.getHeight() || xfrom < 0 || yfrom < 0) {
+            if (xto - xlen / 2 <= image.getWidth() || yto - ylen / 2 <= image.getHeight()) {
+                xto = image.getWidth();
+                yto = image.getHeight();
+                xlen = xto - xfrom + 1;
+                ylen = yto - yfrom + 1;
+            } else {
+                return null;
+            }
+        }
+//        System.out.println("xfrom = "+xfrom);
+//        System.out.println("xto = "+xto);
+//        System.out.println("yfrom = "+yfrom);
+//        System.out.println("yto = "+yto);
+
+//        int color;
+        Bitmap myBitmap = null;
+        myBitmap = Bitmap.createBitmap( xlen, ylen, Bitmap.Config.ARGB_8888 );
+        for (int w = 0; w < xlen; w++) {
+            for (int h = 0; h < ylen; h++) {
+//                    color = image.getPixel(w,h);
+                myBitmap.setPixel(w, h, image.getPixel(xfrom+w,yfrom+h));
+            }
+        }
+
+        return myBitmap;
+
+}
+
+    private void displayPoints3D(Convert2DTo3D_new p, boolean ifDraw3D) {
+        MarkerList3D = p.FeaturePoints3D;
+        maxXYZ = p.maxXYZ;
         myrenderer.ResetMarkerlist(p.FeaturePoints3D);
-        myrenderer.ResetIfDraw3D(true, p.maxXYZ);
+        myrenderer.ResetIfDraw3D(ifDraw3D, p.maxXYZ);
         myGLSurfaceView.requestRender();
     }
 
@@ -1732,7 +2043,7 @@ public class MainActivity extends AppCompatActivity {
 
     ///////////////////////////////
 
-    private void ORBTest(){
+    private void ORBTest(Bitmap img1, Bitmap img2){
         Mat srcr = new Mat();
         Mat tempr = new Mat();
         Mat srcl = new Mat();
@@ -1772,12 +2083,15 @@ public class MainActivity extends AppCompatActivity {
         descriptormatcher.match(MatdescriptorL,MatdescriptorR,matches);
         System.out.println("............."+matches.cols()+","+matches.rows());
         //-- Quick calculation of max and min distances between keypoints
+
+
         double max_dist = 0; double min_dist = 100;
         for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
             double dist = matches.toArray()[i].distance;
             if( dist < min_dist ) min_dist = dist;
             if( dist > max_dist ) max_dist = dist;
         }
+
 
         System.out.println("-- Max dist : "+ max_dist );
         System.out.println("-- Min dist : "+ min_dist );
@@ -1798,6 +2112,99 @@ public class MainActivity extends AppCompatActivity {
             Log.d("Mainactivity",i+":"+good_matches.toList().get(i));
             Log.d("LImage",i+":("+keypointsL.toList().get(matchItem[i].queryIdx).pt.x+","+keypointsL.toList().get(matchItem[i].queryIdx).pt.y);
             Log.d("RImage",i+":("+keypointsR.toList().get(matchItem[i].trainIdx).pt.x+","+keypointsR.toList().get(matchItem[i].trainIdx).pt.y);
+            Log.d("RImage",MarkerList1.get(i).x+","+MarkerList1.get(i).y);
+        }
+        System.out.println("%%%%%%%%%%%%%%%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
+//        myGLSurfaceView.requestRender();
+
+
+
+//        Bitmap outbmp = drawMatches(srcl,keypointsL,srcr,keypointsR,good_matches,false);
+
+        //Features2d.drawMatches(srcl,keypointsL,srcr,keypointsR,matches,out);
+        //  Utils.matToBitmap(out, imageR);//把mat转化为bitmap
+        // Bitmap matchbitmap=Bitmap.createScaledBitmap(imageR, imageL.getWidth(),  imageR.getHeight(), false);
+//        imageView.setImageBitmap(outbmp);
+        srcr.release();
+        srcl.release();
+        templ.release();
+        tempr.release();
+        MatdescriptorR.release();
+        MatdescriptorL.release();
+        if (MarkerList1.size() != 0 || MarkerList1 != null) {
+            ifDeletePointPair = true;
+        }
+    }
+
+    private void ORBTest(Bitmap img1, Bitmap img2, int offsetX, int offsetY){
+        Mat srcr = new Mat();
+        Mat tempr = new Mat();
+        Mat srcl = new Mat();
+        Mat templ = new Mat();
+        Mat MatdescriptorR = new Mat();
+        Mat MatdescriptorL = new Mat();
+        MatOfKeyPoint keypointsR = new MatOfKeyPoint();
+        MatOfKeyPoint keypointsL = new MatOfKeyPoint();
+        MatOfDMatch matches = new MatOfDMatch();
+//        Bitmap imageR = BitmapFactory.decodeResource(this.getResources(),R.drawable.rr);
+//        Bitmap imageL = BitmapFactory.decodeResource(this.getResources(),R.drawable.ll);
+
+        Bitmap imageL = img1;
+        Bitmap imageR = img2;
+        Utils.bitmapToMat(imageR, srcr);//把image转化为Mat
+        Utils.bitmapToMat(imageL, srcl);//把image转化为Mat
+        Imgproc.cvtColor(srcr,tempr, Imgproc.COLOR_RGBA2RGB);
+        Imgproc.cvtColor(srcl,templ, Imgproc.COLOR_RGBA2RGB);
+        FeatureDetector detectorR = FeatureDetector.create(FeatureDetector.DYNAMIC_ORB);
+        FeatureDetector detectorL = FeatureDetector.create(FeatureDetector.DYNAMIC_ORB);
+        //检测特征点
+        detectorR.detect(tempr, keypointsR);
+        KeyPoint[] po = keypointsL.toArray();
+        detectorL.detect(templ, keypointsL);
+        /*Features2d.drawKeypoints(tempr,keypointsR,out,new Scalar(255, 0, 0), Features2d.DRAW_RICH_KEYPOINTS);
+        Utils.matToBitmap(out, imageR);//把mat转化为bitmap
+
+        imageView.setImageBitmap(imageR);*/
+
+        //计算描述子
+        DescriptorExtractor descriptorR = DescriptorExtractor.create(DescriptorExtractor.OPPONENT_ORB);
+        DescriptorExtractor descriptorL = DescriptorExtractor.create(DescriptorExtractor.OPPONENT_ORB);
+        descriptorR.compute(srcr,keypointsR,MatdescriptorR);
+        descriptorL.compute(srcl,keypointsL,MatdescriptorL);
+        // FlannBasedMatcher descriptormatcher = FlannBasedMatcher.create();
+        DescriptorMatcher descriptormatcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+        descriptormatcher.match(MatdescriptorL,MatdescriptorR,matches);
+        System.out.println("............."+matches.cols()+","+matches.rows());
+        //-- Quick calculation of max and min distances between keypoints
+
+
+        double max_dist = 0; double min_dist = 100;
+        for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
+            double dist = matches.toArray()[i].distance;
+            if( dist < min_dist ) min_dist = dist;
+            if( dist > max_dist ) max_dist = dist;
+        }
+
+
+        System.out.println("-- Max dist : "+ max_dist );
+        System.out.println("-- Min dist : "+ min_dist );
+        MatOfDMatch good_matches = new MatOfDMatch();
+        for( int i = 0; i < MatdescriptorL.rows(); i++ ) {
+            if( matches.toArray()[i].distance <= StrictMath.max(2f*min_dist, 20) ) {
+                good_matches.push_back( matches.row(i));
+            }
+        }
+        System.out.println("............."+good_matches.cols()+","+good_matches.rows());
+        DMatch[] matchItem = good_matches.toArray();
+        System.out.println("....@@@@@@@@@@...."+MarkerList1.isEmpty());
+        System.out.println("%%!!!!!!!!!!!!!!!!!!%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
+        for(int i=0; i<good_matches.rows(); i++){
+//            System.out.println("....@@@@@@@@@@...."+matchItem.length);
+            MarkerList1.add(new ImageMarker((float) keypointsL.toList().get(matchItem[i].queryIdx).pt.x + offsetX, (float)keypointsL.toList().get(matchItem[i].queryIdx).pt.y + offsetY, 0,3));
+            MarkerList2.add(new ImageMarker((float) keypointsR.toList().get(matchItem[i].trainIdx).pt.x + offsetX, (float)keypointsR.toList().get(matchItem[i].trainIdx).pt.y + offsetY, 0,3));
+            Log.d("Mainactivity",i+":"+good_matches.toList().get(i));
+            Log.d("LImage",i+":("+(keypointsL.toList().get(matchItem[i].queryIdx).pt.x + offsetX)+","+(keypointsL.toList().get(matchItem[i].queryIdx).pt.y + offsetY)+")");
+            Log.d("RImage",i+":("+(keypointsR.toList().get(matchItem[i].trainIdx).pt.x + offsetX)+","+(keypointsR.toList().get(matchItem[i].trainIdx).pt.y + offsetY)+")");
             Log.d("RImage",MarkerList1.get(i).x+","+MarkerList1.get(i).y);
         }
         System.out.println("%%%%%%%%%%%%%%%%% MarkerList Length : "+ MarkerList1.size()+"," + MarkerList2.size());
@@ -1937,7 +2344,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     case "Camera":
                                         //拍照获取图片
-                                        //clearSelect_points();
+                                        clearSelect_points();
                                         if (isP1){
                                             Log.v("loadImage", "load Image1");
                                             //functionMenu(isFinished1);
@@ -1957,7 +2364,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     case "Album":
                                         //相册读取图片
-                                        //clearSelect_points();
+                                        clearSelect_points();
                                         PickPhotoFromGallery();
 
                                         break;
@@ -2005,7 +2412,8 @@ public class MainActivity extends AppCompatActivity {
                                         break;
 
                                     case "Auto ORB":
-                                        ORBTest(); //ORB提取匹配点
+                                        ORBTest(img1, img2); //ORB提取匹配点
+                                        myGLSurfaceView.requestRender();
                                         Toast.makeText(getContext(), "Feature Points have been obtained!", Toast.LENGTH_SHORT).show();
                                         ifPoint = true;
                                         ifDelete = false;
@@ -2022,7 +2430,7 @@ public class MainActivity extends AppCompatActivity {
                                         break;
                                     case "Exit point":
                                         //退出点操作模式
-                                        //clearSelect_points();
+                                        clearSelect_points();
 
                                         break;
 
@@ -2139,8 +2547,14 @@ public class MainActivity extends AppCompatActivity {
 
     //
     private void clear3D_Reconstruction() {
+        img1.recycle();
+        img2.recycle();
         img1 = null;
         img2 = null;
+        showimg1.recycle();
+        showimg2.recycle();
+        showimg1 = null;
+        showimg2 = null;
         MarkerList1.clear();
         MarkerList2.clear();
         isP1 = false;
@@ -2157,6 +2571,10 @@ public class MainActivity extends AppCompatActivity {
 //        select_points.setVisibility(View.GONE);
 //        finished.setVisibility(View.GONE);
         Process.setVisibility(View.GONE);
+
+        myrenderer.ResetMarkerlist(MarkerList1);
+        myrenderer.ResetImage(showimg1,img1);
+        myGLSurfaceView.requestRender();
     }
 
     //private void resetButtonAfterProcess() {}
@@ -2659,7 +3077,7 @@ public class MainActivity extends AppCompatActivity {
 
                             requestRender();
                             dis_start=dis;
-                        }else if (!isZooming) {
+                        }else if (!isZooming && ifDraw3D) {
                             myrenderer.rotate(normalizedX - X, normalizedY - Y);
                             requestRender();
                             X = normalizedX;
@@ -2723,13 +3141,26 @@ public class MainActivity extends AppCompatActivity {
                                 if (ifDelete) {
                                     Log.v("actionUp", "Deleting point!!!");
                                     myrenderer.setIsAddPoint(false);
-                                    myrenderer.delete2DMarker(normalizedX, normalizedY);
-                                    Log.v("actionPointerDown", "(" + X + "," + Y + ")");
-                                    if (isP1) {
-                                        MarkerList1 = myrenderer.getMarkerList();
+                                    if (!ifDeletePointPair) {
+                                        myrenderer.delete2DMarker(normalizedX, normalizedY);
+                                        Log.v("actionPointerDown", "(" + X + "," + Y + ")");
+                                        if (isP1) {
+                                            MarkerList1 = myrenderer.getMarkerList();
+                                        } else {
+                                            MarkerList2 = myrenderer.getMarkerList();
+                                        }
                                     } else {
-                                        MarkerList2 = myrenderer.getMarkerList();
+                                        int index = myrenderer.delete2DMarkerPairs(normalizedX, normalizedY);
+                                        if (isP1) {
+                                            MarkerList1 = myrenderer.getMarkerList();
+                                            MarkerList2.remove(index);
+                                        } else {
+                                            MarkerList1.remove(index);
+                                            MarkerList2 = myrenderer.getMarkerList();
+                                        }
                                     }
+
+
                                     requestRender();
                                 }
                             }

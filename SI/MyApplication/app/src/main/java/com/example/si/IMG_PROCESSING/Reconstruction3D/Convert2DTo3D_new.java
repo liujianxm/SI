@@ -84,12 +84,12 @@ public class Convert2DTo3D_new {
      * @param PoList_1 n*2格式储存的点数组
      * @param PoList_2 n*2格式储存
      */
-/*    @SuppressLint("ShowToast")
+    @SuppressLint("ShowToast")
     @RequiresApi(api = Build.VERSION_CODES.N)
     public boolean Convert2DTo3D_Fun_new(double[][] PoList_1, double[][] PoList_2, DataBuilder dataBuilder, ArrayList<double[]> FfList){
 //    public boolean Convert2DTo3D_Fun(double[][] PoList_1, double[][] PoList_2){
         ////////////////////此处经过修改！！！！！！！！
-*//*        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
+/*        Matrix K = get_IntrinsicMatrix(mm).transpose();//3*3矩阵///此处经过修改！！！！！！！！
         Matrix Po1 = Point2DToHomogeneous(PoList_1);//n*3矩阵
         Matrix Po2 = Point2DToHomogeneous(PoList_2);//n*3矩阵
         // //////////////////////
@@ -128,7 +128,7 @@ public class Convert2DTo3D_new {
         P2_Selected.setMatrix(0,2,3,3,t21);
         P2_Selected = K.times(P2_Selected);
         Matrix e = compute_epipole(F.transpose());  //计算外极点
-*//**//*        Matrix E1 = K.transpose().times(F.times(K));
+*//*        Matrix E1 = K.transpose().times(F.times(K));
         out.println("==============本质矩阵E1的值为==================");
         for (int i=0; i<3; i++){
             for (int j=0; j<3; j++){
@@ -137,10 +137,10 @@ public class Convert2DTo3D_new {
         }
         ArrayList<Matrix> P2 = ComputePFromEssential(E1);//计算第二角度可能的投影矩阵
         //Matrix F = compute_fundamental_normalized(Po1, Po2);
-        //Matrix F = compute_fundamental_normalized(PoSelected1, PoSelected2);*//**//*
+        //Matrix F = compute_fundamental_normalized(PoSelected1, PoSelected2);*//*
         ////////计算极线参数abc/////////
         ComputeCorrespondEpiLines(PoSelected1, PoSelected2, F);
-        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());*//*
+        CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());*/
 
 
 //////////////////////////////内参自标定///////////////////////////////////
@@ -195,14 +195,14 @@ public class Convert2DTo3D_new {
         errFf[1] = abs(intrinsic.get(0,0)-3200)/3200;
         FfList.add(errFf);
         /////////////////////////////////////////////////////
-*//*        out.println("==============误差************的值为==================");
+/*        out.println("==============误差************的值为==================");
         out.println("  〘∆F〙/〘F〙:" + temp.normF()/F0.normF());
         out.println("  |delta f|/f::" + abs(intrinsic.get(0,0)-3200)/3200);
         for (int i=0; i<3; i++){
             for (int j=0; j<3; j++){
                 out.println("第"+i+","+j+"处的 |deltaF|/F:"+abs(temp.get(i,j))/F0.get(i,j));
             }
-        }*//*
+        }*/
         X_3D = new Matrix(PoSelected1.getRowDimension(),4);
         boolean Flag = ReconstructF(F,0.5f,9);
         Log.d("Convert2DTo3D_new","Flag:"+Flag);
@@ -222,7 +222,7 @@ public class Convert2DTo3D_new {
 //        SelectPFrom4P(PoSelected1, PoSelected2, P1, P2);//恢复的三位坐标矩阵
         CalculateError(X_3D, PoSelected1.getArray(), PoSelected2.getArray());
         return true;
-    }*/
+    }
 
     /////////////////////////////////////////////
 
@@ -253,10 +253,8 @@ public class Convert2DTo3D_new {
 //            Log.d(TAG, "dist为："+distTmp);
                 c++;
             }
-/*            PoSelected1 = new Matrix(PoListHoSelected_1);
-            PoSelected2 = new Matrix(PoListHoSelected_2);*/
-            PoSelected1 = Po1;
-            PoSelected2 = Po2;
+            PoSelected1 = new Matrix(PoListHoSelected_1);
+            PoSelected2 = new Matrix(PoListHoSelected_2);
 //            matrixFH = compute_Homography_normalized(PoSelected1, PoSelected2);
             matrixFH = RANSAC.bestH;
         }else {
@@ -266,19 +264,17 @@ public class Convert2DTo3D_new {
             for(Integer id : RANSAC.BestInlierIdxF){
                 // Log.d(TAG, "选取的id："+id);
                 PoListHoSelected_1[cc] = Po1.getMatrix(id, id, 0,2).getRowPackedCopy();
-                Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[cc][0]+","+PoListHoSelected_1[cc][1]+","+PoListHoSelected_1[cc][2]);
+            Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[cc][0]+","+PoListHoSelected_1[cc][1]+","+PoListHoSelected_1[cc][2]);
                 PoListHoSelected_2[cc] = Po2.getMatrix(id, id, 0,2).getRowPackedCopy();
-                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[cc][0]+","+PoListHoSelected_2[cc][1]+","+PoListHoSelected_2[cc][2]);
+            Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[cc][0]+","+PoListHoSelected_2[cc][1]+","+PoListHoSelected_2[cc][2]);
 //            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
 //            Log.d(TAG, "dist为："+distTmp);
                 cc++;
             }
             PoSelected1 = new Matrix(PoListHoSelected_1);
             PoSelected2 = new Matrix(PoListHoSelected_2);
-//            PoSelected1 = Po1;
-//            PoSelected2 = Po2;
-            matrixFH = compute_fundamental_normalized(PoSelected1, PoSelected2);//////////////
-//            matrixFH = RANSAC.bestF;
+//            matrixFH = compute_fundamental_normalized(Po1, Po2);//////////////
+            matrixFH = RANSAC.bestF;
         }
 //        Matrix matrixFH = compute_fundamental_normalized(Po1, Po2);
         //计算内参矩阵
@@ -324,9 +320,9 @@ public class Convert2DTo3D_new {
         X_3D = new Matrix(PoSelected1.getRowDimension(),4);
         boolean Flag;
         if(score>0.5) {
-            Flag = ReconstructH(matrixFH, 0.1f, 10);///
+            Flag = ReconstructH(matrixFH, 0.35f, 1);///
         }else {
-            Flag = ReconstructF(matrixFH, 0.1f, 10);///
+            Flag = ReconstructF(matrixFH, 0.35f, 1);///
         }
         Log.d("Convert2DTo3D_new","Flag:"+Flag);
         if(!Flag){
@@ -339,7 +335,7 @@ public class Convert2DTo3D_new {
         getMinusMin3DPoints(minmaxXYZ);
         P2_Selected = new Matrix(3,4);
         P2_Selected.setMatrix(0,2,0,2,R);
-        P2_Selected.setMatrix(0,2,3,3,t21.transpose());//3*1
+        P2_Selected.setMatrix(0,2,3,3,t21.transpose());
         P2_Selected = intrinsic.times(P2_Selected);
 ///////////////////////////////////////////////////////////////////////
 
@@ -817,7 +813,7 @@ public class Convert2DTo3D_new {
         P2.setMatrix(0,2,0,2,R);
         P2.setMatrix(0,2,3,3,t.transpose());
         P2 = K.times(P2);
-        Matrix O2 = (R.transpose().times(t.transpose())).times(-1);//3*1  // 第二个相机的光心在世界坐标系下的坐标
+        Matrix O2 = (R.transpose().times(t.transpose())).times(-1);//3*1
         out.println("O2的值：" + O2.get(0,0)+""+ O2.get(1,0)+""+ O2.get(2,0));
         out.println("==============P2的值为==================");
         for (int i=0; i<3; i++){
@@ -898,8 +894,7 @@ public class Convert2DTo3D_new {
            // p3dC1.print(1,3);
             nGood++;
 /*            if(cosParallax<0.99998){
-//                vbGood.set(i, true);
-
+                vbGood.set(i, true);
             }*/
         }
         // 得到3D点中较大的视差角
@@ -984,20 +979,20 @@ public class Convert2DTo3D_new {
 /*        Matrix R = new Matrix(3, 3);
         Matrix t21 = new Matrix(3, 1);*/
         // minTriangulated为可以三角化恢复三维点的个数
-        int nMinGood = (int) max(0.70*num, minTriangulated);//
+        int nMinGood = (int) max(0.1*num, minTriangulated);//
         int nsimilar = 0;
-        if(nGood1>0.75*maxGood)
+        if(nGood1>0.7*maxGood)
             nsimilar++;
-        if(nGood2>0.75*maxGood)
+        if(nGood2>0.7*maxGood)
             nsimilar++;
-        if(nGood3>0.75*maxGood)
+        if(nGood3>0.7*maxGood)
             nsimilar++;
-        if(nGood4>0.75*maxGood)
+        if(nGood4>0.7*maxGood)
             nsimilar++;
         // If there is not a clear winner or not enough triangulated points reject initialization
-        if(maxGood<nMinGood || nsimilar>2)
+        if(maxGood<nMinGood || nsimilar>1)
         {
-            Log.v(TAG, "maxGood<nMinGood??::"+ (maxGood < nMinGood) + ", nsimilar>1"+(nsimilar>2));
+            Log.v(TAG, "maxGood<nMinGood??::"+ (maxGood < nMinGood) + ", nsimilar>1"+(nsimilar>1));
             Log.v(TAG,"HERE");
             return false;
         }
@@ -1660,7 +1655,7 @@ public class Convert2DTo3D_new {
         int num = PoList.length;
         PriorityQueue<Double> dist = new PriorityQueue<Double>(num, (o1, o2) -> (o1 - o2)>0?1:-1);
         ArrayList<Double> distance = new ArrayList<>(num);
-/*        double sum = 0;
+        double sum = 0;
         for(int i=0; i<num; i++){
 //            double dis = abs(EpiLines_Para[0][i]*PoList[i][0] + EpiLines_Para[1][i]*PoList[i][1] + (EpiLines_Para[2][i]-(OpticalCenter[0]*EpiLines_Para[0][i]+OpticalCenter[1]*EpiLines_Para[1][i]))) / sqrt(pow(EpiLines_Para[0][i],2)+pow(EpiLines_Para[1][i],2));
             double dis = abs(EpiLines_Para[0][i]*PoList[i][0] + EpiLines_Para[1][i]*PoList[i][1] + EpiLines_Para[2][i]) / sqrt(pow(EpiLines_Para[0][i],2)+pow(EpiLines_Para[1][i],2));
@@ -1670,7 +1665,7 @@ public class Convert2DTo3D_new {
             dist.add(dis);
         }
         out.println("==============点到极线的距离误差中值和均值为==================");
-        out.println("距离误差中值为:"+ dist.toArray()[round(num/2)]+",均值为："+sum/num);*/
+        out.println("距离误差中值为:"+ dist.toArray()[round(num/2)]+",均值为："+sum/num);
         return distance;
     }
 
@@ -1695,7 +1690,9 @@ public class Convert2DTo3D_new {
     }
 
     public void getMinusMin3DPoints(double[] minmaxXYZ) {
-        FeaturePoints3D.clear();
+        if (FeaturePoints3D != null) {
+            FeaturePoints3D.clear();
+        }
         FeaturePoints3D = ArrayToMarkerList(X_3D,-minmaxXYZ[0],-minmaxXYZ[2],-minmaxXYZ[4],4);
         maxXYZ[0] = (int) (minmaxXYZ[1] - minmaxXYZ[0]);
         maxXYZ[1] = (int) (minmaxXYZ[3] - minmaxXYZ[2]);
