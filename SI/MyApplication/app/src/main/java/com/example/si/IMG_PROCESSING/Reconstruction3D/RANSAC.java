@@ -2,6 +2,8 @@ package com.example.si.IMG_PROCESSING.Reconstruction3D;
 
 import android.util.Log;
 
+import com.example.si.BuildConfig;
+
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -14,18 +16,29 @@ import Jama.Matrix;
 import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.compute_Homography_normalized;
 import static com.example.si.IMG_PROCESSING.Reconstruction3D.Convert2DTo3D_new.compute_fundamental_normalized;
 import static java.lang.StrictMath.abs;
+import static java.lang.StrictMath.exp;
+import static java.lang.StrictMath.log;
 import static java.lang.StrictMath.max;
 import static java.lang.StrictMath.min;
+import static java.lang.StrictMath.pow;
+import static java.lang.System.out;
 
 
 public class RANSAC {
+    private final String FundamentalRansac = "FundamentalMatrix";
+    private final String HomographyRansac = "HomographyMatrix";
+
     public static double[][] PoListHoSelected_1;
     public static double[][] PoListHoSelected_2;
     static List<Integer> BestInlierIdxH = new ArrayList<>();
     static List<Integer> BestInlierIdxF = new ArrayList<>();
-    static float SH, SF;
+    public static float SH, SF;
     public static Matrix bestF;
     public static Matrix bestH;
+    Matrix FPoSelected1 = null;
+    Matrix FPoSelected2 = null;
+    Matrix HPoSelected1 = null;
+    Matrix HPoSelected2 = null;
 
 
     final static String TAG = "RANSAC";
@@ -78,14 +91,29 @@ public class RANSAC {
 //        threadF.join();
 //        threadH.join();
         Log.v("InitializeRANSAC","Here enter the thread F");
-        bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 12, 3000);
+        bestF = CheckFundamentalRansac(PoListHo_1, PoListHo_2, 10, 5000);
         Log.v("InitializeRANSAC","Here enter the thread H");
-        bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 12, 3000);
+        bestH = CheckHomographyRansac(PoListHo_1, PoListHo_2, 9, 4000);
         return SH/(SH+SF);
     }
 
+    public RANSAC(Matrix PoListHo_1, Matrix PoListHo_2){
+/*        Thread threadF = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Log.v("InitializeRANSAC","Here enter the thread F");
+                MyRansacModel(PoListHo_1, PoListHo_2,9, FundamentalRansac,0.01);
+            }
+        });*/
+
+        Log.v("InitializeRANSAC","Here enter the thread F");
+        MyRansacModel(PoListHo_1, PoListHo_2,9, FundamentalRansac,0.005);
+//        Log.v("InitializeRANSAC","Here enter the thread H");
+//        MyRansacModel(PoListHo_1, PoListHo_2,9, HomographyRansac,0.1);
+    }
+
     private static float CheckHomography(Matrix PoListHo_1, Matrix PoListHo_2, Matrix H, List<Integer> inlierIdx){
-        float sigma = 2.0f;
+        float sigma = 2f;
         float score = 0.0f;
         final float th = 5.991f;
         final int num = PoListHo_1.getRowDimension();
@@ -201,8 +229,8 @@ public class RANSAC {
      * @param inlierIdx
      * @return
      */
-    private static float CheckFundamental(Matrix PoListHo_1, Matrix PoListHo_2, Matrix F, List<Integer> inlierIdx){
-        float sigma = 2.0f;
+    public static float CheckFundamental(Matrix PoListHo_1, Matrix PoListHo_2, Matrix F, List<Integer> inlierIdx){
+        float sigma = 2f;
         final int num = PoListHo_1.getRowDimension();
         float score = 0.0f;
         float th = 3.841f;
@@ -241,7 +269,7 @@ public class RANSAC {
         int number = PoListHo_1.getRowDimension();
         if(num>=number) num = min(9,number-2);//匹配点对数小于9，可能到不了这里
         int bestInNum;
-        Matrix bestF = new Matrix(3,3);
+//        Matrix bestF = new Matrix(3,3);
 //        List<Integer> BestInlierIdx = new ArrayList<>();
         float currentScore;
         for(int i=0; i<iter; i++) {
@@ -283,6 +311,211 @@ public class RANSAC {
             c++;
         }*/
         return bestF;
+    }
+
+
+    /**
+     * 八点法结合 RANSAC 稳健估计基础矩阵 F 或 H
+     * @param PoListHo_1 匹配点对
+     * @param PoListHo_2 匹配点对
+     * @param S_num      抽样点数 （9）
+     * @param matrixType 决定计算的变换矩阵类型
+     * @param p_badxform 允许的错误概率，即允许RANSAC算法计算出的变换矩阵错误的概率，当前计算出的模型的错误概率小于p_badxform时迭代停止
+     * @return
+     */
+    public void MyRansacModel(Matrix PoListHo_1, Matrix PoListHo_2, int S_num,
+                                       String matrixType, double p_badxform) {
+        SF = 0.0f;
+        SH = 0.0f;
+        //p：当前计算出的模型的错误概率，当p小于p_badxform时迭代停止
+        //in_frac：内点数目占样本总数目的百分比
+        double p, in_frac = 0.2;
+        //number：输入的特征点数组中具有mtype类型匹配点的特征点个数
+        //in：当前一致集中元素个数
+        //in_min：一致集中元素个数允许的最小值，保证RANSAC最终计算出的转换矩阵错误的概率小于p_badxform所需的最小内点数目
+        //in_max：当前最优一致集(最大一致集)中元素的个数
+        //k：迭代次数，与计算当前模型的错误概率有关
+        int number = PoListHo_1.getRowDimension();
+        if (BuildConfig.DEBUG && number <= S_num) {
+            throw new AssertionError("Assertion number > 8 failed!!");
+        }
+        int in, in_min, in_max = 0, k = 0;
+        //计算保证RANSAC最终计算出的转换矩阵错误的概率小于p_badxform所需的最小内点数目
+        in_min = calc_min_inliers(number, S_num, 0.2, p_badxform );
+        Log.d(TAG, "in_min为++++++++++++++：" + in_min);
+        //当前计算出的模型的错误概率,内点所占比例in_frac越大，错误概率越小；迭代次数k越大，错误概率越小
+        //当前错误概率p的计算公式为：p=( 1 - in_frac^m)^k
+        p = pow(1.0 - pow(in_frac, S_num), k);
+        float currentScore;
+        int MaxIterCount = 18000;
+        while(p > p_badxform && k<=MaxIterCount){
+            Set<Integer> idx = randPerm(number, S_num);
+            Matrix Po1Sample = new Matrix(S_num, 3);
+            Matrix Po2Sample = new Matrix(S_num, 3);
+            int count = 0;
+            for (Integer idxSample : idx) {
+                Po1Sample.setMatrix(count, count, 0, 2, PoListHo_1.getMatrix(idxSample, idxSample, 0, 2));
+                Po2Sample.setMatrix(count, count, 0, 2, PoListHo_2.getMatrix(idxSample, idxSample, 0, 2));
+                count++;
+            }
+
+            Matrix MatrixEstimate;
+            List<Integer> inlierIdx = new ArrayList<>();
+            if(matrixType.equals(FundamentalRansac)){
+                MatrixEstimate = compute_fundamental_normalized(Po1Sample, Po2Sample);
+                currentScore = CheckFundamental(PoListHo_1, PoListHo_2, MatrixEstimate, inlierIdx);
+                in = inlierIdx.size();
+                in_max = BestInlierIdxF.size();
+            }else {
+                MatrixEstimate = compute_Homography_normalized(Po1Sample, Po2Sample);
+                currentScore = CheckHomography(PoListHo_1, PoListHo_2, MatrixEstimate, inlierIdx);
+                in = inlierIdx.size();
+                in_max = BestInlierIdxH.size();
+            }
+
+/*            List<Integer> inlierIdx = new ArrayList<>();
+            currentScore = CheckFundamental(PoListHo_1, PoListHo_2, MatrixEstimate, inlierIdx);
+            in = inlierIdx.size();
+            in_max = BestInlierIdxF.size();*/
+//            if(currentScore > SF && in > in_max)
+            if(in > in_max)
+            {
+                if(matrixType.equals(FundamentalRansac)){
+                    SF = currentScore;
+                    BestInlierIdxF = inlierIdx;
+//                    bestF = MatrixEstimate;
+                    Log.d(TAG, "F 目前的内点个数为："+BestInlierIdxF.size());
+                }else {
+                    SH = currentScore;
+                    BestInlierIdxH = inlierIdx;
+                    Log.d(TAG, "H 目前的内点个数为："+BestInlierIdxH.size());
+                }
+                in_max = in;
+                in_frac = in_max/(float)number;
+            }
+            p = pow( 1.0 - pow( in_frac, S_num ), ++k );
+//            Log.d(TAG, "此时的P为++++++++++++++：" + p);
+        }
+        Log.d(TAG, "迭代的次数k为：" + k);
+        Log.d(TAG, "此时的内点比例为：" + in_frac);
+        /* calculate final transform based on best consensus set */
+        //若最优一致集中元素个数大于最低标准，即符合要求
+        double[][] PoListHoSelected_1;
+        double[][] PoListHoSelected_2;
+        if(in_max >= in_min){
+            if(matrixType.equals(FundamentalRansac)){
+                PoListHoSelected_1 = new double[BestInlierIdxF.size()][3];
+                PoListHoSelected_2 = new double[BestInlierIdxF.size()][3];
+                int cc=0;
+                for(Integer id : BestInlierIdxF){
+                    // Log.d(TAG, "选取的id："+id);
+                    PoListHoSelected_1[cc] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[cc][0]+","+PoListHoSelected_1[cc][1]+","+PoListHoSelected_1[cc][2]);
+                    PoListHoSelected_2[cc] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[cc][0]+","+PoListHoSelected_2[cc][1]+","+PoListHoSelected_2[cc][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                    cc++;
+                }
+                FPoSelected1 = new Matrix(PoListHoSelected_1);
+                FPoSelected2 = new Matrix(PoListHoSelected_2);
+                bestF = compute_fundamental_normalized(FPoSelected1, FPoSelected2);
+                BestInlierIdxF  = new ArrayList<>();
+                SF = CheckFundamental(PoListHo_1, PoListHo_2, bestF, BestInlierIdxF);
+                //////////再一次迭代计算///////////
+                int finalInliersnum = BestInlierIdxF .size();
+                PoListHoSelected_1 = new double[finalInliersnum][3];
+                PoListHoSelected_2 = new double[finalInliersnum][3];
+                int ccc=0;
+                for(Integer id : BestInlierIdxF){
+                    // Log.d(TAG, "选取的id："+id);
+                    PoListHoSelected_1[ccc] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[ccc][0]+","+PoListHoSelected_1[ccc][1]+","+PoListHoSelected_1[ccc][2]);
+                    PoListHoSelected_2[ccc] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[ccc][0]+","+PoListHoSelected_2[ccc][1]+","+PoListHoSelected_2[ccc][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                    ccc++;
+                }
+                FPoSelected1 = new Matrix(PoListHoSelected_1);
+                FPoSelected2 = new Matrix(PoListHoSelected_2);
+                bestF = compute_fundamental_normalized(FPoSelected1, FPoSelected2);
+                Log.d(TAG, "最终的内点个数为："+BestInlierIdxF.size()+"此时的内点最终比例为：" + BestInlierIdxF.size()/(float)number);
+                for(Integer integer :BestInlierIdxF){
+                    out.println(integer);
+                }
+            }else {
+                PoListHoSelected_1 = new double[BestInlierIdxH.size()][3];
+                PoListHoSelected_2 = new double[BestInlierIdxH.size()][3];
+                int cc=0;
+                for(Integer id : BestInlierIdxH){
+                    // Log.d(TAG, "选取的id："+id);
+                    PoListHoSelected_1[cc] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[cc][0]+","+PoListHoSelected_1[cc][1]+","+PoListHoSelected_1[cc][2]);
+                    PoListHoSelected_2[cc] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[cc][0]+","+PoListHoSelected_2[cc][1]+","+PoListHoSelected_2[cc][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                    cc++;
+                }
+                HPoSelected1 = new Matrix(PoListHoSelected_1);
+                HPoSelected2 = new Matrix(PoListHoSelected_2);
+                bestH = compute_Homography_normalized(HPoSelected1, HPoSelected2);
+                BestInlierIdxH  = new ArrayList<>();
+                SF = CheckFundamental(PoListHo_1, PoListHo_2, bestH, BestInlierIdxH);
+                //////////再一次迭代计算///////////
+                int finalInliersnum = BestInlierIdxH.size();
+                PoListHoSelected_1 = new double[finalInliersnum][3];
+                PoListHoSelected_2 = new double[finalInliersnum][3];
+                int ccc=0;
+                for(Integer id : BestInlierIdxH){
+                    // Log.d(TAG, "选取的id："+id);
+                    PoListHoSelected_1[ccc] = PoListHo_1.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "FFFFFPoListHoSelected_1："+PoListHoSelected_1[ccc][0]+","+PoListHoSelected_1[ccc][1]+","+PoListHoSelected_1[ccc][2]);
+                    PoListHoSelected_2[ccc] = PoListHo_2.getMatrix(id, id, 0,2).getRowPackedCopy();
+//                Log.d(TAG, "PoListHoSelected_2："+PoListHoSelected_2[ccc][0]+","+PoListHoSelected_2[ccc][1]+","+PoListHoSelected_2[ccc][2]);
+//            double distTmp = abs(PoListHo_1.getMatrix(id, id, 0,2).times(bestH.times(PoListHo_2.getMatrix(id, id, 0,2).transpose())).get(0,0));
+//            Log.d(TAG, "dist为："+distTmp);
+                    ccc++;
+                }
+                HPoSelected1 = new Matrix(PoListHoSelected_1);
+                HPoSelected2 = new Matrix(PoListHoSelected_2);
+                bestH = compute_Homography_normalized(HPoSelected1, HPoSelected2);
+                Log.d(TAG, "最终的内点个数为："+BestInlierIdxH.size()+"此时的内点最终比例为：" + BestInlierIdxH.size()/(float)number);
+            }
+        }else {
+            FPoSelected1 = PoListHo_1;
+            FPoSelected2 = PoListHo_2;
+            HPoSelected1 = PoListHo_1;
+            HPoSelected2 = PoListHo_2;
+        }
+    }
+
+
+    private static int calc_min_inliers(int n, int m, double p_badsupp, double p_badxform ){
+        double pi, sum;
+        int i, j;
+        for(j = m+1; j<=n; j++){
+            sum = 0;
+            for(i=j; i<=n; i++){
+                pi = (i-m) * log(p_badsupp) + ( n-i+m ) * log( 1.0 - p_badsupp ) +
+                        log_factorial( n - m ) - log_factorial( i - m ) -
+                        log_factorial( n - i );
+                sum += exp( pi );
+            }
+            if( sum < p_badxform )
+                break;
+        }
+        return j;
+    }
+
+    private static double log_factorial(int n){
+        double f = 0;
+        int i;
+        for( i = 1; i <= n; i++ ){
+            f += log( i );
+        }
+        return f;
     }
 
 

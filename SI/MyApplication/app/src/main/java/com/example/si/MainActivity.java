@@ -181,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
 //            ,{575,46,1},{625,54,1},{318,660,1},{576,367,1},{635,305,1},{461,517,1},{307,93,1},{733,595,1},{1027,579,1},{896,787,1},{353,372,1},{1128,605,1},{1113,1053,1},{444,492,1},{720,446,1},{62,318,1},{79,442,1},{531,109,1},{688,1253,1},{38,1217,1},{553,445,1},{212,487,1},{299,1071,1},{256,418,1},{786,707,1},{653,414,1},{483,468,1},{207,1304,1},{628,560,1},{615,1119,1},{711,891,1},{1057,350,1}};
 //    double[][] polist2 = new double[][]{{-8.44149417E02,-7.01243716E01,1.00000000E00},{-5.92102316E02,-2.04821874E02,1.00000000E00},{-1.59848844E03,-3.39181688E02,1.00000000E00},{-1.70279784E03,-9.83655419E02,1.00000000E00},{-1.66813960E03,-8.08492588E02,1.00000000E00},{-1.81199751E03,-7.09261686E02,1.00000000E00},{-9.04794917E02,-8.07880563E02,1.00000000E00},{-1.50803293E03,-5.20834314E02,1.00000000E00},{-1.43617096E03,-9.95336895E02,1.00000000E00},{-6.29134719E02,-8.86470760E02,1.00000000E00},{-1.77018217E03,-2.93223726E02,1.00000000E00},{-9.19294712E02,-7.06440991E02,1.00000000E00},{-1.48819709E03,-5.29095734E02,1.00000000E00},{-8.98749267E02,-1.18135906E02,1.00000000E00},{-1.68825220E03,-8.80435997E02,1.00000000E00},{-1.21782479E03,-7.14497160E02,1.00000000E00},{-1.23792301E03,-1.49369843E02,1.00000000E00},{-1.26810098E03,-1.38421217E03,1.00000000E00},{-1.15559234E03,-4.90521446E01,1.00000000E00},{-1.10060089E03,-5.68823027E01,1.00000000E00},{-1.45151583E03,-7.22214619E02,1.00000000E00},{-1.15437274E03,-3.85116382E02,1.00000000E00},{-1.09083292E03,-3.16708690E02,1.00000000E00},{-1.28207605E03,-5.52121303E02,1.00000000E00},{-1.46448780E03,-1.02709208E02,1.00000000E00},{-9.86490505E02,-6.07864730E02,1.00000000E00},{-6.95043360E02,-5.64985542E02,1.00000000E00},{-8.21441961E02,-7.83381425E02,1.00000000E00},{-1.41000788E03,-4.04491874E02,1.00000000E00},{-6.01312558E02,-5.82226435E02,1.00000000E00},{-6.13874035E02,-1.01415901E03,1.00000000E00},{-1.30262340E03,-5.27113328E02,1.00000000E00},{-1.00072079E03,-4.56328273E02,1.00000000E00},{-1.76970994E03,-3.64600846E02,1.00000000E00},{-1.74734987E03,-5.04008143E02,1.00000000E00},{-1.20543106E03,-1.15298453E02,1.00000000E00},{-1.03584870E03,-1.28920746E03,1.00000000E00},{-1.80367559E03,-1.39848112E03,1.00000000E00},{-1.17936298E03,-4.68375869E02,1.00000000E00},{-1.57898005E03,-5.42735616E02,1.00000000E00},{-1.47289645E03,-1.17519136E03,1.00000000E00},{-1.52446381E03,-4.62410369E02,1.00000000E00},{-9.32013334E02,-7.15958523E02,1.00000000E00},{-1.07089308E03,-4.28351193E02,1.00000000E00},{-1.25792850E03,-4.97683613E02,1.00000000E00},{-1.58638334E03,-1.45427847E03,1.00000000E00},{-1.09740741E03,-5.82286041E02,1.00000000E00},{-1.11377277E03,-1.16500766E03,1.00000000E00},{-1.00964670E03,-9.12979286E02,1.00000000E00},{-6.67312107E02,-3.40453656E02,1.00000000E00}};
 
-//    0916 第二组
+    //    0916 第二组
 //    double[][] f = new double[][]{{ 9.76562500E-8, 3.05175781E-11, 5.41265877E-04}, {-8.45463643E-08, 1.79428994E-22, -4.68798828E-04},{-5.41265877E-04, -5.41265877E-04, 1.00000000E+00}};
 //    double[][] polist1 = new double[][]{{2906,880,1},{3792,3081,1},{3388,3078,1},{665,3702,1},{1246,999,1},{1269,514,1},{2568,1467,1},{1286,392,1},{3750,3704,1},{5362,5945,1},{1417,829,1},{8533,3093,1},{646,1235,1},{9315,12515,1},{356,240,1},{306,1390,1},{886,804,1},{2745,7113,1},{508,1560,1},{946,1321,1},{269,950,1},{4660,914,1},{436,737,1},{811,1238,1},{237,1118,1},{437,669,1},{6482,1856,1},{692,881,1},{964,524,1},{550,1380,1},{1533,1288,1},{754,727,1},{5092,4732,1},{7221,3473,1},{1576,3546,1},{1268,690,1},{1796,892,1},{1051,1841,1},{7971,4631,1},{3058,4541,1},{5066,8164,1},{1600,7870,1},{1331,1257,1},{2638,697,1},{654,1083,1},{1718,519,1},{2856,1348,1},{1507,424,1},{1220,2309,1},{3761,6689,1}};
 //    double[][] polist2 = new double[][]{{6.87662285E02,-6.48811561E02,1.00000000E00},{1.15206708E03,-2.10625122E03,1.00000000E00},{9.51513370E02,-2.19866703E03,1.00000000E00},{-1.07414276E03,-3.81733001E03,1.00000000E00},{-4.95715281E02,-9.35629856E02,1.00000000E00},{-4.74799783E02,-4.77192404E02,1.00000000E00},{4.87734463E02,-1.14882457E03,1.00000000E00},{-4.63062488E02,-3.55936831E02,1.00000000E00},{1.13204476E03,-2.54577683E03,1.00000000E00},{1.78596981E03,-3.48826472E03,1.00000000E00},{-3.51416289E02,-7.50142766E02,1.00000000E00},{2.63955399E03,-1.38626815E03,1.00000000E00},{-1.08150125E03,-1.27329227E03,1.00000000E00},{2.79366363E03,-5.40513840E03,1.00000000E00},{-1.40821633E03,-2.52903928E02,1.00000000E00},{-1.46753869E03,-1.51615799E03,1.00000000E00},{-8.33719246E02,-7.95086487E02,1.00000000E00},{5.89411897E02,-5.50911658E03,1.00000000E00},{-1.23759647E03,-1.64367492E03,1.00000000E00},{-7.74656760E02,-1.29858197E03,1.00000000E00},{-1.51301632E03,-1.04041374E03,1.00000000E00},{1.52662635E03,-5.59991109E02,1.00000000E00},{-1.31451058E03,-7.83771635E02,1.00000000E00},{-9.09992096E02,-1.24152557E03,1.00000000E00},{-1.55203701E03,-1.23245929E03,1.00000000E00},{-1.32257989E03,-7.01277994E02,1.00000000E00},{2.13784368E03,-9.75310102E02,1.00000000E00},{-1.03220713E03,-8.99346738E02,1.00000000E00},{-7.59743384E02,-5.06901890E02,1.00000000E00},{-1.19011681E03,-1.44178503E03,1.00000000E00},{-2.50468340E02,-1.15946188E03,1.00000000E00},{-9.67400208E02,-7.34231770E02,1.00000000E00},{1.69016206E03,-2.84148691E03,1.00000000E00},{2.33623285E03,-1.73056870E03,1.00000000E00},{-2.23344087E02,-3.18528552E03,1.00000000E00},{-4.76615996E02,-6.41595473E02,1.00000000E00},{-4.31915000E01,-7.70950434E02,1.00000000E00},{-6.79444016E02,-1.77985285E03,1.00000000E00},{2.51655590E03,-2.18247385E03,1.00000000E00},{7.70331774E02,-3.37591143E03,1.00000000E00},{1.68065554E03,-4.93327481E03,1.00000000E00},{-2.13688489E02,-7.08762887E03,1.00000000E00},{-4.20858949E02,-1.16597164E03,1.00000000E00},{5.31467878E02,-5.35104334E02,1.00000000E00},{-1.07306938E03,-1.11370538E03,1.00000000E00},{-1.02638887E02,-4.50415011E02,1.00000000E00},{6.62134373E02,-1.01878939E03,1.00000000E00},{-2.73149026E02,-3.76765370E02,1.00000000E00},{-5.21765931E02,-2.18015116E03,1.00000000E00},{1.13576973E03,-4.60710163E03,1.00000000E00}};
@@ -265,17 +265,17 @@ public class MainActivity extends AppCompatActivity {
             {2712.0,2934.0,1},{2636.0,2390.0,1},{2974.0,3368.0,1},{2974.0,3366.0,1},{2836.0,3966.0,1}};
 
     double[][] plist2 = new double[][]{{140.0,778.0,1},{254.0,768.0,1},{138.0,778.0,1},{246.0,1288.0,1},{248.0,1290.0,1},{146.0,1212.0,1},{596.0,2310.0,1},{570.0,1746.0,1},{596.0,1742.0,1},{162.0,3000.0,1},
-        {160.0,3000.0,1},{160.0,2998.0,1},{274.0,3744.0,1},{270.0,3744.0,1},{272.0,3746.0,1},{1084.0,488.0,1},{1084.0,490.0,1},{1144.0,744.0,1},{762.0,1296.0,1},{612.0,1282.0,1},
-        {760.0,1296.0,1},{710.0,1908.0,1},{1154.0,2104.0,1},{606.0,2088.0,1},{766.0,2928.0,1},{1186.0,2580.0,1},{782.0,2938.0,1},{604.0,3522.0,1},{604.0,3520.0,1},{602.0,3522.0,1},
-        {1654.0,474.0,1},{1654.0,476.0,1},{1628.0,732.0,1},{1256.0,1178.0,1},{1592.0,1170.0,1},{1580.0,1266.0,1},{1364.0,2260.0,1},{1276.0,2156.0,1},{1364.0,2262.0,1},{1228.0,2930.0,1},
-        {1394.0,2592.0,1},{1308.0,2504.0,1},{1772.0,3450.0,1},{1760.0,3478.0,1},{1544.0,3544.0,1},{2350.0,0.0,1},{2350.0,2.0,1},{2352.0,0.0,1},{1828.0,1562.0,1},{1828.0,1564.0,1},
-        {1830.0,1570.0,1},{2198.0,1962.0,1},{2042.0,1956.0,1},{2216.0,1918.0,1},{1910.0,2610.0,1},{1912.0,2620.0,1},{1910.0,2620.0,1},{2034.0,3456.0,1},{2172.0,3506.0,1},{2104.0,3506.0,1},
-        {2974.0,54.0,1},{2974.0,116.0,1},{2734.0,182.0,1},{2600.0,1236.0,1},{2600.0,1234.0,1},{2598.0,1234.0,1},{2570.0,1860.0,1},{2494.0,2060.0,1},{2548.0,2002.0,1},{2556.0,2894.0,1},
-        {2556.0,2884.0,1},{2568.0,2884.0,1},{2420.0,3448.0,1},{2392.0,3538.0,1},{2394.0,3538.0,1}};
+            {160.0,3000.0,1},{160.0,2998.0,1},{274.0,3744.0,1},{270.0,3744.0,1},{272.0,3746.0,1},{1084.0,488.0,1},{1084.0,490.0,1},{1144.0,744.0,1},{762.0,1296.0,1},{612.0,1282.0,1},
+            {760.0,1296.0,1},{710.0,1908.0,1},{1154.0,2104.0,1},{606.0,2088.0,1},{766.0,2928.0,1},{1186.0,2580.0,1},{782.0,2938.0,1},{604.0,3522.0,1},{604.0,3520.0,1},{602.0,3522.0,1},
+            {1654.0,474.0,1},{1654.0,476.0,1},{1628.0,732.0,1},{1256.0,1178.0,1},{1592.0,1170.0,1},{1580.0,1266.0,1},{1364.0,2260.0,1},{1276.0,2156.0,1},{1364.0,2262.0,1},{1228.0,2930.0,1},
+            {1394.0,2592.0,1},{1308.0,2504.0,1},{1772.0,3450.0,1},{1760.0,3478.0,1},{1544.0,3544.0,1},{2350.0,0.0,1},{2350.0,2.0,1},{2352.0,0.0,1},{1828.0,1562.0,1},{1828.0,1564.0,1},
+            {1830.0,1570.0,1},{2198.0,1962.0,1},{2042.0,1956.0,1},{2216.0,1918.0,1},{1910.0,2610.0,1},{1912.0,2620.0,1},{1910.0,2620.0,1},{2034.0,3456.0,1},{2172.0,3506.0,1},{2104.0,3506.0,1},
+            {2974.0,54.0,1},{2974.0,116.0,1},{2734.0,182.0,1},{2600.0,1236.0,1},{2600.0,1234.0,1},{2598.0,1234.0,1},{2570.0,1860.0,1},{2494.0,2060.0,1},{2548.0,2002.0,1},{2556.0,2894.0,1},
+            {2556.0,2884.0,1},{2568.0,2884.0,1},{2420.0,3448.0,1},{2392.0,3538.0,1},{2394.0,3538.0,1}};
 
     boolean flagcorner1 = false;
     boolean flagcorner2 = false;
-//    boolean flagcorner1 = true;
+    //    boolean flagcorner1 = true;
 //    boolean flagcorner2 = true;
     Convert2DTo3D p2 = new Convert2DTo3D();
 
@@ -499,7 +499,7 @@ public class MainActivity extends AppCompatActivity {
                         try {
 
                             Hough_Circle_Fun();//HoughCircle
-                           // Circle_Fun();
+                            // Circle_Fun();
                             //Hessian_Fun();
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -510,11 +510,11 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("TAG", "Click Test Button");
                         try {
 //                            Circle_Fun();
-                         //  Test_Fun();
-                            testforcorner();
-//                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-//                                Convert2Dto3D_Test();
-//                            }
+                            //  Test_Fun();
+//                            testforcorner();
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                Convert2Dto3D_Test();
+                            }
 
 
                         } catch (Exception e) {
@@ -656,8 +656,8 @@ public class MainActivity extends AppCompatActivity {
                     Looper.loop();
                     return;
                 }
-            Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
-            System.out.println("Enter here(the gauss finished!!)");
+                Bitmap blurbitmap = ImageFilter.blurBitmap(MainActivity.this,bitmap);//高斯滤波
+                System.out.println("Enter here(the gauss finished!!)");
                 /////////////CircleDetect_new/////////////////
                 Bitmap new_bitmap = null;
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
@@ -668,12 +668,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 //imageView.setImageBitmap(new_bitmap);
-            myrenderer.ResetImage(new_bitmap);
-            myGLSurfaceView.requestRender();
-            System.out.println("Enter here(the bitmap have been updated!!)");
-            ImageTools.recycle_fun(bitmap);
-            ImageTools.recycle_fun(blurbitmap);
-            uiHandler.sendEmptyMessage(1);
+                myrenderer.ResetImage(new_bitmap);
+                myGLSurfaceView.requestRender();
+                System.out.println("Enter here(the bitmap have been updated!!)");
+                ImageTools.recycle_fun(bitmap);
+                ImageTools.recycle_fun(blurbitmap);
+                uiHandler.sendEmptyMessage(1);
             }
         });
 
@@ -806,7 +806,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-        private void EdgeDetect_Test(){
+    private void EdgeDetect_Test(){
         try {
             Bitmap bitmap = myrenderer.GetBitmap();//从myrenderer获取bitmap
             if(bitmap == null){
@@ -904,7 +904,7 @@ public class MainActivity extends AppCompatActivity {
                 case CHOOSE_PHOTO:
                     ContentResolver resolver = getContentResolver();
                     Uri originalUri = data.getData();
- //                   currentPicturePath = getRealPathFromUri(this,originalUri);
+                    //                   currentPicturePath = getRealPathFromUri(this,originalUri);
                     String path = originalUri.toString();
                     try {
                         myrenderer.SetPath(path);
@@ -1587,7 +1587,7 @@ public class MainActivity extends AppCompatActivity {
 
                     //获取特征点并匹配
                     pointsGetAndMatch();
-
+//                    ORBTest();
                     if (isP1) {
                         myrenderer.ResetMarkerlist(MarkerList1);
                     } else {
@@ -1802,15 +1802,17 @@ public class MainActivity extends AppCompatActivity {
         //计算相机外参矩阵
         p.OpticalCenter[0] = img1.getWidth()/2;
         p.OpticalCenter[1] = img1.getHeight()/2;
-//      p.OpticalCenter[0] = 0;
-//      p.OpticalCenter[1] = 0;
+//        p.OpticalCenter[0] = 0;
+//        p.OpticalCenter[1] = 0;
         DataBuilder dataBuilder = new DataBuilder(1,false);//新添用于测试不同误差级别//////
         boolean flag = false;//非自标定
-        try {
-            flag = p.Convert2DTo3D_Fun_init(Po_list1, Po_list2, dataBuilder.F, FfList);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        flag = p.Convert2DTo3DOpenCV(Po_list1, Po_list2);
+//        try {
+//            flag = p.Convert2DTo3D_Fun_init(Po_list1, Po_list2, dataBuilder.F, FfList);
+        flag = p.Convert2DTo3DMixOpenCV(Po_list1, Po_list2, dataBuilder.F, FfList);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
         if (!flag) {
             clear3D_Reconstruction();
             clearPreImage();
@@ -1847,6 +1849,7 @@ public class MainActivity extends AppCompatActivity {
             myrenderer.ResetImage(showimg2);
         }
         myGLSurfaceView.requestRender();
+
 
         ifDraw3D = true;
         displayPoints3D(p, ifDraw3D);
@@ -2267,10 +2270,57 @@ public class MainActivity extends AppCompatActivity {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void Convert2Dto3D_Test() throws InterruptedException {
         Convert2DTo3D_new p = new Convert2DTo3D_new();
-        p.MyMobileModel = Convert2DTo3D_new.MobileModel.MIX2;
+//        p.MyMobileModel = Convert2DTo3D_new.MobileModel.MIX2;
 //        p.MyMobileModel = Convert2DTo3D.MobileModel.HUAWEI;
 //        Matrix F0 = new Matrix(new double[][]{{0.0,9.765625E-8,0,0},{2.70548366E-4,0.0,1.50015625},{0.0,-1.73205081,0.0}});
-        int num = 100;
+        //该部分用来测试合成三维点与重建三维点坐标误差=====================================================================
+        int num = 147;
+        DataBuilder dataBuilder = new DataBuilder(num, false);
+        dataBuilder.AddGuassNoise(0,0f);
+        dataBuilder.ChangeMatchOrder(0f);
+//        p.Convert2DTo3DOpenCV(dataBuilder.PoList1_orderrefined, dataBuilder.PoList2_orderrefined);
+        p.Convert2DTo3DMixOpenCV(dataBuilder.PoList1_orderrefined, dataBuilder.PoList2_orderrefined, dataBuilder.F, FfList);
+//        p.Convert2DTo3DMixOpenCV(dataBuilder.PoList1, dataBuilder.PoList2, dataBuilder.F, FfList);
+//        p.Convert2DTo3DMixOpenCV(dataBuilder.PoList1_noise, dataBuilder.PoList2_noise, dataBuilder.F, FfList);
+//        p.Convert2DTo3D_Fun_init(dataBuilder.PoList1_orderrefined, dataBuilder.PoList2_orderrefined, dataBuilder.F, FfList);
+//        p.Convert2DTo3D_Fun_init(dataBuilder.PoList1_noise, dataBuilder.PoList2_noise, dataBuilder.F, FfList);
+//        p.Convert2DTo3D_Fun_init(dataBuilder.PoList1, dataBuilder.PoList2, dataBuilder.F, FfList);
+        //比较X和X_3D误差
+
+        double[][] XSelected = new double[p.inlierIdxtest.size()][3];
+        int cc=0;
+        for(Integer id : p.inlierIdxtest){
+            // Log.d(TAG, "选取的id："+id);
+            XSelected[cc] = DataBuilder.X.getMatrix(id, id, 0,2).getRowPackedCopy();
+            cc++;
+        }
+        Matrix X_hecheng = new Matrix(XSelected);
+
+        int ii=0;
+        while(p.X_3D.get(ii,0)==0){
+            ii++;
+        }
+        double scale = X_hecheng.get(ii,0)/p.X_3D.get(ii,0);//可能需要算个均值
+//        Matrix X_hecheng = DataBuilder.X.getMatrix(0,num-1,0,2);
+        Matrix X_chongjian = p.X_3D.getMatrix(0,X_hecheng.getRowDimension()-1,0,2).times(scale);
+        Matrix error = X_chongjian.minus(X_hecheng);
+        out.println("X_chongjian=======" + X_chongjian.getRowDimension() + "X_hecheng=======" + X_hecheng.getRowDimension());
+        double[] ErrorVal = new double[X_hecheng.getRowDimension()];
+        for(int i=0; i<error.getRowDimension(); i++){
+            ErrorVal[i] = StrictMath.sqrt(StrictMath.pow(error.get(i,0),2) + StrictMath.pow(error.get(i,1),2) + StrictMath.pow(error.get(i,2),2));
+            out.println("第"+i+"个点的误差值为(Image1)：=======" + ErrorVal[i]);
+            out.println("第"+i+"个点的3D真实坐标为：" + X_hecheng.get(i,0)+","+X_hecheng.get(i,1)+","+ X_hecheng.get(i,2));
+            out.println("第"+i+"个点的3D坐标为：" + X_chongjian.get(i,0)+","+X_chongjian.get(i,1)+","+ X_chongjian.get(i,2));
+        }
+//        displayPoints3D(p);
+
+
+
+        //============================================================================================================
+
+
+        //该部分用来测试噪声下反投影误差=====================================================================
+/*        int num = 100;
         for(int it=0; it<10; it++){
             DataBuilder dataBuilder = new DataBuilder(num, false);
 
@@ -2309,7 +2359,9 @@ public class MainActivity extends AppCompatActivity {
         out.println("=====================================f");
         for(int j=0; j<error.length; j++){
             out.println(error[j][1]+",");
-        }
+        }*/
+
+//=============================================================================
 
 //        p.Convert2DTo3D_Fun_new(dataBuilder.PoList1, dataBuilder.PoList2, dataBuilder);
 /*        p.Point3DTo2D(p.X_3D);

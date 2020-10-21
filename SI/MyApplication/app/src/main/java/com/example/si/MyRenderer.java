@@ -467,7 +467,6 @@ public class MyRenderer implements GLSurfaceView.Renderer {
                 ImageMarker imageMarker = MarkerList.get(i);
                 float[] markerModel = VolumetoModel(new float[]{(float) imageMarker.x, (float) imageMarker.y, (float) imageMarker.z});
                 if (imageMarker.radius == 5) {
-//
                     if (ifDraw3D) {
                         myDraw.drawMarker(finalMatrix, modelMatrix, markerModel[0], markerModel[1], markerModel[2], imageMarker.type, 0.01f);
                     } else {
